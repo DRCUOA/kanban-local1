@@ -9,29 +9,43 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   // Seed data
-  const existingTasks = await storage.getTasks();
-  if (existingTasks.length === 0) {
+  const existingStages = await storage.getStages();
+  if (existingStages.length === 0) {
+    const backlogStage = await storage.createStage({
+      name: "Backlog",
+      order: 1,
+    });
+    const inProgressStage = await storage.createStage({
+      name: "In Progress",
+      order: 2,
+    });
+    const doneStage = await storage.createStage({
+      name: "Done",
+      order: 3,
+    });
+
     await storage.createTask({
       title: "Research competitors",
       description: "Look at Trello, Jira, Asana",
-      status: "backlog",
+      stageId: backlogStage.id,
     });
     await storage.createTask({
       title: "Set up project repo",
       description: "Initialize Git and basic structure",
-      status: "in-progress",
+      stageId: inProgressStage.id,
     });
     await storage.createTask({
       title: "Ideation phase",
       description: "Brainstorm core features",
-      status: "done",
+      stageId: doneStage.id,
     });
-    console.log("Seeded database with initial tasks");
+    console.log("Seeded database with initial stages and tasks");
   }
 
+  // Task endpoints
   app.get(api.tasks.list.path, async (_req, res) => {
-    const tasks = await storage.getTasks();
-    res.json(tasks);
+    const allTasks = await storage.getTasks();
+    res.json(allTasks);
   });
 
   app.post(api.tasks.create.path, async (req, res) => {
@@ -75,6 +89,56 @@ export async function registerRoutes(
       return res.status(400).json({ message: "Invalid ID" });
     }
     await storage.deleteTask(id);
+    res.status(204).send();
+  });
+
+  // Stage endpoints
+  app.get(api.stages.list.path, async (_req, res) => {
+    const allStages = await storage.getStages();
+    res.json(allStages);
+  });
+
+  app.post(api.stages.create.path, async (req, res) => {
+    try {
+      const stageData = api.stages.create.input.parse(req.body);
+      const stage = await storage.createStage(stageData);
+      res.status(201).json(stage);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: error.errors[0].message });
+      } else {
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    }
+  });
+
+  app.patch(api.stages.update.path, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid ID" });
+      }
+      const updates = api.stages.update.input.parse(req.body);
+      const updatedStage = await storage.updateStage(id, updates);
+      if (!updatedStage) {
+        return res.status(404).json({ message: "Stage not found" });
+      }
+      res.json(updatedStage);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: error.errors[0].message });
+      } else {
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    }
+  });
+
+  app.delete(api.stages.delete.path, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Invalid ID" });
+    }
+    await storage.deleteStage(id);
     res.status(204).send();
   });
 

@@ -3,6 +3,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema, type InsertTask, type Task } from "@shared/schema";
 import { useUpdateTask, useDeleteTask } from "@/hooks/use-tasks";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@shared/routes";
 import {
   Dialog,
   DialogContent,
@@ -47,12 +49,20 @@ export function EditTaskDialog({ task, open, onOpenChange }: EditTaskDialogProps
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
 
+  const { data: stages = [] } = useQuery({
+    queryKey: [api.stages.list.path],
+    queryFn: async () => {
+      const res = await fetch(api.stages.list.path);
+      return res.json();
+    },
+  });
+
   const form = useForm<InsertTask>({
     resolver: zodResolver(insertTaskSchema),
     defaultValues: {
       title: "",
       description: "",
-      status: "backlog",
+      stageId: 1,
     },
   });
 
@@ -61,7 +71,7 @@ export function EditTaskDialog({ task, open, onOpenChange }: EditTaskDialogProps
       form.reset({
         title: task.title,
         description: task.description || "",
-        status: task.status,
+        stageId: task.stageId,
       });
     }
   }, [task, form]);
@@ -116,7 +126,7 @@ export function EditTaskDialog({ task, open, onOpenChange }: EditTaskDialogProps
                 <FormItem>
                   <FormLabel>Title</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} data-testid="input-edit-title" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -124,20 +134,22 @@ export function EditTaskDialog({ task, open, onOpenChange }: EditTaskDialogProps
             />
             <FormField
               control={form.control}
-              name="status"
+              name="stageId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <FormLabel>Stage</FormLabel>
+                  <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="backlog">Backlog</SelectItem>
-                      <SelectItem value="in-progress">In Progress</SelectItem>
-                      <SelectItem value="done">Done</SelectItem>
+                      {stages.map((s: any) => (
+                        <SelectItem key={s.id} value={s.id.toString()}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -155,7 +167,8 @@ export function EditTaskDialog({ task, open, onOpenChange }: EditTaskDialogProps
                       className="resize-none"
                       rows={6}
                       {...field}
-                      value={field.value || ""} 
+                      value={field.value || ""}
+                      data-testid="input-edit-description"
                     />
                   </FormControl>
                   <FormMessage />
@@ -165,7 +178,7 @@ export function EditTaskDialog({ task, open, onOpenChange }: EditTaskDialogProps
             <DialogFooter className="flex justify-between sm:justify-between w-full pt-4">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button type="button" variant="destructive" size="icon" className="shrink-0">
+                  <Button type="button" variant="destructive" size="icon" className="shrink-0" data-testid="button-delete-task">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </AlertDialogTrigger>
@@ -189,7 +202,7 @@ export function EditTaskDialog({ task, open, onOpenChange }: EditTaskDialogProps
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={updateTask.isPending}>
+                <Button type="submit" disabled={updateTask.isPending} data-testid="button-save-task">
                   {updateTask.isPending ? "Saving..." : "Save Changes"}
                 </Button>
               </div>

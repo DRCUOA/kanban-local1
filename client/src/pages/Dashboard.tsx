@@ -74,9 +74,15 @@ export default function Dashboard() {
                 className="pl-9 h-10 rounded-xl bg-secondary/50 border-transparent focus:bg-background focus:border-primary transition-all"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                data-testid="input-search"
               />
             </div>
             <CreateTaskDialog />
+            <a href="/admin">
+              <button className="px-4 py-2 text-sm font-medium rounded-lg border border-border hover-elevate" data-testid="button-admin">
+                Admin
+              </button>
+            </a>
           </div>
         </div>
       </header>

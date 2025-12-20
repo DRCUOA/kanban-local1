@@ -3,6 +3,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema, type InsertTask } from "@shared/schema";
 import { useCreateTask } from "@/hooks/use-tasks";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@shared/routes";
 import {
   Dialog,
   DialogContent,
@@ -31,12 +33,22 @@ export function CreateTaskDialog() {
   const { toast } = useToast();
   const createTask = useCreateTask();
 
+  const { data: stages = [] } = useQuery({
+    queryKey: [api.stages.list.path],
+    queryFn: async () => {
+      const res = await fetch(api.stages.list.path);
+      return res.json();
+    },
+  });
+
+  const defaultStageId = stages[0]?.id || 1;
+  
   const form = useForm<InsertTask>({
     resolver: zodResolver(insertTaskSchema),
     defaultValues: {
       title: "",
       description: "",
-      status: "backlog",
+      stageId: defaultStageId,
     },
   });
 
@@ -48,7 +60,7 @@ export function CreateTaskDialog() {
           description: "Your new task has been added to the board.",
         });
         setOpen(false);
-        form.reset();
+        form.reset({ stageId: defaultStageId });
       },
       onError: (error) => {
         toast({
@@ -63,7 +75,7 @@ export function CreateTaskDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="gap-2 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all">
+        <Button className="gap-2 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all" data-testid="button-add-task">
           <Plus className="h-4 w-4" />
           Add Task
         </Button>
@@ -72,7 +84,7 @@ export function CreateTaskDialog() {
         <DialogHeader>
           <DialogTitle>Create New Task</DialogTitle>
           <DialogDescription>
-            Add a new item to your backlog.
+            Add a new task to your board.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -84,7 +96,7 @@ export function CreateTaskDialog() {
                 <FormItem>
                   <FormLabel>Title</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Design homepage" {...field} />
+                    <Input placeholder="e.g., Design homepage" {...field} data-testid="input-task-title" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -92,20 +104,22 @@ export function CreateTaskDialog() {
             />
             <FormField
               control={form.control}
-              name="status"
+              name="stageId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormLabel>Stage</FormLabel>
+                  <Select onValueChange={(v) => field.onChange(Number(v))} defaultValue={field.value?.toString()}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
+                        <SelectValue placeholder="Select stage" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="backlog">Backlog</SelectItem>
-                      <SelectItem value="in-progress">In Progress</SelectItem>
-                      <SelectItem value="done">Done</SelectItem>
+                      {stages.map((s: any) => (
+                        <SelectItem key={s.id} value={s.id.toString()}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -124,7 +138,8 @@ export function CreateTaskDialog() {
                       className="resize-none"
                       rows={4}
                       {...field}
-                      value={field.value || ""} 
+                      value={field.value || ""}
+                      data-testid="input-task-description"
                     />
                   </FormControl>
                   <FormMessage />
@@ -132,7 +147,7 @@ export function CreateTaskDialog() {
               )}
             />
             <div className="flex justify-end pt-4">
-              <Button type="submit" disabled={createTask.isPending}>
+              <Button type="submit" disabled={createTask.isPending} data-testid="button-submit-task">
                 {createTask.isPending ? "Creating..." : "Create Task"}
               </Button>
             </div>
