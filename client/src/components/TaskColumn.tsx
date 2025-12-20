@@ -33,7 +33,7 @@ export function TaskColumn({ id, title, count, children }: TaskColumnProps) {
   };
 
   return (
-    <div className="flex-1 min-w-[300px] flex flex-col h-full rounded-2xl bg-card/50 backdrop-blur-sm">
+    <div className="flex-1 w-full lg:min-w-[300px] flex flex-col h-auto lg:h-full rounded-2xl bg-card/50 backdrop-blur-sm">
       <div className="p-4 flex items-center justify-between sticky top-0 bg-background/95 backdrop-blur z-10 rounded-t-2xl border-b border-border/50">
         <div className="flex items-center gap-2">
           <div className={cn("w-3 h-3 rounded-full", 

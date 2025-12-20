@@ -102,7 +102,7 @@ export default function Dashboard() {
 
       {/* Board Content */}
       <main className="flex-1 overflow-hidden">
-        <div className="container mx-auto h-full p-4 lg:p-6">
+        <div className="container mx-auto h-full p-2 sm:p-4 lg:p-6">
           {filteredTasks && filteredTasks.length > 0 ? (
             <KanbanBoard tasks={filteredTasks} onTaskClick={handleTaskClick} />
           ) : (

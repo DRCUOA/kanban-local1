@@ -93,7 +93,7 @@ export function KanbanBoard({ tasks, onTaskClick }: KanbanBoardProps) {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex flex-row h-full gap-6 overflow-x-auto pb-4">
+      <div className="flex flex-col lg:flex-row h-full gap-6 overflow-y-auto lg:overflow-y-visible lg:overflow-x-auto pb-4">
         {sortedStages.map((stage: any) => (
           <TaskColumn
             key={stage.id}
