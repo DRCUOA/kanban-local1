@@ -32,6 +32,7 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    host: true, // Bind to 0.0.0.0 to allow LAN access (in middleware mode, Express controls the actual port)
     fs: {
       strict: true,
       deny: ["**/.*"],
