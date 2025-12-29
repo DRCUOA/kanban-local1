@@ -26,3 +26,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Server binding configuration to ensure proper LAN accessibility
 - Database connection setup to use environment variables consistently
 
+
