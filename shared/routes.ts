@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { insertTaskSchema, insertStageSchema, tasks, stages } from "./schema";
+import { insertTaskSchema, insertStageSchema, insertSubStageSchema, tasks, stages, subStages } from "./schema";
 
 export const api = {
   tasks: {
@@ -101,6 +101,48 @@ export const api = {
     delete: {
       method: "DELETE" as const,
       path: "/api/stages/:id",
+      responses: {
+        204: z.void(),
+        404: z.object({ message: z.string() }),
+      },
+    },
+  },
+  subStages: {
+    list: {
+      method: "GET" as const,
+      path: "/api/sub-stages",
+      responses: {
+        200: z.array(z.custom<typeof subStages.$inferSelect>()),
+      },
+    },
+    listByStage: {
+      method: "GET" as const,
+      path: "/api/stages/:stageId/sub-stages",
+      responses: {
+        200: z.array(z.custom<typeof subStages.$inferSelect>()),
+      },
+    },
+    create: {
+      method: "POST" as const,
+      path: "/api/sub-stages",
+      input: insertSubStageSchema,
+      responses: {
+        201: z.custom<typeof subStages.$inferSelect>(),
+        400: z.object({ message: z.string() }),
+      },
+    },
+    update: {
+      method: "PATCH" as const,
+      path: "/api/sub-stages/:id",
+      input: insertSubStageSchema.partial(),
+      responses: {
+        200: z.custom<typeof subStages.$inferSelect>(),
+        404: z.object({ message: z.string() }),
+      },
+    },
+    delete: {
+      method: "DELETE" as const,
+      path: "/api/sub-stages/:id",
       responses: {
         204: z.void(),
         404: z.object({ message: z.string() }),

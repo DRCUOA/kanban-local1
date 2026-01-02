@@ -58,8 +58,19 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
   const { data: stages = [] } = useQuery({
     queryKey: [api.stages.list.path],
     queryFn: async () => {
-      const res = await fetch(api.stages.list.path);
-      return res.json();
+      try {
+        const res = await fetch(api.stages.list.path);
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(`Failed to fetch stages: ${res.status} ${res.statusText}${errorText ? ` - ${errorText}` : ''}`);
+        }
+        return res.json();
+      } catch (error) {
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+          throw new Error("Network error: Unable to connect to server. Please check if the server is running.");
+        }
+        throw error;
+      }
     },
   });
 

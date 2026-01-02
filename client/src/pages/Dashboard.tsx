@@ -31,8 +31,19 @@ export default function Dashboard() {
   const { data: stages = [] } = useQuery({
     queryKey: [api.stages.list.path],
     queryFn: async () => {
-      const res = await fetch(api.stages.list.path);
-      return res.json();
+      try {
+        const res = await fetch(api.stages.list.path);
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(`Failed to fetch stages: ${res.status} ${res.statusText}${errorText ? ` - ${errorText}` : ''}`);
+        }
+        return res.json();
+      } catch (error) {
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+          throw new Error("Network error: Unable to connect to server. Please check if the server is running.");
+        }
+        throw error;
+      }
     },
   });
 
@@ -180,7 +191,7 @@ export default function Dashboard() {
           for (const taskData of imported) {
             try {
               // Validate and prepare task data
-              const taskToCreate: InsertTask = {
+              const taskToCreate = {
                 title: taskData.title || "Untitled Task",
                 description: taskData.description || "",
                 stageId: taskData.stageId || stagesData[0].id,
@@ -188,10 +199,9 @@ export default function Dashboard() {
                 priority: taskData.priority || "normal",
                 effort: taskData.effort || undefined,
                 dueDate: taskData.dueDate ? new Date(taskData.dueDate) : undefined,
-                tags: taskData.tags || [],
+                tags: Array.isArray(taskData.tags) ? taskData.tags : [],
                 recurrence: taskData.recurrence || "none",
-                archived: taskData.archived || false,
-              };
+              } as InsertTask;
 
               // Validate stageId exists
               if (!stagesData.find((s: any) => s.id === taskToCreate.stageId)) {
@@ -268,16 +278,26 @@ export default function Dashboard() {
       {/* Header */}
       <header className="sticky top-0 z-50 neo-container rounded-none border-0 border-b-0">
         <div className="container mx-auto px-6 py-4">
-          {/* Top Row - Logo */}
-          <div className="flex items-center justify-center mb-4">
-            <div className="flex items-center gap-4">
-              <div className="h-14 w-14 neo-raised rounded-xl flex items-center justify-center">
-                <LayoutDashboard className="text-primary h-7 w-7" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight text-foreground">TaskFlow</h1>
-                <p className="text-xs text-muted-foreground hidden sm:block">Project Management</p>
-              </div>
+          {/* Top Row - Logo and Title */}
+          <div className="flex flex-col items-center justify-center mb-4 md:flex-row md:mb-4">
+            {/* Logo - First line on mobile, left side on desktop */}
+            <div className="h-14 w-14 neo-raised rounded-xl flex items-center justify-center mb-2 md:mb-0 md:mr-4">
+              <LayoutDashboard className="text-primary h-7 w-7" />
+            </div>
+            {/* Title and Subtitle - Second and third lines on mobile, right side on desktop */}
+            <div className="flex flex-col items-center justify-center text-center">
+              {/* Subtitle - Second line on mobile */}
+              <p className="text-xs text-muted-foreground mb-1 md:hidden">
+                {import.meta.env.VITE_APP_NAME_SUBTITLE || "SubNameNotSetInEnv"}
+              </p>
+              {/* Title - Third line on mobile, first line on desktop */}
+              <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                {import.meta.env.VITE_APP_NAME || "NameNotSetInEnv"}
+              </h1>
+              {/* Subtitle - Hidden on mobile (shown above), visible on desktop */}
+              <p className="text-xs text-muted-foreground hidden md:block">
+                {import.meta.env.VITE_APP_NAME_SUBTITLE || "SubNameNotSetInEnv"}
+              </p>
             </div>
           </div>
           

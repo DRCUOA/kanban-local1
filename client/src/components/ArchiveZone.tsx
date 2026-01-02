@@ -9,15 +9,18 @@ interface ArchiveZoneProps {
 export function ArchiveZone({ isOver }: ArchiveZoneProps) {
   const { setNodeRef } = useDroppable({
     id: "archive",
+    data: {
+      type: "archive",
+    },
   });
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "w-full mt-6 p-8 rounded-2xl transition-all duration-300 border-0",
+        "w-full mt-6 p-8 rounded-2xl transition-all duration-300 border-0 relative z-10",
         isOver
-          ? "neo-pressed bg-destructive/10"
+          ? "neo-pressed bg-destructive/10 ring-2 ring-destructive/50"
           : "neo-raised"
       )}
     >

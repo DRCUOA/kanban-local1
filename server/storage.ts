@@ -1,4 +1,4 @@
-import { tasks, stages, type Task, type Stage, type InsertTask, type InsertStage, type TaskHistoryEntry, type TaskStatus } from "@shared/schema";
+import { tasks, stages, subStages, type Task, type Stage, type SubStage, type InsertTask, type InsertStage, type InsertSubStage, type TaskHistoryEntry, type TaskStatus } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, sql } from "drizzle-orm";
 
@@ -16,6 +16,11 @@ export interface IStorage {
   createStage(stage: InsertStage): Promise<Stage>;
   updateStage(id: number, stage: Partial<InsertStage>): Promise<Stage | undefined>;
   deleteStage(id: number): Promise<void>;
+  getSubStages(): Promise<SubStage[]>;
+  getSubStagesByStage(stageId: number): Promise<SubStage[]>;
+  createSubStage(subStage: InsertSubStage): Promise<SubStage>;
+  updateSubStage(id: number, subStage: Partial<InsertSubStage>): Promise<SubStage | undefined>;
+  deleteSubStage(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -210,6 +215,32 @@ export class DatabaseStorage implements IStorage {
     await db.delete(stages).where(eq(stages.id, id));
     
     console.log('[DAO] [DELETE_STAGE] Database delete completed');
+  }
+
+  async getSubStages(): Promise<SubStage[]> {
+    return await db.select().from(subStages).orderBy(subStages.order);
+  }
+
+  async getSubStagesByStage(stageId: number): Promise<SubStage[]> {
+    return await db.select().from(subStages).where(eq(subStages.stageId, stageId)).orderBy(subStages.order);
+  }
+
+  async createSubStage(insertSubStage: InsertSubStage): Promise<SubStage> {
+    const [subStage] = await db.insert(subStages).values(insertSubStage).returning();
+    return subStage;
+  }
+
+  async updateSubStage(id: number, updates: Partial<InsertSubStage>): Promise<SubStage | undefined> {
+    const [updated] = await db
+      .update(subStages)
+      .set(updates)
+      .where(eq(subStages.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteSubStage(id: number): Promise<void> {
+    await db.delete(subStages).where(eq(subStages.id, id));
   }
 }
 

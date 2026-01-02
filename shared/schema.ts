@@ -11,6 +11,17 @@ export const stages = pgTable("stages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const subStages = pgTable("sub_stages", {
+  id: serial("id").primaryKey(),
+  stageId: integer("stage_id").notNull().references(() => stages.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  tag: text("tag").notNull(), // Unique identifier like "day-plan-am"
+  bgClass: text("bg_class").notNull(), // Tailwind class like "bg-background/20"
+  opacity: integer("opacity").notNull(), // 0-100 (stored as integer, e.g., 20 for 0.2)
+  order: integer("order").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Task status enum
 export const taskStatusEnum = z.enum(["backlog", "in_progress", "done", "abandoned"]);
 export type TaskStatus = z.infer<typeof taskStatusEnum>;
@@ -66,6 +77,14 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
 
 export const stagesRelations = relations(stages, ({ many }) => ({
   tasks: many(tasks),
+  subStages: many(subStages),
+}));
+
+export const subStagesRelations = relations(subStages, ({ one }) => ({
+  stage: one(stages, {
+    fields: [subStages.stageId],
+    references: [stages.id],
+  }),
 }));
 
 export const insertStageSchema = createInsertSchema(stages).omit({
@@ -73,6 +92,13 @@ export const insertStageSchema = createInsertSchema(stages).omit({
   createdAt: true,
 }).extend({
   color: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/).optional().nullable(),
+});
+
+export const insertSubStageSchema = createInsertSchema(subStages).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  opacity: z.number().min(0).max(100), // Store as 0-100 integer
 });
 
 export const insertTaskSchema = createInsertSchema(tasks).omit({
@@ -96,5 +122,7 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
 
 export type Stage = typeof stages.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
+export type SubStage = typeof subStages.$inferSelect;
 export type InsertStage = z.infer<typeof insertStageSchema>;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
+export type InsertSubStage = z.infer<typeof insertSubStageSchema>;
