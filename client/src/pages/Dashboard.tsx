@@ -413,10 +413,10 @@ export default function Dashboard() {
       </header>
 
       {/* Board Content */}
-      <main className="flex-1 overflow-hidden">
-        <div className="container mx-auto h-full p-2 sm:p-4 lg:p-6">
+      <main className="flex-1 overflow-hidden flex flex-col">
+        <div className="container mx-auto flex-1 flex flex-col min-h-0 p-2 sm:p-4 lg:p-6">
           {focusMode && (
-            <div className="mb-4 p-4 neo-container rounded-2xl border-l-4 border-l-blue-500">
+            <div className="mb-4 p-4 neo-container rounded-2xl border-l-4 border-l-blue-500 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse" />
                 <p className="text-sm font-medium">Focus Mode: Showing only In Progress tasks and next suggested task</p>
@@ -424,15 +424,17 @@ export default function Dashboard() {
             </div>
           )}
           
-          {tasks && tasks.length > 0 && <TaskWarnings tasks={tasks} />}
+          {tasks && tasks.length > 0 && <div className="flex-shrink-0"><TaskWarnings tasks={tasks} /></div>}
           
           {filteredTasks && filteredTasks.length > 0 ? (
-            <KanbanBoard 
-              tasks={filteredTasks} 
-              onTaskClick={handleTaskClick} 
-              viewMode={viewMode}
-              focusMode={focusMode}
-            />
+            <div className="flex-1 min-h-0">
+              <KanbanBoard 
+                tasks={filteredTasks} 
+                onTaskClick={handleTaskClick} 
+                viewMode={viewMode}
+                focusMode={focusMode}
+              />
+            </div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center p-12 neo-container rounded-3xl m-4">
               <div className="h-20 w-20 neo-pressed rounded-full flex items-center justify-center mb-6">

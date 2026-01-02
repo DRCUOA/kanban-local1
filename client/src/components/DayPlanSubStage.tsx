@@ -12,66 +12,12 @@ interface DayPlanSubStageProps {
     name: string;
     tag: string;
     bgClass: string;
-    opacity: number; // Opacity level (0.2, 0.4, 0.6)
+    opacity: number; // Opacity level (0.2, 0.4, 0.6) - not used for color adjustment
   };
   tasks: Task[];
   stageColor: string;
   viewMode: "detail" | "summary";
   onTaskClick: (task: Task) => void;
-}
-
-// Adjust color tone to match background opacity variation
-// Blends the base color with white (lighter) or keeps darker to match background tone
-// Background opacity: 0.2 (lighter) -> 0.4 (medium) -> 0.6 (darker)
-// Stage color tone: lighter -> medium -> darker (same proportional variation)
-function adjustColorTone(color: string, opacity: number): string {
-  // Normalize color to hex format
-  let hex = color;
-  if (!hex || !hex.startsWith("#")) {
-    // If it's rgb format, convert to hex
-    const rgbMatch = color.match(/^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i);
-    if (rgbMatch) {
-      const r = parseInt(rgbMatch[1]);
-      const g = parseInt(rgbMatch[2]);
-      const b = parseInt(rgbMatch[3]);
-      hex = `#${[r, g, b].map(x => {
-        const h = x.toString(16);
-        return h.length === 1 ? '0' + h : h;
-      }).join('')}`;
-    } else {
-      // Fallback to default green if invalid
-      hex = "#10B981";
-    }
-  }
-  
-  // Expand short hex (#RGB to #RRGGBB)
-  let fullHex = hex;
-  if (hex.length === 4) {
-    fullHex = `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`;
-  }
-  
-  const r = parseInt(fullHex.slice(1, 3), 16);
-  const g = parseInt(fullHex.slice(3, 5), 16);
-  const b = parseInt(fullHex.slice(5, 7), 16);
-  
-  // Blend with white to create lighter tones
-  // Lower opacity (0.2) = blend more with white (lighter tone)
-  // Higher opacity (0.6) = less blend (darker tone, closer to original)
-  // Map opacity to blend amount for more distinct variation:
-  // 0.2 -> 0.7 blend (much lighter), 0.4 -> 0.4 blend (medium), 0.6 -> 0.1 blend (slightly lighter)
-  const blendAmount = (1 - opacity) * 0.875; // 0.2->0.7, 0.4->0.525, 0.6->0.35
-  
-  const rBlended = Math.round(r + (255 - r) * blendAmount);
-  const gBlended = Math.round(g + (255 - g) * blendAmount);
-  const bBlended = Math.round(b + (255 - b) * blendAmount);
-  
-  // Convert back to hex format for compatibility with TaskCardSummary
-  const toHex = (n: number) => {
-    const hex = Math.round(n).toString(16);
-    return hex.length === 1 ? '0' + hex : hex;
-  };
-  
-  return `#${toHex(rBlended)}${toHex(gBlended)}${toHex(bBlended)}`;
 }
 
 export function DayPlanSubStage({
@@ -82,21 +28,25 @@ export function DayPlanSubStage({
   viewMode,
   onTaskClick,
 }: DayPlanSubStageProps) {
-  const subStageId = `${stageId}-day-plan-${subStage.tag.split('-').pop()}`;
+  // Generate unique ID for this sub-stage using stageId and tag
+  const subStageId = `${stageId}-${subStage.tag}`;
   
   const { setNodeRef, isOver } = useDroppable({
     id: subStageId,
+    data: {
+      type: "SubStage",
+      subStageTag: subStage.tag,
+    },
   });
 
-  // Adjust stage color tone to match sub-stage background opacity variation
-  // Same base color, but lighter/darker tones matching the background
-  const adjustedStageColor = adjustColorTone(stageColor, subStage.opacity);
+  // Use stage color directly without tone adjustment
+  const displayStageColor = stageColor || "#3B82F6";
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col gap-2 p-3 rounded-2xl transition-colors",
+        "flex flex-col gap-2 p-3 rounded-2xl transition-colors min-h-[80px]",
         subStage.bgClass,
         isOver && "ring-2 ring-primary/50"
       )}
@@ -116,29 +66,41 @@ export function DayPlanSubStage({
         strategy={verticalListSortingStrategy}
       >
         {viewMode === "detail" ? (
-          <div className="flex flex-col gap-2">
-            {tasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onClick={onTaskClick}
-                stageColor={adjustedStageColor}
-                onInlineEdit={() => {
-                  // Trigger refetch if needed
-                }}
-              />
-            ))}
+          <div className="flex flex-col gap-2 min-h-[60px]">
+            {tasks.length > 0 ? (
+              tasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onClick={onTaskClick}
+                  stageColor={displayStageColor}
+                  onInlineEdit={() => {
+                    // Trigger refetch if needed
+                  }}
+                />
+              ))
+            ) : (
+              <div className="text-xs text-muted-foreground text-center py-4 opacity-50">
+                No tasks
+              </div>
+            )}
           </div>
         ) : (
-          <div className="flex flex-wrap gap-2 content-start">
-            {tasks.map((task) => (
-              <TaskCardSummary
-                key={task.id}
-                task={task}
-                onClick={onTaskClick}
-                stageColor={adjustedStageColor}
-              />
-            ))}
+          <div className="flex flex-wrap gap-2 content-start min-h-[60px]">
+            {tasks.length > 0 ? (
+              tasks.map((task) => (
+                <TaskCardSummary
+                  key={task.id}
+                  task={task}
+                  onClick={onTaskClick}
+                  stageColor={displayStageColor}
+                />
+              ))
+            ) : (
+              <div className="text-xs text-muted-foreground text-center py-4 w-full opacity-50">
+                No tasks
+              </div>
+            )}
           </div>
         )}
       </SortableContext>

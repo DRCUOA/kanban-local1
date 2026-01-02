@@ -38,7 +38,7 @@ export function TaskCardSummary({ task, onClick, stageColor }: TaskCardSummaryPr
     ? task.title.substring(0, 12) + "..."
     : task.title;
 
-  // Create gradient background: solid at border, transparent at center
+  // Create beveled gradient background: high at circumference, low at center
   const getGradientStyle = (color: string): React.CSSProperties => {
     if (!color || !color.startsWith("#")) return {};
     
@@ -56,12 +56,38 @@ export function TaskCardSummary({ task, onClick, stageColor }: TaskCardSummaryPr
       return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     };
     
+    // Beveled effect: high at circumference (darker/stronger), low at center (lighter)
+    // Creates illusion of raised edge with pressed center - like a lift button
     return {
-      background: `radial-gradient(circle, ${hexToRgba(color, 0.4)} 0%, ${hexToRgba(color, 0.25)} 40%, ${hexToRgba(color, 0.15)} 70%, ${hexToRgba(color, 0.05)} 100%)`,
+      background: `radial-gradient(circle, ${hexToRgba(color, 0.7)} 0%, ${hexToRgba(color, 0.65)} 8%, ${hexToRgba(color, 0.5)} 20%, ${hexToRgba(color, 0.3)} 45%, ${hexToRgba(color, 0.15)} 75%, ${hexToRgba(color, 0.05)} 100%)`,
       borderColor: color,
       borderWidth: '3px',
       borderStyle: 'solid',
+      boxShadow: `
+        /* Outer raised edge - high at circumference */
+        0 6px 12px rgba(0, 0, 0, 0.2),
+        0 -3px 6px rgba(255, 255, 255, 0.3),
+        /* Inner pressed center - low at center */
+        inset 0 0 25px rgba(0, 0, 0, 0.25),
+        inset 0 0 12px rgba(0, 0, 0, 0.15),
+        /* Subtle edge highlight */
+        0 0 0 1px rgba(0, 0, 0, 0.08)
+      `,
     };
+  };
+
+  // Haptic feedback function - mimics pressing a lift button
+  const triggerHapticFeedback = () => {
+    if ('vibrate' in navigator) {
+      // Pattern: short vibration (10ms) for button press feel
+      // Mimics the tactile feedback of pressing a physical button
+      navigator.vibrate(10);
+    }
+  };
+
+  const handleClick = () => {
+    triggerHapticFeedback();
+    onClick(task);
   };
 
   if (isDragging) {
@@ -85,14 +111,17 @@ export function TaskCardSummary({ task, onClick, stageColor }: TaskCardSummaryPr
       style={containerStyle} 
       {...attributes} 
       {...listeners}
-      onClick={() => onClick(task)}
+      onClick={handleClick}
+      onTouchStart={triggerHapticFeedback}
+      onMouseDown={triggerHapticFeedback}
       className={cn(
-        "w-20 h-20 rounded-full neo-card flex items-center justify-center cursor-pointer transition-all duration-300 active:scale-[0.95]",
-        "hover:scale-110"
+        "w-20 h-20 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300",
+        "hover:scale-110 active:scale-[0.92]",
+        stageColor ? "neo-beveled-circle-colored" : "neo-beveled-circle"
       )}
       title={task.title}
     >
-      <span className="text-[10px] font-semibold text-foreground text-center px-1.5 leading-tight break-words">
+      <span className="text-[10px] font-semibold text-foreground text-center px-1.5 leading-tight break-words relative z-10">
         {shortTitle}
       </span>
     </div>

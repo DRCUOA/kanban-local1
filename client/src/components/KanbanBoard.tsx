@@ -27,6 +27,7 @@ import { ArchiveZone } from "./ArchiveZone";
 import { DayPlanSubStage } from "./DayPlanSubStage";
 import { useUpdateTask, useArchiveTask } from "@/hooks/use-tasks";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 interface KanbanBoardProps {
   tasks: Task[];
@@ -157,23 +158,55 @@ export function KanbanBoard({ tasks, onTaskClick, viewMode = "detail", focusMode
     const overContainerId = over.data.current?.sortable?.containerId || over.id;
     const overId = typeof overContainerId === 'string' ? overContainerId : overContainerId;
 
-    // Check if dropped on a Day Plan sub-stage (format: "stageId-day-plan-{section}")
-    if (activeTask && typeof overId === 'string' && overId.includes('-day-plan-')) {
-      const parts = overId.split('-day-plan-');
-      const stageId = parseInt(parts[0]);
-      const subStage = parts[1];
-      const subStageTag = `day-plan-${subStage}`;
+    // Check if dropped on a sub-stage (format: "stageId-{tag}" or via data.type === "SubStage")
+    const isSubStage = over.data?.current?.type === "SubStage" || 
+                       (typeof overId === 'string' && /^\d+-\w+/.test(overId));
+    
+    if (activeTask && isSubStage) {
+      let stageId: number;
+      let subStageTag: string;
+      
+      if (over.data?.current?.type === "SubStage") {
+        // Get from data
+        subStageTag = over.data.current.subStageTag;
+        // Find stageId from the overId format "stageId-tag"
+        const match = String(over.id).match(/^(\d+)-(.+)$/);
+        if (match) {
+          stageId = parseInt(match[1]);
+        } else {
+          // Fallback: find stageId from activeTask
+          stageId = activeTask.stageId;
+        }
+      } else if (typeof overId === 'string') {
+        // Parse from ID format "stageId-tag"
+        const match = overId.match(/^(\d+)-(.+)$/);
+        if (match) {
+          stageId = parseInt(match[1]);
+          subStageTag = match[2];
+        } else {
+          // Fallback
+          stageId = activeTask.stageId;
+          subStageTag = "";
+        }
+      } else {
+        stageId = activeTask.stageId;
+        subStageTag = "";
+      }
+      
+      // Get all sub-stage tags for this stage to remove old ones
+      const stageSubStages = allSubStages.filter((ss: any) => ss.stageId === stageId);
+      const stageSubStageTags = stageSubStages.map((ss: any) => ss.tag);
       
       // Get current tags and update with sub-stage tag
       const currentTags = activeTask.tags || [];
-      const dayPlanTags = ['day-plan-am', 'day-plan-middle', 'day-plan-darker'];
-      const filteredTags = currentTags.filter((tag: string) => !dayPlanTags.includes(tag));
+      // Remove any existing sub-stage tags for this stage
+      const filteredTags = currentTags.filter((tag: string) => !stageSubStageTags.includes(tag));
       const newTags = [...filteredTags, subStageTag];
       
-      // Ensure task is in the Day Plan stage
-      const dayPlanStage = sortedStages.find((s: any) => s.id === stageId);
-      if (dayPlanStage && activeTask.stageId !== stageId) {
-        const newStatus = getStatusFromStageName(dayPlanStage.name);
+      // Ensure task is in the correct stage
+      const targetStage = sortedStages.find((s: any) => s.id === stageId);
+      if (targetStage && activeTask.stageId !== stageId) {
+        const newStatus = getStatusFromStageName(targetStage.name);
         setActiveTasks(tasks => 
           tasks.map(t => t.id === activeTask.id ? { 
             ...t, 
@@ -189,7 +222,7 @@ export function KanbanBoard({ tasks, onTaskClick, viewMode = "detail", focusMode
           tags: newTags
         });
       } else {
-        // Just update tags if already in Day Plan stage
+        // Just update tags if already in the correct stage
         setActiveTasks(tasks => 
           tasks.map(t => t.id === activeTask.id ? { 
             ...t, 
@@ -214,12 +247,22 @@ export function KanbanBoard({ tasks, onTaskClick, viewMode = "detail", focusMode
         // Infer status from stage name
         const newStatus = getStatusFromStageName(newStage.name);
         
-        // If moving to Day Plan, keep tags; if moving away, remove day-plan tags
+        // If moving to a stage with sub-stages, keep tags; if moving away, remove sub-stage tags
         let newTags = activeTask.tags || [];
-        if (!newStage.name.toLowerCase().includes("day plan")) {
-          // Remove day-plan tags when moving away from Day Plan
-          const dayPlanTags = ['day-plan-am', 'day-plan-middle', 'day-plan-darker'];
-          newTags = newTags.filter((tag: string) => !dayPlanTags.includes(tag));
+        const newStageSubStages = allSubStages.filter((ss: any) => ss.stageId === newStageId);
+        if (newStageSubStages.length === 0) {
+          // Remove all sub-stage tags when moving to a stage without sub-stages
+          const allSubStageTags = allSubStages.map((ss: any) => ss.tag);
+          newTags = newTags.filter((tag: string) => !allSubStageTags.includes(tag));
+        } else {
+          // Remove sub-stage tags from other stages, keep only tags for the new stage
+          const newStageSubStageTags = newStageSubStages.map((ss: any) => ss.tag);
+          const otherStageSubStageTags = allSubStages
+            .filter((ss: any) => ss.stageId !== newStageId)
+            .map((ss: any) => ss.tag);
+          newTags = newTags.filter((tag: string) => 
+            !otherStageSubStageTags.includes(tag) || newStageSubStageTags.includes(tag)
+          );
         }
         
         setActiveTasks(tasks => 
@@ -286,8 +329,37 @@ export function KanbanBoard({ tasks, onTaskClick, viewMode = "detail", focusMode
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex flex-col h-full gap-8 overflow-y-auto lg:overflow-y-visible lg:overflow-x-auto pb-6">
-        <div className="flex flex-col lg:flex-row gap-8">
+      <div className="flex flex-col h-full gap-4 overflow-hidden pb-6">
+        {/* Sticky Header Row */}
+        <div className="sticky top-[180px] md:top-[160px] z-40 flex-shrink-0 bg-background/95 backdrop-blur-sm mb-4 -mx-2 sm:-mx-4 lg:-mx-6 px-2 sm:px-4 lg:px-6 pt-2">
+          <div className="flex flex-col lg:flex-row gap-8">
+            {sortedStages.map((stage: any) => {
+              const stageColor = stageColorMap.get(stage.id) || defaultStageColors[0];
+              const stageCount = activeTasks.filter((t) => t.stageId === stage.id).length;
+              return (
+                <div key={`header-${stage.id}`} className="flex-1 min-w-0">
+                  <div className="p-5 flex items-center justify-between rounded-t-[3rem] neo-container">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-4 h-4 rounded-full"
+                        style={{ backgroundColor: stageColor }}
+                      />
+                      <h2 className="font-display font-bold text-sm uppercase tracking-wider text-foreground">
+                        {stage.name}
+                      </h2>
+                    </div>
+                    <Badge variant="secondary" className="font-mono text-xs neo-pressed rounded-lg px-2 py-1">
+                      {stageCount}
+                    </Badge>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        
+        {/* Content Row */}
+        <div className="flex flex-col lg:flex-row gap-8 flex-1 min-h-0 items-stretch h-full">
           {sortedStages.map((stage: any, index: number) => {
           const stageColor = stageColorMap.get(stage.id) || defaultStageColors[0];
           return (
@@ -319,22 +391,44 @@ export function KanbanBoard({ tasks, onTaskClick, viewMode = "detail", focusMode
                   
                   // If stage has sub-stages, render them
                   if (stageSubStages.length > 0) {
+                    // Get all sub-stage tags for this stage
+                    const stageSubStageTags = stageSubStages.map(ss => ss.tag);
+                    
+                    // Separate tasks: those with matching tags vs those without/unmatched
+                    const tasksWithMatchingTags: Task[] = [];
+                    const tasksWithoutMatchingTags: Task[] = [];
+                    
+                    stageTasks.forEach((task) => {
+                      const tags = task.tags || [];
+                      const hasMatchingTag = tags.some(tag => stageSubStageTags.includes(tag));
+                      
+                      if (hasMatchingTag) {
+                        tasksWithMatchingTags.push(task);
+                      } else {
+                        tasksWithoutMatchingTags.push(task);
+                      }
+                    });
+                    
                     return (
                       <div className="flex flex-col gap-3 min-h-[100px]">
                         {stageSubStages.map((subStage, subIndex) => {
-                          // Filter tasks by tag, or assign to first sub-stage if no tag
-                          const subStageTasks = stageTasks.filter((task) => {
+                          // Filter tasks by tag
+                          const subStageTasks = tasksWithMatchingTags.filter((task) => {
                             const tags = task.tags || [];
-                            if (tags.length === 0 && subIndex === 0) return true; // Default to first sub-stage if no tags
                             return tags.includes(subStage.tag);
                           });
+                          
+                          // Assign unmatched tasks to the first sub-stage
+                          const finalTasks = subIndex === 0 
+                            ? [...subStageTasks, ...tasksWithoutMatchingTags]
+                            : subStageTasks;
                           
                           return (
                             <DayPlanSubStage
                               key={subStage.tag}
                               stageId={stage.id}
                               subStage={subStage}
-                              tasks={subStageTasks}
+                              tasks={finalTasks}
                               stageColor={stageColor}
                               viewMode={viewMode}
                               onTaskClick={onTaskClick}
