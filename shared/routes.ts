@@ -36,6 +36,41 @@ export const api = {
         404: z.object({ message: z.string() }),
       },
     },
+    archived: {
+      method: "GET" as const,
+      path: "/api/tasks/archived",
+      responses: {
+        200: z.array(z.custom<typeof tasks.$inferSelect>()),
+      },
+    },
+    archive: {
+      method: "POST" as const,
+      path: "/api/tasks/:id/archive",
+      responses: {
+        200: z.custom<typeof tasks.$inferSelect>(),
+        404: z.object({ message: z.string() }),
+      },
+    },
+    unarchive: {
+      method: "POST" as const,
+      path: "/api/tasks/:id/unarchive",
+      responses: {
+        200: z.custom<typeof tasks.$inferSelect>(),
+        404: z.object({ message: z.string() }),
+      },
+    },
+    history: {
+      method: "GET" as const,
+      path: "/api/tasks/:id/history",
+      responses: {
+        200: z.array(z.object({
+          status: z.string(),
+          timestamp: z.string(),
+          note: z.string().optional(),
+        })),
+        404: z.object({ message: z.string() }),
+      },
+    },
   },
   stages: {
     list: {

@@ -12,7 +12,9 @@ import { useToast } from "@/hooks/use-toast";
 import { api } from "@shared/routes";
 import { insertStageSchema, type InsertStage } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Trash2, Edit, ChevronLeft } from "lucide-react";
+import { Trash2, Edit, ChevronLeft, Settings } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ColorPicker } from "@/components/ColorPicker";
 import { useState } from "react";
 
 export default function Admin() {
@@ -30,86 +32,176 @@ export default function Admin() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: InsertStage) =>
-      apiRequest(api.stages.create.path, {
-        method: api.stages.create.method,
-        body: JSON.stringify(data),
-      }),
-    onSuccess: () => {
+    mutationFn: async (data: InsertStage) => {
+      console.log('[UI] [CREATE_STAGE] Starting mutation with data:', JSON.stringify(data));
+      const response = await apiRequest(api.stages.create.method, api.stages.create.path, data);
+      console.log('[UI] [CREATE_STAGE] Request completed, response status:', response.status);
+      const responseData = await response.json();
+      console.log('[UI] [CREATE_STAGE] Response data:', JSON.stringify(responseData));
+      return responseData;
+    },
+    onSuccess: (data) => {
+      console.log('[UI] [CREATE_STAGE] Mutation successful, received data:', JSON.stringify(data));
       queryClient.invalidateQueries({ queryKey: [api.stages.list.path] });
+      queryClient.refetchQueries({ queryKey: [api.stages.list.path] });
+      console.log('[UI] [CREATE_STAGE] Cache invalidated and refetched, showing toast');
       toast({ description: "Stage created successfully" });
       setDialogOpen(false);
-      form.reset();
+      form.reset({ name: "", order: 1, color: "#3B82F6" });
+      console.log('[UI] [CREATE_STAGE] Form reset and dialog closed');
+    },
+    onError: (error) => {
+      console.error('[UI] [CREATE_STAGE] Mutation error:', error);
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<InsertStage> }) =>
-      apiRequest(`${api.stages.update.path.replace(":id", String(id))}`, {
-        method: api.stages.update.method,
-        body: JSON.stringify(data),
-      }),
-    onSuccess: () => {
+    mutationFn: async ({ id, data }: { id: number; data: Partial<InsertStage> }) => {
+      console.log('[UI] [UPDATE_STAGE] Starting mutation with id:', id, 'data:', JSON.stringify(data));
+      const url = api.stages.update.path.replace(":id", String(id));
+      const response = await apiRequest(api.stages.update.method, url, data);
+      console.log('[UI] [UPDATE_STAGE] Request completed, response status:', response.status);
+      const responseData = await response.json();
+      console.log('[UI] [UPDATE_STAGE] Response data:', JSON.stringify(responseData));
+      return responseData;
+    },
+    onSuccess: (data) => {
+      console.log('[UI] [UPDATE_STAGE] Mutation successful, received data:', JSON.stringify(data));
       queryClient.invalidateQueries({ queryKey: [api.stages.list.path] });
+      queryClient.refetchQueries({ queryKey: [api.stages.list.path] });
+      console.log('[UI] [UPDATE_STAGE] Cache invalidated and refetched, showing toast');
       toast({ description: "Stage updated successfully" });
       setEditingId(null);
       setDialogOpen(false);
-      form.reset();
+      form.reset({ name: "", order: 1, color: "#3B82F6" });
+      console.log('[UI] [UPDATE_STAGE] Form reset and dialog closed');
+    },
+    onError: (error) => {
+      console.error('[UI] [UPDATE_STAGE] Mutation error:', error);
+      toast({ 
+        description: error instanceof Error ? error.message : "Failed to update stage",
+        variant: "destructive"
+      });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) =>
-      apiRequest(`${api.stages.delete.path.replace(":id", String(id))}`, {
-        method: api.stages.delete.method,
-      }),
+    mutationFn: async (id: number) => {
+      console.log('[UI] [DELETE_STAGE] Starting mutation with id:', id);
+      const url = api.stages.delete.path.replace(":id", String(id));
+      const response = await apiRequest(api.stages.delete.method, url);
+      console.log('[UI] [DELETE_STAGE] Request completed, response status:', response.status);
+      return response;
+    },
     onSuccess: () => {
+      console.log('[UI] [DELETE_STAGE] Mutation successful');
       queryClient.invalidateQueries({ queryKey: [api.stages.list.path] });
+      queryClient.refetchQueries({ queryKey: [api.stages.list.path] });
+      console.log('[UI] [DELETE_STAGE] Cache invalidated and refetched, showing toast');
       toast({ description: "Stage deleted successfully" });
+    },
+    onError: (error) => {
+      console.error('[UI] [DELETE_STAGE] Mutation error:', error);
+      toast({ 
+        description: error instanceof Error ? error.message : "Failed to delete stage",
+        variant: "destructive"
+      });
     },
   });
 
   const form = useForm<InsertStage>({
     resolver: zodResolver(insertStageSchema),
-    defaultValues: { name: "", order: 1 },
+    defaultValues: { name: "", order: 1, color: "#3B82F6" },
   });
 
   const handleSubmit = form.handleSubmit((data) => {
+    console.log('[UI] [FORM_SUBMIT] Form data:', JSON.stringify(data, null, 2));
+    console.log('[UI] [FORM_SUBMIT] Color value:', data.color);
+    console.log('[UI] [FORM_SUBMIT] Color type:', typeof data.color);
+    
+    // Ensure color is always a valid hex string (never undefined or empty)
+    const submitData = {
+      ...data,
+      color: (data.color && data.color.trim() !== "" && data.color.startsWith("#")) 
+        ? data.color 
+        : "#3B82F6", // Default to blue if invalid
+    };
+    
+    console.log('[UI] [FORM_SUBMIT] Submit data after cleanup:', JSON.stringify(submitData, null, 2));
+    
     if (editingId) {
-      updateMutation.mutate({ id: editingId, data });
+      console.log('[UI] [UPDATE_STAGE] Form submitted with data:', JSON.stringify(submitData), 'id:', editingId);
+      updateMutation.mutate({ id: editingId, data: submitData });
     } else {
-      createMutation.mutate(data);
+      console.log('[UI] [CREATE_STAGE] Form submitted with data:', JSON.stringify(submitData));
+      console.log('[UI] [CREATE_STAGE] Calling createMutation.mutate');
+      createMutation.mutate(submitData);
     }
   });
 
   const openEditDialog = (stage: any) => {
     setEditingId(stage.id);
-    form.reset({ name: stage.name, order: stage.order });
+    const formData = { 
+      name: stage.name, 
+      order: stage.order,
+      color: stage.color || "#3B82F6"
+    };
+    console.log('[UI] [EDIT_DIALOG] Opening edit dialog for stage:', stage.id);
+    console.log('[UI] [EDIT_DIALOG] Stage color from DB:', stage.color);
+    console.log('[UI] [EDIT_DIALOG] Form data to set:', JSON.stringify(formData));
+    form.reset(formData);
     setDialogOpen(true);
   };
 
   const closeDialog = () => {
     setDialogOpen(false);
     setEditingId(null);
-    form.reset();
+    form.reset({ name: "", order: 1, color: "#3B82F6" });
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto p-4">
-        <div className="flex items-center gap-4 mb-8">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => navigate("/")}
-            data-testid="button-back"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <h1 className="text-3xl font-bold">Task Stages Admin</h1>
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header */}
+      <header className="sticky top-0 z-50 neo-container rounded-none border-0 border-b-0">
+        <div className="container mx-auto px-6 py-4">
+          {/* Top Row - Logo */}
+          <div className="flex items-center justify-center mb-4">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 neo-raised rounded-xl flex items-center justify-center">
+                <Settings className="text-primary h-7 w-7" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight text-foreground">Task Stages Admin</h1>
+                <p className="text-xs text-muted-foreground hidden sm:block">Manage Stages</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Bottom Row - Navigation */}
+          <div className="flex items-center justify-center gap-4">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => navigate("/")}
+                  className="rounded-xl h-11 w-11"
+                  data-testid="button-back"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Back to Board</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
         </div>
+      </header>
 
-        <Card className="p-6">
+      <div className="max-w-6xl mx-auto p-4 flex-1">
+
+        <Card className="p-8">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold">Manage Stages</h2>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -117,7 +209,7 @@ export default function Admin() {
                 <Button
                   onClick={() => {
                     setEditingId(null);
-                    form.reset();
+                    form.reset({ name: "", order: 1, color: "#3B82F6" });
                   }}
                   data-testid="button-add-stage"
                 >
@@ -159,6 +251,32 @@ export default function Admin() {
                         </FormItem>
                       )}
                     />
+                    <FormField
+                      control={form.control}
+                      name="color"
+                      render={({ field }) => {
+                        const colorValue = field.value || "#3B82F6";
+                        console.log('[UI] [COLOR_FIELD] Field value:', field.value);
+                        console.log('[UI] [COLOR_FIELD] Using color value:', colorValue);
+                        return (
+                          <FormItem>
+                            <FormControl>
+                              <ColorPicker
+                                value={colorValue}
+                                onChange={(color) => {
+                                  console.log('[UI] [COLOR_FIELD] Color changed to:', color);
+                                  // Always ensure we set a valid hex color
+                                  const normalizedColor = color && color.startsWith("#") ? color : "#3B82F6";
+                                  console.log('[UI] [COLOR_FIELD] Setting normalized color:', normalizedColor);
+                                  field.onChange(normalizedColor);
+                                }}
+                                label="Stage Color"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        );
+                      }}
+                    />
                     <Button
                       type="submit"
                       className="w-full"
@@ -178,12 +296,20 @@ export default function Admin() {
           ) : stages.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">No stages found. Create one to get started.</div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-4">
               {stages.map((stage: any) => (
-                <div key={stage.id} className="flex items-center justify-between p-4 border rounded-lg hover-elevate">
-                  <div>
-                    <p className="font-medium">{stage.name}</p>
-                    <p className="text-sm text-muted-foreground">Order: {stage.order}</p>
+                <div key={stage.id} className="flex items-center justify-between p-6 neo-card rounded-xl">
+                  <div className="flex items-center gap-4">
+                    {stage.color && (
+                      <div 
+                        className="w-8 h-8 rounded-lg border-2"
+                        style={{ backgroundColor: stage.color, borderColor: stage.color }}
+                      />
+                    )}
+                    <div>
+                      <p className="font-medium">{stage.name}</p>
+                      <p className="text-sm text-muted-foreground">Order: {stage.order}</p>
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <Button

@@ -28,7 +28,11 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export function CreateTaskDialog() {
+interface CreateTaskDialogProps {
+  iconOnly?: boolean;
+}
+
+export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const createTask = useCreateTask();
@@ -49,18 +53,42 @@ export function CreateTaskDialog() {
       title: "",
       description: "",
       stageId: defaultStageId,
+      status: "backlog",
+      priority: "normal",
+      recurrence: "none",
     },
   });
 
   const onSubmit = (data: InsertTask) => {
-    createTask.mutate(data, {
+    // Infer status from stage name if not provided
+    const selectedStage = stages.find((s: any) => s.id === data.stageId);
+    let status = data.status;
+    if (!status && selectedStage) {
+      const stageName = selectedStage.name.toLowerCase();
+      if (stageName.includes("progress") || stageName.includes("doing") || stageName.includes("active")) {
+        status = "in_progress";
+      } else if (stageName.includes("done") || stageName.includes("complete") || stageName.includes("finished")) {
+        status = "done";
+      } else {
+        status = "backlog";
+      }
+    }
+    
+    createTask.mutate({ ...data, status: status || "backlog" }, {
       onSuccess: () => {
         toast({
           title: "Task created",
           description: "Your new task has been added to the board.",
         });
         setOpen(false);
-        form.reset({ stageId: defaultStageId });
+        form.reset({ 
+          stageId: defaultStageId,
+          title: "",
+          description: "",
+          status: "backlog",
+          priority: "normal",
+          recurrence: "none",
+        });
       },
       onError: (error) => {
         toast({
@@ -75,9 +103,13 @@ export function CreateTaskDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="gap-2 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all" data-testid="button-add-task">
-          <Plus className="h-4 w-4" />
-          Add Task
+        <Button 
+          size={iconOnly ? "icon" : "default"}
+          className={iconOnly ? "rounded-xl h-11 w-11" : "gap-2 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all"} 
+          data-testid="button-add-task"
+        >
+          <Plus className="h-5 w-5" />
+          {!iconOnly && "Add Task"}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
@@ -146,6 +178,54 @@ export function CreateTaskDialog() {
                 </FormItem>
               )}
             />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="priority"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Priority</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || "normal"}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="critical">Critical</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="effort"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Effort (1-5)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="5"
+                        {...field}
+                        value={field.value || ""}
+                        onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            
             <div className="flex justify-end pt-4">
               <Button type="submit" disabled={createTask.isPending} data-testid="button-submit-task">
                 {createTask.isPending ? "Creating..." : "Create Task"}

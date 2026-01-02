@@ -79,3 +79,56 @@ export function useDeleteTask() {
     },
   });
 }
+
+export function useArchivedTasks() {
+  return useQuery({
+    queryKey: [api.tasks.archived.path],
+    queryFn: async () => {
+      const res = await fetch(api.tasks.archived.path);
+      if (!res.ok) throw new Error("Failed to fetch archived tasks");
+      return api.tasks.archived.responses[200].parse(await res.json());
+    },
+  });
+}
+
+export function useArchiveTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const url = api.tasks.archive.path.replace(":id", id.toString());
+      const res = await fetch(url, {
+        method: api.tasks.archive.method,
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to archive task");
+      }
+      return api.tasks.archive.responses[200].parse(await res.json());
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.tasks.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.tasks.archived.path] });
+    },
+  });
+}
+
+export function useUnarchiveTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const url = api.tasks.unarchive.path.replace(":id", id.toString());
+      const res = await fetch(url, {
+        method: api.tasks.unarchive.method,
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to unarchive task");
+      }
+      return api.tasks.unarchive.responses[200].parse(await res.json());
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.tasks.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.tasks.archived.path] });
+    },
+  });
+}

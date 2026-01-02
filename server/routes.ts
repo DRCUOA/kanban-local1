@@ -142,5 +142,18 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
+  // Task history endpoint
+  app.get(api.tasks.history.path, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Invalid ID" });
+    }
+    const task = await storage.getTaskById(id);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+    res.json(task.history || []);
+  });
+
   return httpServer;
 }

@@ -1,0 +1,3 @@
+feat: Enhanced task management with priority, status tracking, and productivity features
+
+Add comprehensive task metadata (priority, effort, due dates, tags, status, history), inline editing, keyboard shortcuts, focus mode, task warnings, and import/export. Fix status synchronization, drag-and-drop, and import functionality. Transform simple Kanban into intelligent productivity system while maintaining minimal design.
