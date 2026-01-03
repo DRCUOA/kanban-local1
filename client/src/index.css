@@ -6,51 +6,53 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 224 71.4% 4.1%;
-    --card: 0 0% 100%;
-    --card-foreground: 224 71.4% 4.1%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 224 71.4% 4.1%;
-    --primary: 262 83% 58%;
-    --primary-foreground: 210 20% 98%;
-    --secondary: 220 14.3% 95.9%;
-    --secondary-foreground: 220.9 39.3% 11%;
-    --muted: 220 14.3% 95.9%;
-    --muted-foreground: 220 8.9% 46.1%;
-    --accent: 262 83% 58%;
-    --accent-foreground: 210 20% 98%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 262 83% 58%;
-    --radius: 0.75rem;
+    /* Neomorphic color palette - darker silvery grays */
+    --background: 0 0% 70%;
+    --foreground: 220 10% 15%;
+    --card: 0 0% 75%;
+    --card-foreground: 220 10% 15%;
+    --popover: 0 0% 75%;
+    --popover-foreground: 220 10% 15%;
+    --primary: 220 20% 40%;
+    --primary-foreground: 0 0% 90%;
+    --secondary: 0 0% 65%;
+    --secondary-foreground: 220 10% 20%;
+    --muted: 0 0% 62%;
+    --muted-foreground: 220 8% 55%;
+    --accent: 220 20% 40%;
+    --accent-foreground: 0 0% 90%;
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 90%;
+    --border: 0 0% 60%;
+    --input: 0 0% 60%;
+    --ring: 220 20% 40%;
+    --radius: 3rem;
 
     --font-sans: 'Inter', sans-serif;
     --font-display: 'Space Grotesk', sans-serif;
   }
 
   .dark {
-    --background: 224 71.4% 4.1%;
-    --foreground: 210 20% 98%;
-    --card: 224 71.4% 4.1%;
-    --card-foreground: 210 20% 98%;
-    --popover: 224 71.4% 4.1%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 263 70% 50%;
-    --primary-foreground: 210 20% 98%;
-    --secondary: 215 27.9% 16.9%;
-    --secondary-foreground: 210 20% 98%;
-    --muted: 215 27.9% 16.9%;
-    --muted-foreground: 217.9 10.6% 64.9%;
-    --accent: 215 27.9% 16.9%;
-    --accent-foreground: 210 20% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 215 27.9% 16.9%;
-    --input: 215 27.9% 16.9%;
-    --ring: 263 70% 50%;
+    /* Dark neomorphic palette */
+    --background: 220 15% 18%;
+    --foreground: 220 10% 85%;
+    --card: 220 15% 18%;
+    --card-foreground: 220 10% 85%;
+    --popover: 220 15% 18%;
+    --popover-foreground: 220 10% 85%;
+    --primary: 220 25% 60%;
+    --primary-foreground: 220 15% 18%;
+    --secondary: 220 12% 22%;
+    --secondary-foreground: 220 10% 85%;
+    --muted: 220 10% 25%;
+    --muted-foreground: 220 8% 65%;
+    --accent: 220 25% 60%;
+    --accent-foreground: 220 15% 18%;
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 220 15% 18%;
+    --border: 220 10% 28%;
+    --input: 220 10% 28%;
+    --ring: 220 25% 60%;
   }
 }
 
@@ -61,6 +63,11 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
+    background: linear-gradient(135deg, #a8a8a8 0%, #909090 50%, #989898 100%);
+  }
+  
+  .dark body {
+    background: linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%);
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
@@ -69,12 +76,160 @@
 }
 
 @layer components {
-  .glass-panel {
-    @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl;
+  /* Neomorphic raised effect - elements appear to extrude from background */
+  .neo-raised {
+    background: hsl(var(--card));
+    border-radius: var(--radius);
+    box-shadow: 
+      8px 8px 16px rgba(0, 0, 0, 0.1),
+      -8px -8px 16px rgba(255, 255, 255, 0.3);
   }
   
-  .card-hover {
-    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/50;
+  .dark .neo-raised {
+    border-radius: var(--radius);
+    box-shadow: 
+      8px 8px 16px rgba(0, 0, 0, 0.3),
+      -8px -8px 16px rgba(255, 255, 255, 0.05);
+  }
+
+  /* Neomorphic pressed/inset effect */
+  .neo-pressed {
+    background: hsl(var(--card));
+    border-radius: var(--radius);
+    box-shadow: 
+      inset 4px 4px 8px rgba(0, 0, 0, 0.1),
+      inset -4px -4px 8px rgba(255, 255, 255, 0.3);
+  }
+  
+  .dark .neo-pressed {
+    border-radius: var(--radius);
+    box-shadow: 
+      inset 4px 4px 8px rgba(0, 0, 0, 0.3),
+      inset -4px -4px 8px rgba(255, 255, 255, 0.05);
+  }
+
+  /* Neomorphic card hover effect */
+  .neo-card {
+    @apply neo-raised transition-all duration-300;
+  }
+  
+  .neo-card:hover {
+    border-radius: var(--radius);
+    box-shadow: 
+      12px 12px 24px rgba(0, 0, 0, 0.12),
+      -12px -12px 24px rgba(255, 255, 255, 0.4);
+  }
+  
+  .dark .neo-card:hover {
+    border-radius: var(--radius);
+    box-shadow: 
+      12px 12px 24px rgba(0, 0, 0, 0.4),
+      -12px -12px 24px rgba(255, 255, 255, 0.08);
+  }
+
+  /* Beveled circular button effect - high at circumference, low at center */
+  .neo-beveled-circle {
+    position: relative;
+    background: hsl(var(--card));
+    border-radius: 50%;
+    box-shadow: 
+      /* Outer raised edge */
+      0 6px 12px rgba(0, 0, 0, 0.15),
+      0 -3px 6px rgba(255, 255, 255, 0.3),
+      /* Inner pressed center */
+      inset 0 0 20px rgba(0, 0, 0, 0.2),
+      inset 0 0 10px rgba(0, 0, 0, 0.1),
+      /* Subtle edge highlight */
+      0 0 0 1px rgba(0, 0, 0, 0.05);
+  }
+  
+  .neo-beveled-circle:hover {
+    box-shadow: 
+      0 8px 16px rgba(0, 0, 0, 0.18),
+      0 -4px 8px rgba(255, 255, 255, 0.35),
+      inset 0 0 20px rgba(0, 0, 0, 0.2),
+      inset 0 0 10px rgba(0, 0, 0, 0.1),
+      0 0 0 1px rgba(0, 0, 0, 0.05);
+  }
+  
+  .neo-beveled-circle:active {
+    box-shadow: 
+      inset 0 4px 8px rgba(0, 0, 0, 0.25),
+      inset 0 2px 4px rgba(0, 0, 0, 0.15),
+      inset 0 -2px 4px rgba(255, 255, 255, 0.1),
+      0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .dark .neo-beveled-circle {
+    box-shadow: 
+      0 6px 12px rgba(0, 0, 0, 0.4),
+      0 -3px 6px rgba(255, 255, 255, 0.05),
+      inset 0 0 20px rgba(0, 0, 0, 0.5),
+      inset 0 0 10px rgba(0, 0, 0, 0.3),
+      0 0 0 1px rgba(0, 0, 0, 0.2);
+  }
+  
+  .dark .neo-beveled-circle:hover {
+    box-shadow: 
+      0 8px 16px rgba(0, 0, 0, 0.5),
+      0 -4px 8px rgba(255, 255, 255, 0.08),
+      inset 0 0 20px rgba(0, 0, 0, 0.5),
+      inset 0 0 10px rgba(0, 0, 0, 0.3),
+      0 0 0 1px rgba(0, 0, 0, 0.2);
+  }
+  
+  .dark .neo-beveled-circle:active {
+    box-shadow: 
+      inset 0 4px 8px rgba(0, 0, 0, 0.6),
+      inset 0 2px 4px rgba(0, 0, 0, 0.4),
+      inset 0 -2px 4px rgba(255, 255, 255, 0.05),
+      0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Beveled circle with colored gradient - maintains beveled effect */
+  .neo-beveled-circle-colored {
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  
+  .neo-beveled-circle-colored:hover {
+    box-shadow: 
+      0 8px 16px rgba(0, 0, 0, 0.25),
+      0 -4px 8px rgba(255, 255, 255, 0.35),
+      inset 0 0 25px rgba(0, 0, 0, 0.25),
+      inset 0 0 12px rgba(0, 0, 0, 0.15),
+      0 0 0 1px rgba(0, 0, 0, 0.08);
+  }
+  
+  .neo-beveled-circle-colored:active {
+    box-shadow: 
+      inset 0 4px 8px rgba(0, 0, 0, 0.3),
+      inset 0 2px 4px rgba(0, 0, 0, 0.2),
+      inset 0 -2px 4px rgba(255, 255, 255, 0.1),
+      0 2px 4px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Neomorphic button */
+  .neo-button {
+    @apply neo-raised transition-all duration-200;
+  }
+  
+  .neo-button:active {
+    @apply neo-pressed;
+  }
+
+  /* Neomorphic input */
+  .neo-input {
+    @apply neo-pressed;
+  }
+  
+  .neo-input:focus {
+    @apply neo-raised;
+    outline: none;
+  }
+
+  /* Neomorphic container */
+  .neo-container {
+    @apply neo-raised;
   }
 }
 

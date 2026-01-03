@@ -12,6 +12,11 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  const operation = method === 'POST' ? 'CREATE' : method === 'PATCH' ? 'UPDATE' : method === 'DELETE' ? 'DELETE' : 'REQUEST';
+  const logPrefix = `[CLIENT_API] [${operation}_STAGE]`;
+  
+  console.log(`${logPrefix} Preparing request:`, { method, url, data: data ? JSON.stringify(data) : undefined });
+  
   const res = await fetch(url, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
@@ -19,7 +24,11 @@ export async function apiRequest(
     credentials: "include",
   });
 
+  console.log(`${logPrefix} Response received:`, { status: res.status, statusText: res.statusText, ok: res.ok });
+
   await throwIfResNotOk(res);
+  
+  console.log(`${logPrefix} Response validation passed`);
   return res;
 }
 

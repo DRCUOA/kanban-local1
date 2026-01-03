@@ -142,5 +142,77 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
+  // Task history endpoint
+  app.get(api.tasks.history.path, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Invalid ID" });
+    }
+    const task = await storage.getTaskById(id);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+    res.json(task.history || []);
+  });
+
+  // Sub-stage endpoints
+  app.get(api.subStages.list.path, async (_req, res) => {
+    const allSubStages = await storage.getSubStages();
+    res.json(allSubStages);
+  });
+
+  app.get(api.subStages.listByStage.path, async (req, res) => {
+    const stageId = parseInt(req.params.stageId);
+    if (isNaN(stageId)) {
+      return res.status(400).json({ message: "Invalid stage ID" });
+    }
+    const subStages = await storage.getSubStagesByStage(stageId);
+    res.json(subStages);
+  });
+
+  app.post(api.subStages.create.path, async (req, res) => {
+    try {
+      const validated = api.subStages.create.input.parse(req.body);
+      const subStage = await storage.createSubStage(validated);
+      res.status(201).json(subStage);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: error.errors[0].message });
+      } else {
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    }
+  });
+
+  app.patch(api.subStages.update.path, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Invalid ID" });
+    }
+    try {
+      const validated = api.subStages.update.input.parse(req.body);
+      const subStage = await storage.updateSubStage(id, validated);
+      if (!subStage) {
+        return res.status(404).json({ message: "Sub-stage not found" });
+      }
+      res.json(subStage);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: error.errors[0].message });
+      } else {
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    }
+  });
+
+  app.delete(api.subStages.delete.path, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Invalid ID" });
+    }
+    await storage.deleteSubStage(id);
+    res.status(204).send();
+  });
+
   return httpServer;
 }
