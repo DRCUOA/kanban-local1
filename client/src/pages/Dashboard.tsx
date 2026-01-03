@@ -6,6 +6,7 @@ import { EditTaskDialog } from "@/components/EditTaskDialog";
 import { TaskHistoryModal } from "@/components/TaskHistoryModal";
 import { FocusModeToggle } from "@/components/FocusModeToggle";
 import { TaskWarnings } from "@/components/TaskWarnings";
+import { StageHeaders } from "@/components/StageHeaders";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { Task, type InsertTask } from "@shared/schema";
 import { Loader2, LayoutDashboard, Search, Archive, Settings, Plus, List, CircleDot, Download, Upload } from "lucide-react";
@@ -411,6 +412,13 @@ export default function Dashboard() {
           </div>
         </div>
       </header>
+
+      {/* Stage Headers - Sticky below header */}
+      {tasks && tasks.length > 0 && (
+        <div className="container mx-auto px-2 sm:px-4 lg:px-6">
+          <StageHeaders tasks={tasks} />
+        </div>
+      )}
 
       {/* Board Content */}
       <main className="flex-1 overflow-hidden flex flex-col">

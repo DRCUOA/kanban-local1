@@ -330,34 +330,6 @@ export function KanbanBoard({ tasks, onTaskClick, viewMode = "detail", focusMode
       onDragEnd={handleDragEnd}
     >
       <div className="flex flex-col h-full gap-4 overflow-hidden pb-6">
-        {/* Sticky Header Row */}
-        <div className="sticky top-[180px] md:top-[160px] z-40 flex-shrink-0 bg-background/95 backdrop-blur-sm mb-4 -mx-2 sm:-mx-4 lg:-mx-6 px-2 sm:px-4 lg:px-6 pt-2">
-          <div className="flex flex-col lg:flex-row gap-8">
-            {sortedStages.map((stage: any) => {
-              const stageColor = stageColorMap.get(stage.id) || defaultStageColors[0];
-              const stageCount = activeTasks.filter((t) => t.stageId === stage.id).length;
-              return (
-                <div key={`header-${stage.id}`} className="flex-1 min-w-0">
-                  <div className="p-5 flex items-center justify-between rounded-t-[3rem] neo-container">
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="w-4 h-4 rounded-full"
-                        style={{ backgroundColor: stageColor }}
-                      />
-                      <h2 className="font-display font-bold text-sm uppercase tracking-wider text-foreground">
-                        {stage.name}
-                      </h2>
-                    </div>
-                    <Badge variant="secondary" className="font-mono text-xs neo-pressed rounded-lg px-2 py-1">
-                      {stageCount}
-                    </Badge>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        
         {/* Content Row */}
         <div className="flex flex-col lg:flex-row gap-8 flex-1 min-h-0 items-stretch h-full">
           {sortedStages.map((stage: any, index: number) => {
