@@ -84,20 +84,50 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
   });
 
   useEffect(() => {
-    if (task) {
-      form.reset({
-        title: task.title,
-        description: task.description || "",
-        stageId: task.stageId,
-        status: task.status || "backlog",
-        priority: task.priority || "normal",
-        effort: task.effort || undefined,
-        dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
-        tags: task.tags || [],
-        recurrence: task.recurrence || "none",
-      });
+    if (task && open) {
+      try {
+        // Safely parse dueDate - handle both string and Date objects
+        let parsedDueDate: Date | undefined = undefined;
+        if (task.dueDate) {
+          if (task.dueDate instanceof Date) {
+            parsedDueDate = task.dueDate;
+          } else {
+            const date = new Date(task.dueDate);
+            // Check if date is valid
+            if (!isNaN(date.getTime())) {
+              parsedDueDate = date;
+            }
+          }
+        }
+
+        form.reset({
+          title: task.title,
+          description: task.description || "",
+          stageId: task.stageId,
+          status: task.status || "backlog",
+          priority: task.priority || "normal",
+          effort: task.effort || undefined,
+          dueDate: parsedDueDate,
+          tags: Array.isArray(task.tags) ? task.tags : [],
+          recurrence: task.recurrence || "none",
+        });
+      } catch (error) {
+        console.error("Error resetting form:", error);
+        // Fallback: reset with safe defaults
+        form.reset({
+          title: task.title || "",
+          description: task.description || "",
+          stageId: task.stageId || 1,
+          status: task.status || "backlog",
+          priority: task.priority || "normal",
+          effort: task.effort || undefined,
+          dueDate: undefined,
+          tags: [],
+          recurrence: task.recurrence || "none",
+        });
+      }
     }
-  }, [task, form]);
+  }, [task?.id, open]); // Use task.id instead of task object, and check open state
 
   const onSubmit = (data: InsertTask) => {
     if (!task) return;
@@ -287,7 +317,9 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
                               !field.value && "text-muted-foreground"
                             )}
                           >
-                            {field.value ? format(field.value, "PPP") : "Pick a date"}
+                            {field.value && field.value instanceof Date && !isNaN(field.value.getTime())
+                              ? format(field.value, "PPP")
+                              : "Pick a date"}
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
