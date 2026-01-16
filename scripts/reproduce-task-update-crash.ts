@@ -13,7 +13,7 @@
 
 import "dotenv/config";
 
-const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:5000";
+const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:4000";
 const CONCURRENT_REQUESTS = 30; // Number of simultaneous requests
 const REQUEST_DELAY_MS = 50; // Delay between batches
 const NUM_BATCHES = 3; // Number of batches to send
