@@ -86,17 +86,12 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
   useEffect(() => {
     if (task && open) {
       try {
-        // Safely parse dueDate - handle both string and Date objects
         let parsedDueDate: Date | undefined = undefined;
         if (task.dueDate) {
-          if (task.dueDate instanceof Date) {
-            parsedDueDate = task.dueDate;
-          } else {
+          if (task.dueDate instanceof Date) parsedDueDate = task.dueDate;
+          else {
             const date = new Date(task.dueDate);
-            // Check if date is valid
-            if (!isNaN(date.getTime())) {
-              parsedDueDate = date;
-            }
+            if (!isNaN(date.getTime())) parsedDueDate = date;
           }
         }
 
@@ -113,7 +108,6 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
         });
       } catch (error) {
         console.error("Error resetting form:", error);
-        // Fallback: reset with safe defaults
         form.reset({
           title: task.title || "",
           description: task.description || "",
@@ -127,25 +121,19 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
         });
       }
     }
-  }, [task?.id, open]); // Use task.id instead of task object, and check open state
+  }, [task?.id, open]);
 
   const onSubmit = (data: InsertTask) => {
     if (!task) return;
     
     updateTask.mutate({ id: task.id, ...data }, {
       onSuccess: () => {
-        toast({
-          title: "Task updated",
-          description: "Changes saved successfully.",
-        });
+        if ('vibrate' in navigator) navigator.vibrate(10);
+        toast({ title: "Task updated", description: "Changes saved." });
         onOpenChange(false);
       },
       onError: (error) => {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: error.message, variant: "destructive" });
       },
     });
   };
@@ -155,10 +143,8 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
     
     deleteTask.mutate(task.id, {
       onSuccess: () => {
-        toast({
-          title: "Task deleted",
-          description: "The task has been permanently removed.",
-        });
+        if ('vibrate' in navigator) navigator.vibrate([10, 50, 10]);
+        toast({ title: "Task deleted", description: "The task has been permanently removed." });
         onOpenChange(false);
       },
     });
@@ -166,20 +152,20 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Edit Task</DialogTitle>
+      <DialogContent className="max-w-full h-full max-h-full rounded-none m-0 flex flex-col">
+        <DialogHeader className="flex-shrink-0">
+          <DialogTitle className="text-lg">Edit Task</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col gap-4 overflow-y-auto scroll-container">
             <FormField
               control={form.control}
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Title</FormLabel>
+                  <FormLabel className="text-xs">Title</FormLabel>
                   <FormControl>
-                    <Input {...field} data-testid="input-edit-title" />
+                    <Input {...field} className="h-12 text-base rounded-xl" data-testid="input-edit-title" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -190,16 +176,16 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
               name="stageId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Stage</FormLabel>
+                  <FormLabel className="text-xs">Stage</FormLabel>
                   <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-12 rounded-xl">
                         <SelectValue />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {stages.map((s: any) => (
-                        <SelectItem key={s.id} value={s.id.toString()}>
+                        <SelectItem key={s.id} value={s.id.toString()} className="py-3">
                           {s.name}
                         </SelectItem>
                       ))}
@@ -214,11 +200,11 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel className="text-xs">Description</FormLabel>
                   <FormControl>
                     <Textarea
-                      className="resize-none"
-                      rows={6}
+                      className="resize-none rounded-xl text-base"
+                      rows={5}
                       {...field}
                       value={field.value || ""}
                       data-testid="input-edit-description"
@@ -229,24 +215,24 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
               )}
             />
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <FormField
                 control={form.control}
                 name="status"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Status</FormLabel>
+                    <FormLabel className="text-xs">Status</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value || "backlog"}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-12 rounded-xl">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="backlog">Backlog</SelectItem>
-                        <SelectItem value="in_progress">In Progress</SelectItem>
-                        <SelectItem value="done">Done</SelectItem>
-                        <SelectItem value="abandoned">Abandoned</SelectItem>
+                        <SelectItem value="backlog" className="py-3">Backlog</SelectItem>
+                        <SelectItem value="in_progress" className="py-3">In Progress</SelectItem>
+                        <SelectItem value="done" className="py-3">Done</SelectItem>
+                        <SelectItem value="abandoned" className="py-3">Abandoned</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -259,18 +245,18 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
                 name="priority"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Priority</FormLabel>
+                    <FormLabel className="text-xs">Priority</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value || "normal"}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-12 rounded-xl">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="normal">Normal</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="critical">Critical</SelectItem>
+                        <SelectItem value="low" className="py-3">Low</SelectItem>
+                        <SelectItem value="normal" className="py-3">Normal</SelectItem>
+                        <SelectItem value="high" className="py-3">High</SelectItem>
+                        <SelectItem value="critical" className="py-3">Critical</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -279,18 +265,19 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <FormField
                 control={form.control}
                 name="effort"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Effort (1-5)</FormLabel>
+                    <FormLabel className="text-xs">Effort (1-5)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         min="1"
                         max="5"
+                        className="h-12 rounded-xl text-base"
                         {...field}
                         value={field.value || ""}
                         onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
@@ -306,20 +293,20 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
                 name="dueDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Due Date</FormLabel>
+                    <FormLabel className="text-xs">Due Date</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
                             variant="outline"
                             className={cn(
-                              "w-full justify-start text-left font-normal",
+                              "w-full h-12 justify-start text-left font-normal rounded-xl",
                               !field.value && "text-muted-foreground"
                             )}
                           >
                             {field.value && field.value instanceof Date && !isNaN(field.value.getTime())
-                              ? format(field.value, "PPP")
-                              : "Pick a date"}
+                              ? format(field.value, "MMM d")
+                              : "Pick date"}
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
@@ -337,29 +324,39 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
               />
             </div>
             
-            <DialogFooter className="flex justify-between sm:justify-between w-full pt-4">
+            {/* Spacer */}
+            <div className="flex-1" />
+            
+            {/* Action buttons - sticky bottom */}
+            <div className="flex flex-col gap-3 pt-4 pb-safe-bottom sticky bottom-0 bg-background">
+              {/* Top row: History + Delete */}
               <div className="flex gap-2">
                 {onViewHistory && (
-                  <Button type="button" variant="outline" size="icon" onClick={onViewHistory}>
-                    <History className="h-4 w-4" />
+                  <Button type="button" variant="outline" className="h-12 rounded-xl flex-1" onClick={onViewHistory}>
+                    <History className="h-4 w-4 mr-2" />
+                    History
                   </Button>
                 )}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button type="button" variant="destructive" size="icon" className="shrink-0" data-testid="button-delete-task">
-                      <Trash2 className="h-4 w-4" />
+                    <Button type="button" variant="destructive" className="h-12 rounded-xl flex-1" data-testid="button-delete-task">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent>
+                  <AlertDialogContent className="mx-4 rounded-2xl">
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete the task.
+                      <AlertDialogTitle className="text-lg">Delete task?</AlertDialogTitle>
+                      <AlertDialogDescription className="text-sm">
+                        This action cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    <AlertDialogFooter className="flex-row gap-3">
+                      <AlertDialogCancel className="flex-1 h-12 rounded-xl m-0">Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={handleDelete} 
+                        className="flex-1 h-12 rounded-xl m-0 bg-destructive text-destructive-foreground active:bg-destructive/90"
+                      >
                         Delete
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -367,15 +364,21 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
                 </AlertDialog>
               </div>
               
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              {/* Bottom row: Cancel + Save */}
+              <div className="flex gap-3">
+                <Button type="button" variant="outline" className="flex-1 h-12 rounded-xl" onClick={() => onOpenChange(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={updateTask.isPending} data-testid="button-save-task">
-                  {updateTask.isPending ? "Saving..." : "Save Changes"}
+                <Button 
+                  type="submit" 
+                  disabled={updateTask.isPending} 
+                  className="flex-1 h-12 rounded-xl active:scale-95 transition-transform"
+                  data-testid="button-save-task"
+                >
+                  {updateTask.isPending ? "Saving..." : "Save"}
                 </Button>
               </div>
-            </DialogFooter>
+            </div>
           </form>
         </Form>
       </DialogContent>

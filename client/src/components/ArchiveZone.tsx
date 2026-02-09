@@ -18,25 +18,22 @@ export function ArchiveZone({ isOver }: ArchiveZoneProps) {
     <div
       ref={setNodeRef}
       className={cn(
-        "w-full mt-6 p-8 rounded-2xl transition-all duration-300 border-0 relative z-10",
+        "w-full mt-3 p-4 rounded-xl transition-all duration-200 border-0 relative z-10",
         isOver
-          ? "neo-pressed bg-destructive/10 ring-2 ring-destructive/50"
+          ? "neo-pressed bg-destructive/10 ring-2 ring-destructive/50 scale-[1.02]"
           : "neo-raised"
       )}
     >
-      <div className="flex flex-col items-center justify-center gap-2 text-center">
+      <div className="flex items-center justify-center gap-3">
         <Archive className={cn(
-          "h-8 w-8 transition-colors",
+          "h-5 w-5 transition-colors",
           isOver ? "text-destructive" : "text-muted-foreground"
         )} />
         <p className={cn(
-          "text-sm font-medium transition-colors",
+          "text-xs font-medium transition-colors",
           isOver ? "text-destructive" : "text-muted-foreground"
         )}>
-          {isOver ? "Drop here to archive" : "Archive"}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          Drag tasks here to archive them
+          {isOver ? "Drop to archive" : "Drag here to archive"}
         </p>
       </div>
     </div>

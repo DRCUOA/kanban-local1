@@ -4,18 +4,17 @@ import { KanbanBoard } from "@/components/KanbanBoard";
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";
 import { EditTaskDialog } from "@/components/EditTaskDialog";
 import { TaskHistoryModal } from "@/components/TaskHistoryModal";
-import { FocusModeToggle } from "@/components/FocusModeToggle";
 import { TaskWarnings } from "@/components/TaskWarnings";
 import { StageHeaders } from "@/components/StageHeaders";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { Task, type InsertTask } from "@shared/schema";
-import { Loader2, LayoutDashboard, Search, Archive, Settings, Plus, List, CircleDot, Download, Upload } from "lucide-react";
+import { Loader2, LayoutDashboard, Search, Archive, Settings, Plus, List, CircleDot, Download, Upload, Focus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
   const { data: tasks, isLoading, error } = useTasks();
@@ -25,6 +24,7 @@ export default function Dashboard() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
   const [viewMode, setViewMode] = useState<"detail" | "summary">("summary");
   const [focusMode, setFocusMode] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -51,9 +51,7 @@ export default function Dashboard() {
   // Keyboard shortcuts
   useKeyboardShortcuts({
     onNewTask: () => setCreateDialogOpen(true),
-    onSave: () => {
-      // Save is handled by inline editor
-    },
+    onSave: () => {},
     onCancel: () => {
       setIsEditDialogOpen(false);
       setIsHistoryModalOpen(false);
@@ -73,27 +71,19 @@ export default function Dashboard() {
     ) || [];
 
     if (focusMode) {
-      // Focus mode: show only In Progress + one suggested Next task
-      // Check status field, or infer from stage name if status not set
       const getTaskStatus = (t: Task): string => {
         if (t.status) return t.status;
-        // Infer from stage name if status not set
         const stage = stages.find((s: any) => s.id === t.stageId);
         if (stage) {
           const name = stage.name.toLowerCase();
-          if (name.includes("progress") || name.includes("doing") || name.includes("active")) {
-            return "in_progress";
-          }
-          if (name.includes("done") || name.includes("complete") || name.includes("finished")) {
-            return "done";
-          }
+          if (name.includes("progress") || name.includes("doing") || name.includes("active")) return "in_progress";
+          if (name.includes("done") || name.includes("complete") || name.includes("finished")) return "done";
         }
         return "backlog";
       };
       
       const inProgress = filtered.filter(t => getTaskStatus(t) === "in_progress");
       const backlog = filtered.filter(t => getTaskStatus(t) === "backlog");
-      // Get highest priority task from backlog as "Next"
       const nextTask = backlog.sort((a, b) => {
         const priorityOrder = { critical: 4, high: 3, normal: 2, low: 1 };
         const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] || 2;
@@ -135,63 +125,37 @@ export default function Dashboard() {
           const imported = JSON.parse(event.target?.result as string);
           
           if (!Array.isArray(imported)) {
-            toast({
-              title: "Invalid format",
-              description: "Import file must contain an array of tasks.",
-              variant: "destructive",
-            });
+            toast({ title: "Invalid format", description: "Import file must contain an array of tasks.", variant: "destructive" });
             return;
           }
 
-          // Store backup in localStorage
           localStorage.setItem("taskflow-backup", JSON.stringify(imported));
           
-          // Use existing stages from query, or fetch if not available
           let stagesData = stages;
-          
-          // Always fetch fresh stages to ensure we have the latest data
           try {
             const stagesResponse = await fetch(api.stages.list.path);
-            if (!stagesResponse.ok) {
-              throw new Error(`Failed to fetch stages: ${stagesResponse.status}`);
-            }
+            if (!stagesResponse.ok) throw new Error(`Failed to fetch stages: ${stagesResponse.status}`);
             const fetchedStages = await stagesResponse.json();
-            if (Array.isArray(fetchedStages) && fetchedStages.length > 0) {
-              stagesData = fetchedStages;
-            }
+            if (Array.isArray(fetchedStages) && fetchedStages.length > 0) stagesData = fetchedStages;
           } catch (error: any) {
             console.error("Error fetching stages:", error);
-            // Fall back to cached stages if fetch fails
             if (!stagesData || stagesData.length === 0) {
-              toast({
-                title: "Error fetching stages",
-                description: error.message || "Could not load stages. Please refresh and try again.",
-                variant: "destructive",
-              });
+              toast({ title: "Error fetching stages", description: error.message || "Could not load stages.", variant: "destructive" });
               return;
             }
           }
           
           if (!Array.isArray(stagesData) || stagesData.length === 0) {
-            console.error("No stages available:", { stages, stagesData });
-            toast({
-              title: "No stages found",
-              description: "Please create stages before importing tasks.",
-              variant: "destructive",
-            });
+            toast({ title: "No stages found", description: "Please create stages before importing tasks.", variant: "destructive" });
             return;
           }
-          
-          console.log("Stages available for import:", stagesData.length, stagesData);
 
           let successCount = 0;
           let errorCount = 0;
           const errors: string[] = [];
 
-          // Import tasks one by one
           for (const taskData of imported) {
             try {
-              // Validate and prepare task data
               const taskToCreate = {
                 title: taskData.title || "Untitled Task",
                 description: taskData.description || "",
@@ -204,9 +168,8 @@ export default function Dashboard() {
                 recurrence: taskData.recurrence || "none",
               } as InsertTask;
 
-              // Validate stageId exists
               if (!stagesData.find((s: any) => s.id === taskToCreate.stageId)) {
-                taskToCreate.stageId = stagesData[0].id; // Default to first stage
+                taskToCreate.stageId = stagesData[0].id;
               }
 
               await createTask.mutateAsync(taskToCreate);
@@ -217,28 +180,15 @@ export default function Dashboard() {
             }
           }
 
-          // Show results
           if (successCount > 0) {
-            toast({
-              title: "Import completed",
-              description: `Successfully imported ${successCount} task${successCount > 1 ? 's' : ''}${errorCount > 0 ? `. ${errorCount} failed.` : '.'}`,
-            });
+            toast({ title: "Import completed", description: `Successfully imported ${successCount} task${successCount > 1 ? 's' : ''}${errorCount > 0 ? `. ${errorCount} failed.` : '.'}` });
           }
-
           if (errorCount > 0 && successCount === 0) {
-            toast({
-              title: "Import failed",
-              description: `Failed to import ${errorCount} task${errorCount > 1 ? 's' : ''}. Check console for details.`,
-              variant: "destructive",
-            });
+            toast({ title: "Import failed", description: `Failed to import ${errorCount} task${errorCount > 1 ? 's' : ''}.`, variant: "destructive" });
             console.error("Import errors:", errors);
           }
         } catch (error: any) {
-          toast({
-            title: "Import error",
-            description: error.message || "Failed to parse import file. Please check the format.",
-            variant: "destructive",
-          });
+          toast({ title: "Import error", description: error.message || "Failed to parse import file.", variant: "destructive" });
         }
       };
       reader.readAsText(file);
@@ -250,8 +200,8 @@ export default function Dashboard() {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4 animate-pulse">
-          <Loader2 className="h-10 w-10 text-primary animate-spin" />
-          <p className="text-muted-foreground font-medium">Loading your board...</p>
+          <Loader2 className="h-8 w-8 text-primary animate-spin" />
+          <p className="text-muted-foreground font-medium text-sm">Loading your board...</p>
         </div>
       </div>
     );
@@ -259,13 +209,13 @@ export default function Dashboard() {
 
   if (error) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-background">
-        <div className="text-center space-y-4 max-w-md mx-auto p-6">
-          <div className="text-destructive font-bold text-xl">Error loading tasks</div>
-          <p className="text-muted-foreground">{(error as Error).message}</p>
+      <div className="h-screen w-full flex items-center justify-center bg-background px-6">
+        <div className="text-center space-y-4 w-full">
+          <div className="text-destructive font-bold text-lg">Error loading tasks</div>
+          <p className="text-muted-foreground text-sm">{(error as Error).message}</p>
           <button 
             onClick={() => window.location.reload()}
-            className="text-primary hover:underline font-medium"
+            className="text-primary font-medium text-sm py-3 px-6 neo-raised rounded-xl active:scale-95 transition-transform"
           >
             Try Refreshing
           </button>
@@ -275,159 +225,79 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-50 neo-container rounded-none border-0 border-b-0">
-        <div className="container mx-auto px-6 py-4">
-          {/* Top Row - Logo and Title */}
-          <div className="flex flex-col items-center justify-center mb-4 md:flex-row md:mb-4">
-            {/* Logo - First line on mobile, left side on desktop */}
-            <div className="h-14 w-14 neo-raised rounded-xl flex items-center justify-center mb-2 md:mb-0 md:mr-4">
-              <LayoutDashboard className="text-primary h-7 w-7" />
+    <div className="min-h-screen bg-background flex flex-col pb-bottom-nav">
+      {/* Compact Mobile Header */}
+      <header className="sticky top-0 z-50 neo-container rounded-none px-4 py-3">
+        <div className="flex items-center justify-between">
+          {/* App identity - compact */}
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 neo-raised rounded-lg flex items-center justify-center">
+              <LayoutDashboard className="text-primary h-5 w-5" />
             </div>
-            {/* Title and Subtitle - Second and third lines on mobile, right side on desktop */}
-            <div className="flex flex-col items-center justify-center text-center">
-              {/* Subtitle - Second line on mobile */}
-              <p className="text-xs text-muted-foreground mb-1 md:hidden">
-                {import.meta.env.VITE_APP_NAME_SUBTITLE || "SubNameNotSetInEnv"}
-              </p>
-              {/* Title - Third line on mobile, first line on desktop */}
-              <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            <div>
+              <h1 className="text-lg font-bold tracking-tight text-foreground leading-tight">
                 {import.meta.env.VITE_APP_NAME || "NameNotSetInEnv"}
               </h1>
-              {/* Subtitle - Hidden on mobile (shown above), visible on desktop */}
-              <p className="text-xs text-muted-foreground hidden md:block">
+              <p className="text-[10px] text-muted-foreground leading-tight">
                 {import.meta.env.VITE_APP_NAME_SUBTITLE || "SubNameNotSetInEnv"}
               </p>
             </div>
           </div>
-          
-          {/* Bottom Row - Navigation & Search */}
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center justify-center gap-4 w-full md:w-auto">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div>
-                    <CreateTaskDialog iconOnly />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Create Task</p>
-                </TooltipContent>
-              </Tooltip>
-              
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={viewMode === "detail" ? "default" : "outline"}
-                    size="icon"
-                    className="rounded-xl h-11 w-11"
-                    onClick={() => setViewMode("detail")}
-                  >
-                    <List className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Detail View</p>
-                </TooltipContent>
-              </Tooltip>
-              
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={viewMode === "summary" ? "default" : "outline"}
-                    size="icon"
-                    className="rounded-xl h-11 w-11"
-                    onClick={() => setViewMode("summary")}
-                  >
-                    <CircleDot className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Summary View</p>
-                </TooltipContent>
-              </Tooltip>
-              
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <a href="/archive">
-                    <Button variant="outline" size="icon" className="rounded-xl h-11 w-11">
-                      <Archive className="h-5 w-5" />
-                    </Button>
-                  </a>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Archive</p>
-                </TooltipContent>
-              </Tooltip>
-              
-              <FocusModeToggle enabled={focusMode} onToggle={setFocusMode} />
-              
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <a href="/admin">
-                    <Button variant="outline" size="icon" className="rounded-xl h-11 w-11" data-testid="button-admin">
-                      <Settings className="h-5 w-5" />
-                    </Button>
-                  </a>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Admin</p>
-                </TooltipContent>
-              </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" className="rounded-xl h-11 w-11" onClick={handleExport}>
-                    <Download className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Export Tasks</p>
-                </TooltipContent>
-              </Tooltip>
+          {/* Header actions */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-lg h-10 w-10"
+              onClick={() => setShowSearch(!showSearch)}
+            >
+              <Search className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" className="rounded-xl h-11 w-11" onClick={handleImport}>
-                    <Upload className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Import Tasks</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            
-            <div className="relative w-full md:w-72">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+        {/* Expandable search bar */}
+        {showSearch && (
+          <div className="mt-3 flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
               <Input 
                 placeholder="Search tasks..." 
-                className="pl-11 h-11"
+                className="pl-10 h-11 rounded-xl"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
                 data-testid="input-search"
               />
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-lg h-10 w-10 shrink-0"
+              onClick={() => { setShowSearch(false); setSearchQuery(""); }}
+            >
+              <X className="h-5 w-5" />
+            </Button>
           </div>
-        </div>
+        )}
       </header>
 
-      {/* Stage Headers - Sticky below header */}
+      {/* Stage Headers - Scrollable tabs */}
       {tasks && tasks.length > 0 && (
-        <div className="container mx-auto px-2 sm:px-4 lg:px-6">
+        <div className="px-3 pt-2">
           <StageHeaders tasks={tasks} />
         </div>
       )}
 
       {/* Board Content */}
-      <main className="flex-1 overflow-hidden flex flex-col">
-        <div className="container mx-auto flex-1 flex flex-col min-h-0 p-2 sm:p-4 lg:p-6">
+      <main className="flex-1 overflow-y-auto flex flex-col">
+        <div className="flex-1 flex flex-col min-h-0 px-3 pt-2">
           {focusMode && (
-            <div className="mb-4 p-4 neo-container rounded-2xl border-l-4 border-l-blue-500 flex-shrink-0">
+            <div className="mb-3 p-3 neo-container rounded-xl border-l-4 border-l-blue-500 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse" />
-                <p className="text-sm font-medium">Focus Mode: Showing only In Progress tasks and next suggested task</p>
+                <p className="text-xs font-medium">Focus Mode Active</p>
               </div>
             </div>
           )}
@@ -444,21 +314,73 @@ export default function Dashboard() {
               />
             </div>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-center p-12 neo-container rounded-3xl m-4">
-              <div className="h-20 w-20 neo-pressed rounded-full flex items-center justify-center mb-6">
-                <LayoutDashboard className="h-10 w-10 text-muted-foreground" />
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 neo-container rounded-2xl mx-2 my-4">
+              <div className="h-16 w-16 neo-pressed rounded-full flex items-center justify-center mb-4">
+                <LayoutDashboard className="h-8 w-8 text-muted-foreground" />
               </div>
-              <h3 className="text-xl font-bold mb-3 text-foreground">No tasks found</h3>
-              <p className="text-muted-foreground max-w-sm mb-8">
+              <h3 className="text-lg font-bold mb-2 text-foreground">No tasks found</h3>
+              <p className="text-muted-foreground text-sm mb-6">
                 {searchQuery 
-                  ? "No tasks match your search query. Try a different term."
-                  : "Your board is empty. Create your first task to get started."}
+                  ? "No tasks match your search."
+                  : "Create your first task to get started."}
               </p>
               {!searchQuery && <CreateTaskDialog />}
             </div>
           )}
         </div>
       </main>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="mobile-bottom-nav">
+        <div className="flex items-center justify-around px-2 py-2">
+          {/* View Mode Toggle */}
+          <button
+            className={cn(
+              "flex flex-col items-center gap-1 py-2 px-3 rounded-xl transition-all active:scale-90",
+              viewMode === "detail" && "text-primary"
+            )}
+            onClick={() => setViewMode("detail")}
+          >
+            <List className="h-5 w-5" />
+            <span className="text-[10px] font-medium">Detail</span>
+          </button>
+
+          {/* Summary View */}
+          <button
+            className={cn(
+              "flex flex-col items-center gap-1 py-2 px-3 rounded-xl transition-all active:scale-90",
+              viewMode === "summary" && "text-primary"
+            )}
+            onClick={() => setViewMode("summary")}
+          >
+            <CircleDot className="h-5 w-5" />
+            <span className="text-[10px] font-medium">Summary</span>
+          </button>
+
+          {/* Create Task - Prominent center button */}
+          <CreateTaskDialog iconOnly />
+
+          {/* Focus Mode */}
+          <button
+            className={cn(
+              "flex flex-col items-center gap-1 py-2 px-3 rounded-xl transition-all active:scale-90",
+              focusMode && "text-primary"
+            )}
+            onClick={() => setFocusMode(!focusMode)}
+          >
+            <Focus className="h-5 w-5" />
+            <span className="text-[10px] font-medium">Focus</span>
+          </button>
+
+          {/* More Actions Menu */}
+          <MoreActionsMenu 
+            onArchive={() => window.location.href = "/archive"}
+            onAdmin={() => window.location.href = "/admin"}
+            onExport={handleExport}
+            onImport={handleImport}
+          />
+        </div>
+      </nav>
 
       {/* Edit Dialog */}
       <EditTaskDialog 
@@ -477,6 +399,75 @@ export default function Dashboard() {
         open={isHistoryModalOpen}
         onOpenChange={setIsHistoryModalOpen}
       />
+    </div>
+  );
+}
+
+// More Actions Menu component for bottom nav
+function MoreActionsMenu({ 
+  onArchive, 
+  onAdmin, 
+  onExport, 
+  onImport 
+}: { 
+  onArchive: () => void; 
+  onAdmin: () => void; 
+  onExport: () => void; 
+  onImport: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        className="flex flex-col items-center gap-1 py-2 px-3 rounded-xl transition-all active:scale-90"
+        onClick={() => setOpen(!open)}
+      >
+        <Settings className="h-5 w-5" />
+        <span className="text-[10px] font-medium">More</span>
+      </button>
+
+      {open && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 z-40 bg-black/20"
+            onClick={() => setOpen(false)}
+          />
+          
+          {/* Popup Menu */}
+          <div className="absolute bottom-full right-0 mb-2 z-50 neo-raised rounded-xl p-2 w-48 animate-slide-up">
+            <button 
+              className="w-full flex items-center gap-3 p-3 rounded-lg text-sm active:bg-muted/50 transition-colors"
+              onClick={() => { onArchive(); setOpen(false); }}
+            >
+              <Archive className="h-4 w-4" />
+              Archive
+            </button>
+            <button 
+              className="w-full flex items-center gap-3 p-3 rounded-lg text-sm active:bg-muted/50 transition-colors"
+              onClick={() => { onAdmin(); setOpen(false); }}
+            >
+              <Settings className="h-4 w-4" />
+              Admin
+            </button>
+            <button 
+              className="w-full flex items-center gap-3 p-3 rounded-lg text-sm active:bg-muted/50 transition-colors"
+              onClick={() => { onExport(); setOpen(false); }}
+            >
+              <Download className="h-4 w-4" />
+              Export Tasks
+            </button>
+            <button 
+              className="w-full flex items-center gap-3 p-3 rounded-lg text-sm active:bg-muted/50 transition-colors"
+              onClick={() => { onImport(); setOpen(false); }}
+            >
+              <Upload className="h-4 w-4" />
+              Import Tasks
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
