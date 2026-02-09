@@ -32,19 +32,13 @@ export function TaskWarnings({ tasks }: TaskWarningsProps) {
 
   const activeTasks = tasks.filter(t => !t.archived);
   
-  // Helper to get status (from field or infer from stage name)
   const getTaskStatus = (t: Task): string => {
     if (t.status) return t.status;
-    // Infer from stage name if status not set
     const stage = stages.find((s: any) => s.id === t.stageId);
     if (stage) {
       const name = stage.name.toLowerCase();
-      if (name.includes("progress") || name.includes("doing") || name.includes("active")) {
-        return "in_progress";
-      }
-      if (name.includes("done") || name.includes("complete") || name.includes("finished")) {
-        return "done";
-      }
+      if (name.includes("progress") || name.includes("doing") || name.includes("active")) return "in_progress";
+      if (name.includes("done") || name.includes("complete") || name.includes("finished")) return "done";
     }
     return "backlog";
   };
@@ -63,8 +57,7 @@ export function TaskWarnings({ tasks }: TaskWarningsProps) {
   const staleTasks = activeTasks.filter(t => {
     if (!t.updatedAt) return false;
     const updated = new Date(t.updatedAt);
-    const daysSinceUpdate = differenceInDays(new Date(), updated);
-    return daysSinceUpdate >= 14;
+    return differenceInDays(new Date(), updated) >= 14;
   });
 
   const warnings = [];
@@ -73,8 +66,8 @@ export function TaskWarnings({ tasks }: TaskWarningsProps) {
     warnings.push({
       type: "info",
       icon: AlertCircle,
-      title: "Many tasks in progress",
-      message: `You have ${inProgressTasks.length} tasks in progress. Consider focusing on fewer tasks at once.`,
+      title: "Many in progress",
+      message: `${inProgressTasks.length} tasks in progress. Focus on fewer.`,
     });
   }
 
@@ -82,8 +75,8 @@ export function TaskWarnings({ tasks }: TaskWarningsProps) {
     warnings.push({
       type: "warning",
       icon: AlertCircle,
-      title: "High-priority tasks in backlog",
-      message: `${highPriorityBacklog.length} high-priority task${highPriorityBacklog.length > 1 ? "s" : ""} waiting in backlog.`,
+      title: "High-priority waiting",
+      message: `${highPriorityBacklog.length} high-priority in backlog.`,
     });
   }
 
@@ -91,8 +84,8 @@ export function TaskWarnings({ tasks }: TaskWarningsProps) {
     warnings.push({
       type: "destructive",
       icon: Clock,
-      title: "Overdue tasks",
-      message: `${overdueTasks.length} task${overdueTasks.length > 1 ? "s are" : " is"} overdue.`,
+      title: "Overdue",
+      message: `${overdueTasks.length} task${overdueTasks.length > 1 ? "s" : ""} overdue.`,
     });
   }
 
@@ -101,29 +94,33 @@ export function TaskWarnings({ tasks }: TaskWarningsProps) {
       type: "info",
       icon: AlertCircle,
       title: "Stale tasks",
-      message: `${staleTasks.length} task${staleTasks.length > 1 ? "s haven't" : " hasn't"} been updated in 14+ days. Consider reviewing or archiving.`,
+      message: `${staleTasks.length} not updated in 14+ days.`,
     });
   }
 
   if (warnings.length === 0) return null;
 
   return (
-    <div className="space-y-2 mb-4">
+    <div className="space-y-1.5 mb-3">
       {warnings.map((warning, idx) => {
         const Icon = warning.icon;
         return (
           <Alert
             key={idx}
             className={cn(
-              "border-l-4",
+              "border-l-4 py-2 px-3 rounded-lg",
               warning.type === "destructive" && "border-l-red-500 bg-red-50 dark:bg-red-950/20",
               warning.type === "warning" && "border-l-yellow-500 bg-yellow-50 dark:bg-yellow-950/20",
               warning.type === "info" && "border-l-blue-500 bg-blue-50 dark:bg-blue-950/20"
             )}
           >
-            <Icon className="h-4 w-4" />
-            <AlertTitle className="text-sm font-semibold">{warning.title}</AlertTitle>
-            <AlertDescription className="text-xs mt-1">{warning.message}</AlertDescription>
+            <div className="flex items-center gap-2">
+              <Icon className="h-3.5 w-3.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <AlertTitle className="text-xs font-semibold">{warning.title}</AlertTitle>
+                <AlertDescription className="text-[10px] mt-0.5">{warning.message}</AlertDescription>
+              </div>
+            </div>
           </Alert>
         );
       })}

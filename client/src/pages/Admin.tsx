@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
@@ -13,7 +12,6 @@ import { api } from "@shared/routes";
 import { insertStageSchema, insertSubStageSchema, type InsertStage, type InsertSubStage } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Trash2, Edit, ChevronLeft, Settings } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ColorPicker } from "@/components/ColorPicker";
 import { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -67,79 +65,49 @@ export default function Admin() {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertStage) => {
-      console.log('[UI] [CREATE_STAGE] Starting mutation with data:', JSON.stringify(data));
       const response = await apiRequest(api.stages.create.method, api.stages.create.path, data);
-      console.log('[UI] [CREATE_STAGE] Request completed, response status:', response.status);
-      const responseData = await response.json();
-      console.log('[UI] [CREATE_STAGE] Response data:', JSON.stringify(responseData));
-      return responseData;
+      return response.json();
     },
-    onSuccess: (data) => {
-      console.log('[UI] [CREATE_STAGE] Mutation successful, received data:', JSON.stringify(data));
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.stages.list.path] });
       queryClient.refetchQueries({ queryKey: [api.stages.list.path] });
-      console.log('[UI] [CREATE_STAGE] Cache invalidated and refetched, showing toast');
-      toast({ description: "Stage created successfully" });
+      toast({ description: "Stage created" });
       setDialogOpen(false);
       form.reset({ name: "", order: 1, color: "#3B82F6" });
-      console.log('[UI] [CREATE_STAGE] Form reset and dialog closed');
-    },
-    onError: (error) => {
-      console.error('[UI] [CREATE_STAGE] Mutation error:', error);
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<InsertStage> }) => {
-      console.log('[UI] [UPDATE_STAGE] Starting mutation with id:', id, 'data:', JSON.stringify(data));
       const url = api.stages.update.path.replace(":id", String(id));
       const response = await apiRequest(api.stages.update.method, url, data);
-      console.log('[UI] [UPDATE_STAGE] Request completed, response status:', response.status);
-      const responseData = await response.json();
-      console.log('[UI] [UPDATE_STAGE] Response data:', JSON.stringify(responseData));
-      return responseData;
+      return response.json();
     },
-    onSuccess: (data) => {
-      console.log('[UI] [UPDATE_STAGE] Mutation successful, received data:', JSON.stringify(data));
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.stages.list.path] });
       queryClient.refetchQueries({ queryKey: [api.stages.list.path] });
-      console.log('[UI] [UPDATE_STAGE] Cache invalidated and refetched, showing toast');
-      toast({ description: "Stage updated successfully" });
+      toast({ description: "Stage updated" });
       setEditingId(null);
       setDialogOpen(false);
       form.reset({ name: "", order: 1, color: "#3B82F6" });
-      console.log('[UI] [UPDATE_STAGE] Form reset and dialog closed');
     },
     onError: (error) => {
-      console.error('[UI] [UPDATE_STAGE] Mutation error:', error);
-      toast({ 
-        description: error instanceof Error ? error.message : "Failed to update stage",
-        variant: "destructive"
-      });
+      toast({ description: error instanceof Error ? error.message : "Failed to update stage", variant: "destructive" });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      console.log('[UI] [DELETE_STAGE] Starting mutation with id:', id);
       const url = api.stages.delete.path.replace(":id", String(id));
-      const response = await apiRequest(api.stages.delete.method, url);
-      console.log('[UI] [DELETE_STAGE] Request completed, response status:', response.status);
-      return response;
+      return apiRequest(api.stages.delete.method, url);
     },
     onSuccess: () => {
-      console.log('[UI] [DELETE_STAGE] Mutation successful');
       queryClient.invalidateQueries({ queryKey: [api.stages.list.path] });
       queryClient.refetchQueries({ queryKey: [api.stages.list.path] });
-      console.log('[UI] [DELETE_STAGE] Cache invalidated and refetched, showing toast');
-      toast({ description: "Stage deleted successfully" });
+      toast({ description: "Stage deleted" });
     },
     onError: (error) => {
-      console.error('[UI] [DELETE_STAGE] Mutation error:', error);
-      toast({ 
-        description: error instanceof Error ? error.message : "Failed to delete stage",
-        variant: "destructive"
-      });
+      toast({ description: error instanceof Error ? error.message : "Failed to delete stage", variant: "destructive" });
     },
   });
 
@@ -160,15 +128,12 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.subStages.list.path] });
-      toast({ description: "Sub-stage created successfully" });
+      toast({ description: "Sub-stage created" });
       setSubStageDialogOpen(false);
       subStageForm.reset({ stageId: 0, name: "", tag: "", bgClass: "bg-background/20", opacity: 20, order: 1 });
     },
     onError: (error) => {
-      toast({ 
-        description: error instanceof Error ? error.message : "Failed to create sub-stage",
-        variant: "destructive"
-      });
+      toast({ description: error instanceof Error ? error.message : "Failed to create sub-stage", variant: "destructive" });
     },
   });
 
@@ -180,16 +145,13 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.subStages.list.path] });
-      toast({ description: "Sub-stage updated successfully" });
+      toast({ description: "Sub-stage updated" });
       setSubStageDialogOpen(false);
       setEditingSubStageId(null);
       subStageForm.reset({ stageId: 0, name: "", tag: "", bgClass: "bg-background/20", opacity: 20, order: 1 });
     },
     onError: (error) => {
-      toast({ 
-        description: error instanceof Error ? error.message : "Failed to update sub-stage",
-        variant: "destructive"
-      });
+      toast({ description: error instanceof Error ? error.message : "Failed to update sub-stage", variant: "destructive" });
     },
   });
 
@@ -200,52 +162,29 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.subStages.list.path] });
-      toast({ description: "Sub-stage deleted successfully" });
+      toast({ description: "Sub-stage deleted" });
     },
     onError: (error) => {
-      toast({ 
-        description: error instanceof Error ? error.message : "Failed to delete sub-stage",
-        variant: "destructive"
-      });
+      toast({ description: error instanceof Error ? error.message : "Failed to delete sub-stage", variant: "destructive" });
     },
   });
 
   const handleSubmit = form.handleSubmit((data) => {
-    console.log('[UI] [FORM_SUBMIT] Form data:', JSON.stringify(data, null, 2));
-    console.log('[UI] [FORM_SUBMIT] Color value:', data.color);
-    console.log('[UI] [FORM_SUBMIT] Color type:', typeof data.color);
-    
-    // Ensure color is always a valid hex string (never undefined or empty)
     const submitData = {
       ...data,
-      color: (data.color && data.color.trim() !== "" && data.color.startsWith("#")) 
-        ? data.color 
-        : "#3B82F6", // Default to blue if invalid
+      color: (data.color && data.color.trim() !== "" && data.color.startsWith("#")) ? data.color : "#3B82F6",
     };
     
-    console.log('[UI] [FORM_SUBMIT] Submit data after cleanup:', JSON.stringify(submitData, null, 2));
-    
     if (editingId) {
-      console.log('[UI] [UPDATE_STAGE] Form submitted with data:', JSON.stringify(submitData), 'id:', editingId);
       updateMutation.mutate({ id: editingId, data: submitData });
     } else {
-      console.log('[UI] [CREATE_STAGE] Form submitted with data:', JSON.stringify(submitData));
-      console.log('[UI] [CREATE_STAGE] Calling createMutation.mutate');
       createMutation.mutate(submitData);
     }
   });
 
   const openEditDialog = (stage: any) => {
     setEditingId(stage.id);
-    const formData = { 
-      name: stage.name, 
-      order: stage.order,
-      color: stage.color || "#3B82F6"
-    };
-    console.log('[UI] [EDIT_DIALOG] Opening edit dialog for stage:', stage.id);
-    console.log('[UI] [EDIT_DIALOG] Stage color from DB:', stage.color);
-    console.log('[UI] [EDIT_DIALOG] Form data to set:', JSON.stringify(formData));
-    form.reset(formData);
+    form.reset({ name: stage.name, order: stage.order, color: stage.color || "#3B82F6" });
     setDialogOpen(true);
   };
 
@@ -286,52 +225,40 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-50 neo-container rounded-none border-0 border-b-0">
-        <div className="container mx-auto px-6 py-4">
-          {/* Top Row - Logo */}
-          <div className="flex items-center justify-center mb-4">
-            <div className="flex items-center gap-4">
-              <div className="h-14 w-14 neo-raised rounded-xl flex items-center justify-center">
-                <Settings className="text-primary h-7 w-7" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight text-foreground">Task Stages Admin</h1>
-                <p className="text-xs text-muted-foreground hidden sm:block">Manage Stages</p>
-              </div>
+      {/* Mobile Header */}
+      <header className="sticky top-0 z-50 neo-container rounded-none px-4 py-3">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/")}
+            className="rounded-lg h-10 w-10 shrink-0"
+            data-testid="button-back"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex items-center gap-3 flex-1">
+            <div className="h-10 w-10 neo-raised rounded-lg flex items-center justify-center">
+              <Settings className="text-primary h-5 w-5" />
             </div>
-          </div>
-          
-          {/* Bottom Row - Navigation */}
-          <div className="flex items-center justify-center gap-4">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => navigate("/")}
-                  className="rounded-xl h-11 w-11"
-                  data-testid="button-back"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Back to Board</p>
-              </TooltipContent>
-            </Tooltip>
+            <div>
+              <h1 className="text-lg font-bold tracking-tight text-foreground leading-tight">Admin</h1>
+              <p className="text-[10px] text-muted-foreground leading-tight">Manage Stages</p>
+            </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto p-4 flex-1">
-
-        <Card className="p-8">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold">Manage Stages</h2>
+      <div className="flex-1 overflow-y-auto scroll-container px-3 py-4 space-y-4">
+        {/* Stages Section */}
+        <Card className="p-4">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-base font-semibold">Stages</h2>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button
+                  size="sm"
+                  className="rounded-xl h-10 active:scale-95 transition-transform"
                   onClick={() => {
                     setEditingId(null);
                     form.reset({ name: "", order: 1, color: "#3B82F6" });
@@ -341,20 +268,20 @@ export default function Admin() {
                   Add Stage
                 </Button>
               </DialogTrigger>
-              <DialogContent data-testid="dialog-stage-form">
+              <DialogContent className="max-w-full h-full max-h-full rounded-none m-0 flex flex-col" data-testid="dialog-stage-form">
                 <DialogHeader>
-                  <DialogTitle>{editingId ? "Edit Stage" : "Create Stage"}</DialogTitle>
+                  <DialogTitle className="text-lg">{editingId ? "Edit Stage" : "Create Stage"}</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
-                  <form onSubmit={handleSubmit} className="space-y-4">
+                  <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-4">
                     <FormField
                       control={form.control}
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Stage Name</FormLabel>
+                          <FormLabel className="text-xs">Stage Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g. Backlog" {...field} data-testid="input-stage-name" />
+                            <Input placeholder="e.g. Backlog" {...field} className="h-12 rounded-xl text-base" data-testid="input-stage-name" />
                           </FormControl>
                         </FormItem>
                       )}
@@ -364,10 +291,11 @@ export default function Admin() {
                       name="order"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Order</FormLabel>
+                          <FormLabel className="text-xs">Order</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
+                              className="h-12 rounded-xl text-base"
                               {...field}
                               onChange={(e) => field.onChange(Number(e.target.value))}
                               data-testid="input-stage-order"
@@ -381,18 +309,13 @@ export default function Admin() {
                       name="color"
                       render={({ field }) => {
                         const colorValue = field.value || "#3B82F6";
-                        console.log('[UI] [COLOR_FIELD] Field value:', field.value);
-                        console.log('[UI] [COLOR_FIELD] Using color value:', colorValue);
                         return (
                           <FormItem>
                             <FormControl>
                               <ColorPicker
                                 value={colorValue}
                                 onChange={(color) => {
-                                  console.log('[UI] [COLOR_FIELD] Color changed to:', color);
-                                  // Always ensure we set a valid hex color
                                   const normalizedColor = color && color.startsWith("#") ? color : "#3B82F6";
-                                  console.log('[UI] [COLOR_FIELD] Setting normalized color:', normalizedColor);
                                   field.onChange(normalizedColor);
                                 }}
                                 label="Stage Color"
@@ -402,14 +325,20 @@ export default function Admin() {
                         );
                       }}
                     />
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={createMutation.isPending || updateMutation.isPending}
-                      data-testid="button-submit-stage"
-                    >
-                      {editingId ? "Update" : "Create"}
-                    </Button>
+                    <div className="flex-1" />
+                    <div className="flex gap-3 pb-safe-bottom sticky bottom-0 bg-background pt-4">
+                      <Button type="button" variant="outline" className="flex-1 h-12 rounded-xl" onClick={closeDialog}>
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        className="flex-1 h-12 rounded-xl active:scale-95 transition-transform"
+                        disabled={createMutation.isPending || updateMutation.isPending}
+                        data-testid="button-submit-stage"
+                      >
+                        {editingId ? "Update" : "Create"}
+                      </Button>
+                    </div>
                   </form>
                 </Form>
               </DialogContent>
@@ -417,29 +346,30 @@ export default function Admin() {
           </div>
 
           {isLoading ? (
-            <div className="text-center py-8">Loading stages...</div>
+            <div className="text-center py-6 text-sm text-muted-foreground">Loading stages...</div>
           ) : stages.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">No stages found. Create one to get started.</div>
+            <div className="text-center py-6 text-sm text-muted-foreground">No stages found. Create one to get started.</div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-2">
               {stages.map((stage: any) => (
-                <div key={stage.id} className="flex items-center justify-between p-6 neo-card rounded-xl">
-                  <div className="flex items-center gap-4">
+                <div key={stage.id} className="flex items-center justify-between p-3 neo-card rounded-xl">
+                  <div className="flex items-center gap-3">
                     {stage.color && (
                       <div 
-                        className="w-8 h-8 rounded-lg border-2"
-                        style={{ backgroundColor: stage.color, borderColor: stage.color }}
+                        className="w-6 h-6 rounded-lg"
+                        style={{ backgroundColor: stage.color }}
                       />
                     )}
                     <div>
-                      <p className="font-medium">{stage.name}</p>
-                      <p className="text-sm text-muted-foreground">Order: {stage.order}</p>
+                      <p className="font-medium text-sm">{stage.name}</p>
+                      <p className="text-[10px] text-muted-foreground">Order: {stage.order}</p>
                     </div>
                   </div>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
                       size="icon"
+                      className="h-10 w-10 rounded-xl"
                       onClick={() => openEditDialog(stage)}
                       data-testid={`button-edit-stage-${stage.id}`}
                     >
@@ -448,6 +378,7 @@ export default function Admin() {
                     <Button
                       variant="destructive"
                       size="icon"
+                      className="h-10 w-10 rounded-xl"
                       onClick={() => deleteMutation.mutate(stage.id)}
                       disabled={deleteMutation.isPending}
                       data-testid={`button-delete-stage-${stage.id}`}
@@ -462,12 +393,14 @@ export default function Admin() {
         </Card>
 
         {/* Sub-Stages Section */}
-        <Card className="p-8 mt-8">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold">Manage Sub-Stages</h2>
+        <Card className="p-4">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-base font-semibold">Sub-Stages</h2>
             <Dialog open={subStageDialogOpen} onOpenChange={setSubStageDialogOpen}>
               <DialogTrigger asChild>
                 <Button
+                  size="sm"
+                  className="rounded-xl h-10 active:scale-95 transition-transform"
                   onClick={() => {
                     setEditingSubStageId(null);
                     setSelectedStageId(null);
@@ -477,18 +410,18 @@ export default function Admin() {
                   Add Sub-Stage
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-full h-full max-h-full rounded-none m-0 flex flex-col">
                 <DialogHeader>
-                  <DialogTitle>{editingSubStageId ? "Edit Sub-Stage" : "Create Sub-Stage"}</DialogTitle>
+                  <DialogTitle className="text-lg">{editingSubStageId ? "Edit Sub-Stage" : "Create Sub-Stage"}</DialogTitle>
                 </DialogHeader>
                 <Form {...subStageForm}>
-                  <form onSubmit={handleSubStageSubmit} className="space-y-4">
+                  <form onSubmit={handleSubStageSubmit} className="flex-1 flex flex-col gap-4 overflow-y-auto scroll-container">
                     <FormField
                       control={subStageForm.control}
                       name="stageId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Parent Stage</FormLabel>
+                          <FormLabel className="text-xs">Parent Stage</FormLabel>
                           <Select
                             value={field.value?.toString() || ""}
                             onValueChange={(value) => {
@@ -497,13 +430,13 @@ export default function Admin() {
                             }}
                           >
                             <FormControl>
-                              <SelectTrigger>
+                              <SelectTrigger className="h-12 rounded-xl">
                                 <SelectValue placeholder="Select a stage" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
                               {stages.map((stage: any) => (
-                                <SelectItem key={stage.id} value={stage.id.toString()}>
+                                <SelectItem key={stage.id} value={stage.id.toString()} className="py-3">
                                   {stage.name}
                                 </SelectItem>
                               ))}
@@ -517,9 +450,9 @@ export default function Admin() {
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Name</FormLabel>
+                          <FormLabel className="text-xs">Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g. AM" {...field} />
+                            <Input placeholder="e.g. AM" {...field} className="h-12 rounded-xl text-base" />
                           </FormControl>
                         </FormItem>
                       )}
@@ -529,9 +462,9 @@ export default function Admin() {
                       name="tag"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Tag</FormLabel>
+                          <FormLabel className="text-xs">Tag</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g. day-plan-am" {...field} />
+                            <Input placeholder="e.g. day-plan-am" {...field} className="h-12 rounded-xl text-base" />
                           </FormControl>
                         </FormItem>
                       )}
@@ -541,54 +474,64 @@ export default function Admin() {
                       name="bgClass"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Background Class</FormLabel>
+                          <FormLabel className="text-xs">Background Class</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g. bg-background/20" {...field} />
+                            <Input placeholder="e.g. bg-background/20" {...field} className="h-12 rounded-xl text-base" />
                           </FormControl>
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={subStageForm.control}
-                      name="opacity"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Opacity (0-100)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min="0"
-                              max="100"
-                              {...field}
-                              onChange={(e) => field.onChange(Number(e.target.value))}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={subStageForm.control}
-                      name="order"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Order</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              {...field}
-                              onChange={(e) => field.onChange(Number(e.target.value))}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={createSubStageMutation.isPending || updateSubStageMutation.isPending}
-                    >
-                      {editingSubStageId ? "Update" : "Create"}
-                    </Button>
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormField
+                        control={subStageForm.control}
+                        name="opacity"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Opacity (0-100)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min="0"
+                                max="100"
+                                className="h-12 rounded-xl text-base"
+                                {...field}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={subStageForm.control}
+                        name="order"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Order</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                className="h-12 rounded-xl text-base"
+                                {...field}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="flex-1" />
+                    <div className="flex gap-3 pb-safe-bottom sticky bottom-0 bg-background pt-4">
+                      <Button type="button" variant="outline" className="flex-1 h-12 rounded-xl" onClick={closeSubStageDialog}>
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        className="flex-1 h-12 rounded-xl active:scale-95 transition-transform"
+                        disabled={createSubStageMutation.isPending || updateSubStageMutation.isPending}
+                      >
+                        {editingSubStageId ? "Update" : "Create"}
+                      </Button>
+                    </div>
                   </form>
                 </Form>
               </DialogContent>
@@ -596,25 +539,25 @@ export default function Admin() {
           </div>
 
           {subStages.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">No sub-stages found. Create one to get started.</div>
+            <div className="text-center py-6 text-sm text-muted-foreground">No sub-stages found.</div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-4">
               {stages.map((stage: any) => {
                 const stageSubStages = subStages.filter((ss: any) => ss.stageId === stage.id);
                 if (stageSubStages.length === 0) return null;
                 
                 return (
                   <div key={stage.id} className="space-y-2">
-                    <h3 className="font-medium text-sm text-muted-foreground">{stage.name}</h3>
-                    <div className="space-y-2 pl-4">
+                    <h3 className="font-medium text-xs text-muted-foreground uppercase tracking-wider">{stage.name}</h3>
+                    <div className="space-y-2 pl-2">
                       {stageSubStages.map((subStage: any) => (
-                        <div key={subStage.id} className="flex items-center justify-between p-4 neo-card rounded-xl">
-                          <div className="flex items-center gap-4">
-                            <div className="w-6 h-6 rounded" style={{ backgroundColor: `rgba(0,0,0,${subStage.opacity / 100})` }} />
+                        <div key={subStage.id} className="flex items-center justify-between p-3 neo-card rounded-xl">
+                          <div className="flex items-center gap-3">
+                            <div className="w-5 h-5 rounded" style={{ backgroundColor: `rgba(0,0,0,${subStage.opacity / 100})` }} />
                             <div>
-                              <p className="font-medium">{subStage.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                Tag: {subStage.tag} | Opacity: {subStage.opacity}% | Order: {subStage.order}
+                              <p className="font-medium text-sm">{subStage.name}</p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {subStage.tag} | {subStage.opacity}%
                               </p>
                             </div>
                           </div>
@@ -622,6 +565,7 @@ export default function Admin() {
                             <Button
                               variant="outline"
                               size="icon"
+                              className="h-10 w-10 rounded-xl"
                               onClick={() => openEditSubStageDialog(subStage)}
                             >
                               <Edit className="w-4 h-4" />
@@ -629,6 +573,7 @@ export default function Admin() {
                             <Button
                               variant="destructive"
                               size="icon"
+                              className="h-10 w-10 rounded-xl"
                               onClick={() => deleteSubStageMutation.mutate(subStage.id)}
                               disabled={deleteSubStageMutation.isPending}
                             >

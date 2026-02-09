@@ -56,7 +56,7 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
       <div
         ref={setNodeRef}
         style={style}
-        className="opacity-30 bg-primary/10 border-2 border-primary border-dashed rounded-xl h-[120px]"
+        className="opacity-30 bg-primary/10 border-2 border-primary border-dashed rounded-xl h-[100px]"
       />
     );
   }
@@ -65,16 +65,15 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
     <div ref={setNodeRef} style={style}>
       <Card
         onClick={(e) => {
-          // Don't trigger onClick when clicking on inline editor
-          if ((e.target as HTMLElement).closest('.inline-editor')) {
-            return;
-          }
+          if ((e.target as HTMLElement).closest('.inline-editor')) return;
+          if ((e.target as HTMLElement).closest('.drag-handle')) return;
+          // Haptic feedback on tap
+          if ('vibrate' in navigator) navigator.vibrate(5);
           onClick(task);
         }}
         {...attributes}
-        {...listeners}
         className={cn(
-          "group relative cursor-pointer transition-all duration-300 active:scale-[0.97]",
+          "group relative cursor-pointer transition-all duration-200 active:scale-[0.97]",
           stageColor && "border-2",
           isOverdue && "opacity-90 saturate-75",
           isDueToday && "ring-2 ring-yellow-500/30"
@@ -86,8 +85,17 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
           borderWidth: priorityStyle.borderWidth,
         }}
       >
-        <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
-          <CardTitle className="text-base font-semibold leading-tight pr-6 inline-editor">
+        {/* Drag handle - always visible on mobile, touch-action: none so drag works */}
+        <div 
+          className="drag-handle absolute top-0 right-0 p-3 cursor-grab active:cursor-grabbing z-10"
+          style={{ touchAction: 'none' }}
+          {...listeners}
+        >
+          <GripVertical className="h-5 w-5 text-muted-foreground/50" />
+        </div>
+
+        <CardHeader className="p-3 pb-1">
+          <CardTitle className="text-sm font-semibold leading-tight pr-8 inline-editor">
             <InlineTaskEditor
               task={task}
               field="title"
@@ -95,45 +103,44 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
               className="w-full"
             />
           </CardTitle>
-          <GripVertical className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 absolute top-4 right-3 transition-opacity" />
         </CardHeader>
-        <CardContent className="p-4 pt-2">
-          <div className="inline-editor mb-3">
+        <CardContent className="p-3 pt-1">
+          <div className="inline-editor mb-2">
             <InlineTaskEditor
               task={task}
               field="description"
               onSave={onInlineEdit}
-              className="text-sm text-muted-foreground"
+              className="text-xs text-muted-foreground"
             />
           </div>
           
-          {/* Priority and Effort indicators */}
-          <div className="flex items-center gap-2 mb-3 flex-wrap">
+          {/* Priority and Effort - compact row */}
+          <div className="flex items-center gap-1.5 mb-2 flex-wrap">
             {task.priority && task.priority !== "normal" && (
               <Badge 
                 variant="outline" 
                 className={cn(
-                  "text-xs font-normal",
-                  priority === "high" && "border-orange-500/50 text-orange-600 dark:text-orange-400",
-                  priority === "critical" && "border-red-500/50 text-red-600 dark:text-red-400"
+                  "text-[10px] font-normal px-1.5 py-0 touch-target-sm min-h-0 min-w-0 h-5",
+                  priority === "high" && "border-orange-500/50 text-orange-600",
+                  priority === "critical" && "border-red-500/50 text-red-600"
                 )}
               >
                 {priority}
               </Badge>
             )}
             {task.effort && (
-              <Badge variant="secondary" className="text-xs font-normal">
-                {task.effort}/5 effort
+              <Badge variant="secondary" className="text-[10px] font-normal px-1.5 py-0 touch-target-sm min-h-0 min-w-0 h-5">
+                {task.effort}/5
               </Badge>
             )}
           </div>
 
-          {/* Due date and overdue indicator */}
+          {/* Due date */}
           {dueDate && (
             <div className={cn(
-              "flex items-center gap-1.5 mb-3 text-xs",
-              isOverdue && "text-red-600 dark:text-red-400 font-medium",
-              isDueToday && "text-yellow-600 dark:text-yellow-400 font-medium",
+              "flex items-center gap-1 mb-2 text-[11px]",
+              isOverdue && "text-red-600 font-medium",
+              isDueToday && "text-yellow-600 font-medium",
               !isOverdue && !isDueToday && "text-muted-foreground"
             )}>
               {isOverdue && <AlertCircle className="h-3 w-3" />}
@@ -144,26 +151,27 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
 
           {/* Tags */}
           {task.tags && task.tags.length > 0 && (
-            <div className="flex items-center gap-1 mb-3 flex-wrap">
-              {task.tags.slice(0, 3).map((tag, idx) => (
-                <Badge key={idx} variant="outline" className="text-[10px] px-1.5 py-0">
+            <div className="flex items-center gap-1 mb-2 flex-wrap">
+              {task.tags.slice(0, 3).map((tag: string, idx: number) => (
+                <Badge key={idx} variant="outline" className="text-[9px] px-1 py-0 touch-target-sm min-h-0 min-w-0 h-4">
                   {tag}
                 </Badge>
               ))}
               {task.tags.length > 3 && (
-                <span className="text-[10px] text-muted-foreground">+{task.tags.length - 3}</span>
+                <span className="text-[9px] text-muted-foreground">+{task.tags.length - 3}</span>
               )}
             </div>
           )}
 
-          <div className="flex items-center justify-between mt-auto">
+          {/* Footer */}
+          <div className="flex items-center justify-between mt-1">
             <Badge 
               variant="secondary" 
-              className="text-xs font-normal bg-secondary/50 text-secondary-foreground/80"
+              className="text-[10px] font-normal bg-secondary/50 text-secondary-foreground/80 px-1.5 py-0 touch-target-sm min-h-0 min-w-0 h-5"
             >
               #{task.id}
             </Badge>
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-[9px] text-muted-foreground">
               {new Date(task.createdAt || new Date()).toLocaleDateString()}
             </span>
           </div>

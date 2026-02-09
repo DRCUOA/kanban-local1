@@ -72,17 +72,20 @@ export function InlineTaskEditor({
           e.stopPropagation();
           setIsEditing(true);
         }}
+        onTouchStart={(e) => {
+          // Prevent drag when tapping to edit
+          e.stopPropagation();
+        }}
         onMouseDown={(e) => {
-          // Prevent drag when clicking to edit
           e.stopPropagation();
         }}
         className={cn(
-          "cursor-text hover:bg-muted/30 rounded px-1 py-0.5 -mx-1 -my-0.5 transition-colors",
+          "cursor-text active:bg-muted/30 rounded px-1 py-1 -mx-1 -my-0.5 transition-colors",
           isEmpty && "text-muted-foreground italic",
           className
         )}
       >
-        {isEmpty ? `Click to add ${field}...` : displayValue}
+        {isEmpty ? `Tap to add ${field}...` : displayValue}
       </div>
     );
   }
@@ -96,9 +99,10 @@ export function InlineTaskEditor({
         onBlur={handleSave}
         onKeyDown={handleKeyDown}
         onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          "w-full resize-none border-none outline-none bg-transparent",
+          "w-full resize-none border-none outline-none bg-transparent text-base",
           className
         )}
         rows={3}
@@ -116,9 +120,10 @@ export function InlineTaskEditor({
       onBlur={handleSave}
       onKeyDown={handleKeyDown}
       onMouseDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
       className={cn(
-        "w-full border-none outline-none bg-transparent",
+        "w-full border-none outline-none bg-transparent text-base",
         className
       )}
       placeholder={`Enter ${field}...`}

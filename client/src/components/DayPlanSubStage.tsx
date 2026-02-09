@@ -12,7 +12,7 @@ interface DayPlanSubStageProps {
     name: string;
     tag: string;
     bgClass: string;
-    opacity: number; // Opacity level (0.2, 0.4, 0.6) - not used for color adjustment
+    opacity: number;
   };
   tasks: Task[];
   stageColor: string;
@@ -28,7 +28,6 @@ export function DayPlanSubStage({
   viewMode,
   onTaskClick,
 }: DayPlanSubStageProps) {
-  // Generate unique ID for this sub-stage using stageId and tag
   const subStageId = `${stageId}-${subStage.tag}`;
   
   const { setNodeRef, isOver } = useDroppable({
@@ -39,23 +38,22 @@ export function DayPlanSubStage({
     },
   });
 
-  // Use stage color directly without tone adjustment
   const displayStageColor = stageColor || "#3B82F6";
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col gap-2 p-3 rounded-2xl transition-colors min-h-[80px]",
+        "flex flex-col gap-2 p-2.5 rounded-xl transition-colors min-h-[60px]",
         subStage.bgClass,
         isOver && "ring-2 ring-primary/50"
       )}
     >
-      <div className="flex items-center justify-between mb-2 px-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="flex items-center justify-between mb-1 px-1">
+        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           {subStage.name}
         </h3>
-        <Badge variant="secondary" className="text-[10px] font-mono px-1.5 py-0.5">
+        <Badge variant="secondary" className="text-[9px] font-mono px-1 py-0 touch-target-sm min-h-0 min-w-0 h-4">
           {tasks.length}
         </Badge>
       </div>
@@ -66,7 +64,7 @@ export function DayPlanSubStage({
         strategy={verticalListSortingStrategy}
       >
         {viewMode === "detail" ? (
-          <div className="flex flex-col gap-2 min-h-[60px]">
+          <div className="flex flex-col gap-2 min-h-[40px]">
             {tasks.length > 0 ? (
               tasks.map((task) => (
                 <TaskCard
@@ -74,19 +72,17 @@ export function DayPlanSubStage({
                   task={task}
                   onClick={onTaskClick}
                   stageColor={displayStageColor}
-                  onInlineEdit={() => {
-                    // Trigger refetch if needed
-                  }}
+                  onInlineEdit={() => {}}
                 />
               ))
             ) : (
-              <div className="text-xs text-muted-foreground text-center py-4 opacity-50">
+              <div className="text-[10px] text-muted-foreground text-center py-3 opacity-50">
                 No tasks
               </div>
             )}
           </div>
         ) : (
-          <div className="flex flex-wrap gap-2 content-start min-h-[60px]">
+          <div className="flex flex-wrap gap-2 content-start min-h-[40px]">
             {tasks.length > 0 ? (
               tasks.map((task) => (
                 <TaskCardSummary
@@ -97,7 +93,7 @@ export function DayPlanSubStage({
                 />
               ))
             ) : (
-              <div className="text-xs text-muted-foreground text-center py-4 w-full opacity-50">
+              <div className="text-[10px] text-muted-foreground text-center py-3 w-full opacity-50">
                 No tasks
               </div>
             )}

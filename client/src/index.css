@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    /* Neomorphic color palette - darker silvery grays */
+    /* Mobile-optimized neomorphic color palette */
     --background: 0 0% 70%;
     --foreground: 220 10% 15%;
     --card: 0 0% 75%;
@@ -26,14 +26,13 @@
     --border: 0 0% 60%;
     --input: 0 0% 60%;
     --ring: 220 20% 40%;
-    --radius: 3rem;
+    --radius: 1rem;
 
     --font-sans: 'Inter', sans-serif;
     --font-display: 'Space Grotesk', sans-serif;
   }
 
   .dark {
-    /* Dark neomorphic palette */
     --background: 220 15% 18%;
     --foreground: 220 10% 85%;
     --card: 220 15% 18%;
@@ -59,188 +58,226 @@
 @layer base {
   * {
     @apply border-border;
+    -webkit-tap-highlight-color: transparent;
   }
+
+  html {
+    /* Prevent horizontal scroll on mobile */
+    overflow-x: hidden;
+    /* Smooth scrolling for iOS */
+    -webkit-overflow-scrolling: touch;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
     background: linear-gradient(135deg, #a8a8a8 0%, #909090 50%, #989898 100%);
+    /* Prevent pull-to-refresh interfering */
+    overscroll-behavior-y: contain;
+    /* Safe area for notch/home indicator */
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-top: env(safe-area-inset-top);
+    /* Prevent text size adjustment */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
-  
+
   .dark body {
     background: linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%);
   }
+
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
     @apply font-bold tracking-tight;
   }
+
+  /* Touch target helper - apply explicitly where needed */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .touch-target-sm {
+    min-height: 36px;
+    min-width: 36px;
+  }
 }
 
 @layer components {
-  /* Neomorphic raised effect - elements appear to extrude from background */
+  /* Mobile-optimized neomorphic raised effect - smaller shadows */
   .neo-raised {
     background: hsl(var(--card));
     border-radius: var(--radius);
     box-shadow: 
-      8px 8px 16px rgba(0, 0, 0, 0.1),
-      -8px -8px 16px rgba(255, 255, 255, 0.3);
+      4px 4px 8px rgba(0, 0, 0, 0.08),
+      -4px -4px 8px rgba(255, 255, 255, 0.25);
   }
-  
+
   .dark .neo-raised {
     border-radius: var(--radius);
     box-shadow: 
-      8px 8px 16px rgba(0, 0, 0, 0.3),
-      -8px -8px 16px rgba(255, 255, 255, 0.05);
+      4px 4px 8px rgba(0, 0, 0, 0.25),
+      -4px -4px 8px rgba(255, 255, 255, 0.04);
   }
 
-  /* Neomorphic pressed/inset effect */
+  /* Mobile-optimized pressed/inset effect */
   .neo-pressed {
     background: hsl(var(--card));
     border-radius: var(--radius);
     box-shadow: 
-      inset 4px 4px 8px rgba(0, 0, 0, 0.1),
-      inset -4px -4px 8px rgba(255, 255, 255, 0.3);
+      inset 2px 2px 4px rgba(0, 0, 0, 0.08),
+      inset -2px -2px 4px rgba(255, 255, 255, 0.25);
   }
-  
+
   .dark .neo-pressed {
     border-radius: var(--radius);
     box-shadow: 
-      inset 4px 4px 8px rgba(0, 0, 0, 0.3),
-      inset -4px -4px 8px rgba(255, 255, 255, 0.05);
+      inset 2px 2px 4px rgba(0, 0, 0, 0.25),
+      inset -2px -2px 4px rgba(255, 255, 255, 0.04);
   }
 
-  /* Neomorphic card hover effect */
+  /* Mobile card - uses active state instead of hover */
   .neo-card {
-    @apply neo-raised transition-all duration-300;
-  }
-  
-  .neo-card:hover {
-    border-radius: var(--radius);
-    box-shadow: 
-      12px 12px 24px rgba(0, 0, 0, 0.12),
-      -12px -12px 24px rgba(255, 255, 255, 0.4);
-  }
-  
-  .dark .neo-card:hover {
-    border-radius: var(--radius);
-    box-shadow: 
-      12px 12px 24px rgba(0, 0, 0, 0.4),
-      -12px -12px 24px rgba(255, 255, 255, 0.08);
+    @apply neo-raised transition-all duration-200;
   }
 
-  /* Beveled circular button effect - high at circumference, low at center */
+  .neo-card:active {
+    border-radius: var(--radius);
+    box-shadow: 
+      2px 2px 4px rgba(0, 0, 0, 0.06),
+      -2px -2px 4px rgba(255, 255, 255, 0.2);
+    transform: scale(0.98);
+  }
+
+  .dark .neo-card:active {
+    border-radius: var(--radius);
+    box-shadow: 
+      2px 2px 4px rgba(0, 0, 0, 0.2),
+      -2px -2px 4px rgba(255, 255, 255, 0.03);
+    transform: scale(0.98);
+  }
+
+  /* Mobile beveled circle - touch-optimized */
   .neo-beveled-circle {
     position: relative;
     background: hsl(var(--card));
     border-radius: 50%;
     box-shadow: 
-      /* Outer raised edge */
-      0 6px 12px rgba(0, 0, 0, 0.15),
-      0 -3px 6px rgba(255, 255, 255, 0.3),
-      /* Inner pressed center */
-      inset 0 0 20px rgba(0, 0, 0, 0.2),
-      inset 0 0 10px rgba(0, 0, 0, 0.1),
-      /* Subtle edge highlight */
-      0 0 0 1px rgba(0, 0, 0, 0.05);
+      0 3px 6px rgba(0, 0, 0, 0.12),
+      0 -2px 4px rgba(255, 255, 255, 0.25),
+      inset 0 0 12px rgba(0, 0, 0, 0.15),
+      inset 0 0 6px rgba(0, 0, 0, 0.08);
   }
-  
-  .neo-beveled-circle:hover {
-    box-shadow: 
-      0 8px 16px rgba(0, 0, 0, 0.18),
-      0 -4px 8px rgba(255, 255, 255, 0.35),
-      inset 0 0 20px rgba(0, 0, 0, 0.2),
-      inset 0 0 10px rgba(0, 0, 0, 0.1),
-      0 0 0 1px rgba(0, 0, 0, 0.05);
-  }
-  
+
   .neo-beveled-circle:active {
     box-shadow: 
-      inset 0 4px 8px rgba(0, 0, 0, 0.25),
-      inset 0 2px 4px rgba(0, 0, 0, 0.15),
-      inset 0 -2px 4px rgba(255, 255, 255, 0.1),
-      0 2px 4px rgba(0, 0, 0, 0.1);
+      inset 0 2px 4px rgba(0, 0, 0, 0.2),
+      inset 0 1px 2px rgba(0, 0, 0, 0.12),
+      inset 0 -1px 2px rgba(255, 255, 255, 0.08),
+      0 1px 2px rgba(0, 0, 0, 0.08);
+    transform: scale(0.95);
   }
-  
+
   .dark .neo-beveled-circle {
     box-shadow: 
-      0 6px 12px rgba(0, 0, 0, 0.4),
-      0 -3px 6px rgba(255, 255, 255, 0.05),
-      inset 0 0 20px rgba(0, 0, 0, 0.5),
-      inset 0 0 10px rgba(0, 0, 0, 0.3),
-      0 0 0 1px rgba(0, 0, 0, 0.2);
+      0 3px 6px rgba(0, 0, 0, 0.35),
+      0 -2px 4px rgba(255, 255, 255, 0.04),
+      inset 0 0 12px rgba(0, 0, 0, 0.4),
+      inset 0 0 6px rgba(0, 0, 0, 0.25);
   }
-  
-  .dark .neo-beveled-circle:hover {
-    box-shadow: 
-      0 8px 16px rgba(0, 0, 0, 0.5),
-      0 -4px 8px rgba(255, 255, 255, 0.08),
-      inset 0 0 20px rgba(0, 0, 0, 0.5),
-      inset 0 0 10px rgba(0, 0, 0, 0.3),
-      0 0 0 1px rgba(0, 0, 0, 0.2);
-  }
-  
+
   .dark .neo-beveled-circle:active {
     box-shadow: 
-      inset 0 4px 8px rgba(0, 0, 0, 0.6),
-      inset 0 2px 4px rgba(0, 0, 0, 0.4),
-      inset 0 -2px 4px rgba(255, 255, 255, 0.05),
-      0 2px 4px rgba(0, 0, 0, 0.3);
+      inset 0 2px 4px rgba(0, 0, 0, 0.5),
+      inset 0 1px 2px rgba(0, 0, 0, 0.35),
+      inset 0 -1px 2px rgba(255, 255, 255, 0.03),
+      0 1px 2px rgba(0, 0, 0, 0.25);
+    transform: scale(0.95);
   }
 
-  /* Beveled circle with colored gradient - maintains beveled effect */
+  /* Beveled circle colored - mobile touch */
   .neo-beveled-circle-colored {
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
   }
-  
-  .neo-beveled-circle-colored:hover {
-    box-shadow: 
-      0 8px 16px rgba(0, 0, 0, 0.25),
-      0 -4px 8px rgba(255, 255, 255, 0.35),
-      inset 0 0 25px rgba(0, 0, 0, 0.25),
-      inset 0 0 12px rgba(0, 0, 0, 0.15),
-      0 0 0 1px rgba(0, 0, 0, 0.08);
-  }
-  
+
   .neo-beveled-circle-colored:active {
     box-shadow: 
-      inset 0 4px 8px rgba(0, 0, 0, 0.3),
-      inset 0 2px 4px rgba(0, 0, 0, 0.2),
-      inset 0 -2px 4px rgba(255, 255, 255, 0.1),
-      0 2px 4px rgba(0, 0, 0, 0.15);
+      inset 0 2px 4px rgba(0, 0, 0, 0.25),
+      inset 0 1px 2px rgba(0, 0, 0, 0.15),
+      inset 0 -1px 2px rgba(255, 255, 255, 0.08),
+      0 1px 2px rgba(0, 0, 0, 0.12);
+    transform: scale(0.92);
   }
 
-  /* Neomorphic button */
+  /* Mobile button */
   .neo-button {
-    @apply neo-raised transition-all duration-200;
+    @apply neo-raised transition-all duration-150;
   }
-  
+
   .neo-button:active {
     @apply neo-pressed;
+    transform: scale(0.97);
   }
 
-  /* Neomorphic input */
+  /* Mobile input */
   .neo-input {
     @apply neo-pressed;
   }
-  
+
   .neo-input:focus {
     @apply neo-raised;
     outline: none;
   }
 
-  /* Neomorphic container */
+  /* Mobile container */
   .neo-container {
     @apply neo-raised;
   }
+
+  /* Mobile bottom navigation bar */
+  .mobile-bottom-nav {
+    @apply fixed bottom-0 left-0 right-0 z-50 neo-raised;
+    padding-bottom: env(safe-area-inset-bottom);
+    border-radius: 1rem 1rem 0 0;
+    box-shadow: 
+      0 -2px 8px rgba(0, 0, 0, 0.1),
+      0 -1px 3px rgba(0, 0, 0, 0.06);
+  }
+
+  .dark .mobile-bottom-nav {
+    box-shadow: 
+      0 -2px 8px rgba(0, 0, 0, 0.3),
+      0 -1px 3px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Scrollable tabs container */
+  .scroll-tabs {
+    @apply flex gap-2 overflow-x-auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scroll-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Full-screen mobile sheet */
+  .mobile-sheet {
+    @apply fixed inset-0 z-50 bg-background;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
-/* Custom Scrollbar */
+/* Hide scrollbars on mobile - use momentum scrolling */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 0;
+  height: 0;
+  display: none;
 }
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/40 transition-colors;
+
+/* Smooth scroll containers */
+.scroll-container {
+  -webkit-overflow-scrolling: touch;
 }

@@ -42,21 +42,21 @@ export function TaskHistoryModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="neo-container max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold">
+      <DialogContent className="max-w-full h-full max-h-full rounded-none m-0 flex flex-col">
+        <DialogHeader className="flex-shrink-0">
+          <DialogTitle className="text-lg leading-tight pr-8">
             History: {task.title}
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 mt-4">
+        <div className="flex-1 overflow-y-auto scroll-container space-y-3 mt-3">
           {/* Created */}
           <div className="flex items-start gap-3 pb-3 border-b border-border/50">
-            <div className="mt-1">
+            <div className="mt-0.5">
               <Circle className="h-4 w-4 text-muted-foreground" />
             </div>
             <div className="flex-1">
               <div className="font-medium text-sm">Task Created</div>
-              <div className="text-xs text-muted-foreground mt-1">
+              <div className="text-[11px] text-muted-foreground mt-0.5">
                 {format(createdDate, "PPpp")}
               </div>
             </div>
@@ -78,7 +78,7 @@ export function TaskHistoryModal({
                   key={index}
                   className="flex items-start gap-3 pb-3 border-b border-border/50 last:border-0"
                 >
-                  <div className="mt-1">
+                  <div className="mt-0.5">
                     <StatusIcon className="h-4 w-4 text-primary" />
                   </div>
                   <div className="flex-1">
@@ -86,11 +86,11 @@ export function TaskHistoryModal({
                       Moved to {statusLabel}
                     </div>
                     {entry.note && (
-                      <div className="text-xs text-muted-foreground mt-1">
+                      <div className="text-[11px] text-muted-foreground mt-0.5">
                         {entry.note}
                       </div>
                     )}
-                    <div className="text-xs text-muted-foreground mt-1">
+                    <div className="text-[11px] text-muted-foreground mt-0.5">
                       {format(entryDate, "PPpp")}
                     </div>
                   </div>
@@ -99,16 +99,16 @@ export function TaskHistoryModal({
             })
           )}
 
-          {/* Current status */}
+          {/* Current status if archived */}
           {task.archived && (
             <div className="flex items-start gap-3 pt-3 border-t border-border/50">
-              <div className="mt-1">
+              <div className="mt-0.5">
                 <Archive className="h-4 w-4 text-muted-foreground" />
               </div>
               <div className="flex-1">
                 <div className="font-medium text-sm">Currently Archived</div>
                 {task.updatedAt && (
-                  <div className="text-xs text-muted-foreground mt-1">
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
                     {format(new Date(task.updatedAt), "PPpp")}
                   </div>
                 )}
