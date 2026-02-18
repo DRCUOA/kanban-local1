@@ -1,0 +1,6 @@
+# rest-express: Express API server with Vite dev middleware
+name = rest-express
+
+[server]
+cmd  = npm run dev
+port = 4000
