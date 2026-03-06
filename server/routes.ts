@@ -92,6 +92,35 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
+  app.get(api.tasks.archived.path, async (_req, res) => {
+    const archivedTasks = await storage.getArchivedTasks();
+    res.json(archivedTasks);
+  });
+
+  app.post(api.tasks.archive.path, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Invalid ID" });
+    }
+    const task = await storage.archiveTask(id);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+    res.json(task);
+  });
+
+  app.post(api.tasks.unarchive.path, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Invalid ID" });
+    }
+    const task = await storage.unarchiveTask(id);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+    res.json(task);
+  });
+
   // Stage endpoints
   app.get(api.stages.list.path, async (_req, res) => {
     const allStages = await storage.getStages();
