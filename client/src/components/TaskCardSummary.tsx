@@ -2,14 +2,17 @@ import { Task } from "@shared/schema";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { GripVertical } from "lucide-react";
 
 interface TaskCardSummaryProps {
   task: Task;
   onClick: (task: Task) => void;
   stageColor?: string;
+  isInProgress?: boolean;
 }
 
-export function TaskCardSummary({ task, onClick, stageColor }: TaskCardSummaryProps) {
+export function TaskCardSummary({ task, onClick, stageColor, isInProgress = false }: TaskCardSummaryProps) {
   const {
     attributes,
     listeners,
@@ -29,14 +32,6 @@ export function TaskCardSummary({ task, onClick, stageColor }: TaskCardSummaryPr
     transform: CSS.Transform.toString(transform),
     transition,
   };
-
-  // Truncate title to fit in circle
-  const words = task.title.split(" ");
-  const shortTitle = words.length > 2 
-    ? words.slice(0, 2).join(" ") + "..."
-    : task.title.length > 12
-    ? task.title.substring(0, 12) + "..."
-    : task.title;
 
   // Create beveled gradient background
   const getGradientStyle = (color: string): React.CSSProperties => {
@@ -82,34 +77,95 @@ export function TaskCardSummary({ task, onClick, stageColor }: TaskCardSummaryPr
     return (
       <div
         ref={setNodeRef}
-        style={{ ...style, ...dragStyle, opacity: 0.5 }}
-        className="w-[72px] h-[72px] rounded-full border-2 border-dashed"
+        style={{ ...style, ...(isInProgress ? {} : dragStyle), opacity: 0.5 }}
+        className={cn(
+          "border-2 border-dashed",
+          isInProgress ? "w-full min-h-[72px] rounded-xl" : "w-[84px] h-[84px] rounded-full"
+        )}
       />
     );
   }
 
-  const containerStyle = stageColor 
+  const containerStyle = stageColor && !isInProgress
     ? { ...style, ...getGradientStyle(stageColor) }
     : style;
 
-  return (
-    <div 
-      ref={setNodeRef} 
-      style={{ ...containerStyle, touchAction: 'none' }} 
-      {...attributes} 
+  const triggerContent = isInProgress ? (
+    <div
+      ref={setNodeRef}
+      role="button"
+      tabIndex={0}
+      style={{
+        ...style,
+        touchAction: 'none',
+        ...(stageColor ? { borderColor: stageColor, borderWidth: '2px' } : {}),
+      }}
+      {...attributes}
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest('.drag-handle')) return;
+        handleClick();
+      }}
+      onTouchStart={triggerHapticFeedback}
+      className={cn(
+        "w-full min-h-[72px] rounded-xl flex items-start gap-2 p-3 cursor-pointer transition-transform duration-200 ease-out border-2",
+        "active:scale-[0.98] focus-visible:scale-[1.02] task-summary-magnify",
+        "neo-raised"
+      )}
+    >
+      <div
+        className="drag-handle flex-shrink-0 p-1 cursor-grab active:cursor-grabbing"
+        style={{ touchAction: 'none' }}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4 text-muted-foreground/50" />
+      </div>
+      <div className="flex-1 min-w-0 flex flex-col justify-center pr-2">
+        <p className="text-base font-semibold leading-tight text-foreground line-clamp-2">
+          {task.title}
+        </p>
+        <span className="text-xs text-muted-foreground mt-0.5">#{task.id}</span>
+      </div>
+    </div>
+  ) : (
+    <div
+      ref={setNodeRef}
+      role="button"
+      tabIndex={0}
+      style={{ ...containerStyle, touchAction: 'none' }}
+      {...attributes}
       {...listeners}
       onClick={handleClick}
       onTouchStart={triggerHapticFeedback}
       className={cn(
-        "w-[72px] h-[72px] rounded-full flex items-center justify-center cursor-pointer transition-all duration-200",
-        "active:scale-[0.88]",
+        "w-[84px] h-[84px] rounded-full flex items-center justify-center cursor-pointer transition-transform duration-200 ease-out",
+        "active:scale-[0.88] focus-visible:scale-[1.03] task-summary-magnify",
         stageColor ? "neo-beveled-circle-colored" : "neo-beveled-circle"
       )}
       title={task.title}
     >
-      <span className="text-[9px] font-semibold text-foreground text-center px-1 leading-tight break-words relative z-10">
-        {shortTitle}
+      <span className="text-base font-semibold text-foreground text-center relative z-10">
+        {task.id}
       </span>
     </div>
+  );
+
+  return (
+    <HoverCard openDelay={300}>
+      <HoverCardTrigger asChild>
+        {triggerContent}
+      </HoverCardTrigger>
+      <HoverCardContent>
+        <div className="space-y-2">
+          <p className="text-base font-semibold leading-tight text-foreground">
+            {task.title}
+          </p>
+          {task.description && (
+            <p className="text-sm text-muted-foreground line-clamp-2">
+              {task.description}
+            </p>
+          )}
+        </div>
+      </HoverCardContent>
+    </HoverCard>
   );
 }

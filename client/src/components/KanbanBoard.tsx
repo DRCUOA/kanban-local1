@@ -7,6 +7,7 @@ import {
   DragOverlay, 
   closestCenter, 
   pointerWithin,
+  rectIntersection,
   CollisionDetection,
   MouseSensor,
   TouchSensor,
@@ -26,6 +27,7 @@ import { TaskCardSummary } from "./TaskCardSummary";
 import { ArchiveZone } from "./ArchiveZone";
 import { DayPlanSubStage } from "./DayPlanSubStage";
 import { useUpdateTask, useArchiveTask } from "@/hooks/use-tasks";
+import { cn } from "@/lib/utils";
 
 interface KanbanBoardProps {
   tasks: Task[];
@@ -83,15 +85,26 @@ export function KanbanBoard({ tasks, onTaskClick, viewMode = "detail", focusMode
     setActiveTasks(tasks);
   }, [tasks]);
 
-  // Custom collision detection: use pointerWithin first (works for empty columns),
-  // fall back to closestCenter (works for reordering within columns)
+  // Custom collision detection: prioritize archive zone (rectIntersection),
+  // then pointerWithin for columns, fall back to closestCenter for reordering
   const collisionDetection: CollisionDetection = (args) => {
-    // First check if the pointer is within any droppable (catches empty columns)
+    const { droppableContainers } = args;
+    const archiveContainers = droppableContainers.filter(
+      (c) => c.id === "archive" || String(c.id) === "archive"
+    );
+    if (archiveContainers.length > 0) {
+      const archiveCollisions = rectIntersection({
+        ...args,
+        droppableContainers: archiveContainers,
+      });
+      if (archiveCollisions.length > 0) {
+        return archiveCollisions;
+      }
+    }
     const pointerCollisions = pointerWithin(args);
     if (pointerCollisions.length > 0) {
       return pointerCollisions;
     }
-    // Fall back to closestCenter for edge cases
     return closestCenter(args);
   };
 
@@ -293,6 +306,7 @@ export function KanbanBoard({ tasks, onTaskClick, viewMode = "detail", focusMode
                             <DayPlanSubStage
                               key={subStage.tag}
                               stageId={stage.id}
+                              stageName={stage.name}
                               subStage={subStage}
                               tasks={finalTasks}
                               stageColor={stageColor}
@@ -305,6 +319,11 @@ export function KanbanBoard({ tasks, onTaskClick, viewMode = "detail", focusMode
                     );
                   }
                   
+                  const isInProgressStage = (name: string) => {
+                    const n = name.toLowerCase();
+                    return n.includes("progress") || n.includes("doing") || n.includes("active");
+                  };
+                  const inProgress = isInProgressStage(stage.name);
                   return viewMode === "detail" ? (
                     <div className="flex flex-col gap-2 min-h-[60px]">
                       {stageTasks.map((task) => (
@@ -312,9 +331,12 @@ export function KanbanBoard({ tasks, onTaskClick, viewMode = "detail", focusMode
                       ))}
                     </div>
                   ) : (
-                    <div className="flex flex-wrap gap-2 min-h-[60px] content-start">
+                    <div className={cn(
+                      "min-h-[60px] gap-2",
+                      inProgress ? "flex flex-col" : "flex flex-wrap content-start"
+                    )}>
                       {stageTasks.map((task) => (
-                        <TaskCardSummary key={task.id} task={task} onClick={onTaskClick} stageColor={stageColor} />
+                        <TaskCardSummary key={task.id} task={task} onClick={onTaskClick} stageColor={stageColor} isInProgress={inProgress} />
                       ))}
                     </div>
                   );
@@ -332,12 +354,18 @@ export function KanbanBoard({ tasks, onTaskClick, viewMode = "detail", focusMode
           const activeTask = activeTasks.find(t => t.id === activeId);
           if (!activeTask) return null;
           const activeStageColor = stageColorMap.get(activeTask.stageId) || defaultStageColors[0];
+          const activeStage = sortedStages.find((s: any) => s.id === activeTask.stageId);
+          const activeStageName = activeStage?.name ?? "";
+          const isInProgressStage = (name: string) => {
+            const n = name.toLowerCase();
+            return n.includes("progress") || n.includes("doing") || n.includes("active");
+          };
           return (
             <div className="opacity-80 rotate-1 cursor-grabbing">
               {viewMode === "detail" ? (
                 <TaskCard task={activeTask} onClick={() => {}} stageColor={activeStageColor} />
               ) : (
-                <TaskCardSummary task={activeTask} onClick={() => {}} stageColor={activeStageColor} />
+                <TaskCardSummary task={activeTask} onClick={() => {}} stageColor={activeStageColor} isInProgress={isInProgressStage(activeStageName)} />
               )}
             </div>
           );

@@ -64,6 +64,7 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
   return (
     <div ref={setNodeRef} style={style}>
       <Card
+        tabIndex={0}
         onClick={(e) => {
           if ((e.target as HTMLElement).closest('.inline-editor')) return;
           if ((e.target as HTMLElement).closest('.drag-handle')) return;
@@ -73,7 +74,7 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
         }}
         {...attributes}
         className={cn(
-          "group relative cursor-pointer transition-all duration-200 active:scale-[0.97]",
+          "group relative cursor-pointer transition-transform duration-200 ease-out active:scale-[0.97] focus-visible:scale-[1.03] task-card-magnify",
           stageColor && "border-2",
           isOverdue && "opacity-90 saturate-75",
           isDueToday && "ring-2 ring-yellow-500/30"
@@ -95,7 +96,7 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
         </div>
 
         <CardHeader className="p-3 pb-1">
-          <CardTitle className="text-sm font-semibold leading-tight pr-8 inline-editor">
+          <CardTitle className="text-base font-semibold leading-tight pr-8 inline-editor">
             <InlineTaskEditor
               task={task}
               field="title"
@@ -110,7 +111,7 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
               task={task}
               field="description"
               onSave={onInlineEdit}
-              className="text-xs text-muted-foreground"
+              className="text-sm text-muted-foreground"
             />
           </div>
           
@@ -120,7 +121,7 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
               <Badge 
                 variant="outline" 
                 className={cn(
-                  "text-[10px] font-normal px-1.5 py-0 touch-target-sm min-h-0 min-w-0 h-5",
+                  "text-xs font-normal px-1.5 py-0 touch-target-sm min-h-0 min-w-0 h-5",
                   priority === "high" && "border-orange-500/50 text-orange-600",
                   priority === "critical" && "border-red-500/50 text-red-600"
                 )}
@@ -129,7 +130,7 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
               </Badge>
             )}
             {task.effort && (
-              <Badge variant="secondary" className="text-[10px] font-normal px-1.5 py-0 touch-target-sm min-h-0 min-w-0 h-5">
+              <Badge variant="secondary" className="text-xs font-normal px-1.5 py-0 touch-target-sm min-h-0 min-w-0 h-5">
                 {task.effort}/5
               </Badge>
             )}
@@ -138,7 +139,7 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
           {/* Due date */}
           {dueDate && (
             <div className={cn(
-              "flex items-center gap-1 mb-2 text-[11px]",
+              "flex items-center gap-1 mb-2 text-xs",
               isOverdue && "text-red-600 font-medium",
               isDueToday && "text-yellow-600 font-medium",
               !isOverdue && !isDueToday && "text-muted-foreground"
@@ -153,12 +154,12 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
           {task.tags && task.tags.length > 0 && (
             <div className="flex items-center gap-1 mb-2 flex-wrap">
               {task.tags.slice(0, 3).map((tag: string, idx: number) => (
-                <Badge key={idx} variant="outline" className="text-[9px] px-1 py-0 touch-target-sm min-h-0 min-w-0 h-4">
+                <Badge key={idx} variant="outline" className="text-xs px-1 py-0 touch-target-sm min-h-0 min-w-0 h-4">
                   {tag}
                 </Badge>
               ))}
               {task.tags.length > 3 && (
-                <span className="text-[9px] text-muted-foreground">+{task.tags.length - 3}</span>
+                <span className="text-xs text-muted-foreground">+{task.tags.length - 3}</span>
               )}
             </div>
           )}
@@ -167,11 +168,11 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
           <div className="flex items-center justify-between mt-1">
             <Badge 
               variant="secondary" 
-              className="text-[10px] font-normal bg-secondary/50 text-secondary-foreground/80 px-1.5 py-0 touch-target-sm min-h-0 min-w-0 h-5"
+              className="text-xs font-normal bg-secondary/50 text-secondary-foreground/80 px-1.5 py-0 touch-target-sm min-h-0 min-w-0 h-5"
             >
               #{task.id}
             </Badge>
-            <span className="text-[9px] text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               {new Date(task.createdAt || new Date()).toLocaleDateString()}
             </span>
           </div>

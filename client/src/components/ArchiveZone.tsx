@@ -18,7 +18,7 @@ export function ArchiveZone({ isOver }: ArchiveZoneProps) {
     <div
       ref={setNodeRef}
       className={cn(
-        "w-full mt-3 p-4 rounded-xl transition-all duration-200 border-0 relative z-10",
+        "w-full mt-3 p-5 rounded-xl transition-all duration-200 border-0 relative z-20 min-h-[56px]",
         isOver
           ? "neo-pressed bg-destructive/10 ring-2 ring-destructive/50 scale-[1.02]"
           : "neo-raised"
@@ -26,11 +26,11 @@ export function ArchiveZone({ isOver }: ArchiveZoneProps) {
     >
       <div className="flex items-center justify-center gap-3">
         <Archive className={cn(
-          "h-5 w-5 transition-colors",
+          "h-6 w-6 transition-colors",
           isOver ? "text-destructive" : "text-muted-foreground"
         )} />
         <p className={cn(
-          "text-xs font-medium transition-colors",
+          "text-base font-semibold transition-colors",
           isOver ? "text-destructive" : "text-muted-foreground"
         )}>
           {isOver ? "Drop to archive" : "Drag here to archive"}
