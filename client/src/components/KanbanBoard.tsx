@@ -16,6 +16,7 @@ import {
   DragStartEvent,
   DragOverEvent,
   DragEndEvent,
+  MeasuringStrategy,
 } from "@dnd-kit/core";
 import { 
   SortableContext, 
@@ -85,20 +86,32 @@ export function KanbanBoard({ tasks, onTaskClick, viewMode = "detail", focusMode
     setActiveTasks(tasks);
   }, [tasks]);
 
-  // Custom collision detection: prioritize archive zone (rectIntersection),
-  // then pointerWithin for columns, fall back to closestCenter for reordering
+  // Custom collision detection: prioritize archive zone using both pointer-within
+  // and rect-intersection checks, then pointerWithin for columns, then closestCenter.
+  // Using pointerWithin first for archive ensures detection when the pointer is
+  // directly over the zone, regardless of scroll position or dragged element size.
   const collisionDetection: CollisionDetection = (args) => {
     const { droppableContainers } = args;
     const archiveContainers = droppableContainers.filter(
       (c) => c.id === "archive" || String(c.id) === "archive"
     );
     if (archiveContainers.length > 0) {
-      const archiveCollisions = rectIntersection({
+      // Check pointer position first — most reliable for archive zone detection
+      // across scroll containers and regardless of dragged element size.
+      const archivePointerCollisions = pointerWithin({
         ...args,
         droppableContainers: archiveContainers,
       });
-      if (archiveCollisions.length > 0) {
-        return archiveCollisions;
+      if (archivePointerCollisions.length > 0) {
+        return archivePointerCollisions;
+      }
+      // Fall back to rect intersection for archive zone (element overlap)
+      const archiveRectCollisions = rectIntersection({
+        ...args,
+        droppableContainers: archiveContainers,
+      });
+      if (archiveRectCollisions.length > 0) {
+        return archiveRectCollisions;
       }
     }
     const pointerCollisions = pointerWithin(args);
@@ -254,6 +267,11 @@ export function KanbanBoard({ tasks, onTaskClick, viewMode = "detail", focusMode
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
+      measuring={{
+        droppable: {
+          strategy: MeasuringStrategy.Always,
+        },
+      }}
     >
       {/* Mobile: vertical stack of full-width columns */}
       <div className="flex flex-col h-full gap-3 pb-4">
