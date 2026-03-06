@@ -72,15 +72,23 @@ export function TaskCardSummary({ task, onClick, stageColor, isInProgress = fals
     onClick(task);
   };
 
+  const effort = task.effort ?? 1;
+  const circleSizePx = 48 + effort * 12;
+  const circleFontSize = effort <= 2 ? 'text-sm' : effort <= 4 ? 'text-base' : 'text-lg';
+
   if (isDragging) {
     const dragStyle = stageColor ? getGradientStyle(stageColor) : {};
     return (
       <div
         ref={setNodeRef}
-        style={{ ...style, ...(isInProgress ? {} : dragStyle), opacity: 0.5 }}
+        style={{
+          ...style,
+          ...(isInProgress ? {} : { ...dragStyle, width: circleSizePx, height: circleSizePx }),
+          opacity: 0.5,
+        }}
         className={cn(
           "border-2 border-dashed",
-          isInProgress ? "w-full min-h-[72px] rounded-xl" : "w-[84px] h-[84px] rounded-full"
+          isInProgress ? "w-full min-h-[72px] rounded-xl" : "rounded-full"
         )}
       />
     );
@@ -131,19 +139,19 @@ export function TaskCardSummary({ task, onClick, stageColor, isInProgress = fals
       ref={setNodeRef}
       role="button"
       tabIndex={0}
-      style={{ ...containerStyle, touchAction: 'none' }}
+      style={{ ...containerStyle, touchAction: 'none', width: circleSizePx, height: circleSizePx }}
       {...attributes}
       {...listeners}
       onClick={handleClick}
       onTouchStart={triggerHapticFeedback}
       className={cn(
-        "w-[84px] h-[84px] rounded-full flex items-center justify-center cursor-pointer transition-transform duration-200 ease-out",
+        "rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 ease-out",
         "active:scale-[0.88] focus-visible:scale-[1.03] task-summary-magnify",
         stageColor ? "neo-beveled-circle-colored" : "neo-beveled-circle"
       )}
-      title={task.title}
+      title={`${task.title} (effort: ${effort}/5)`}
     >
-      <span className="text-base font-semibold text-foreground text-center relative z-10">
+      <span className={cn(circleFontSize, "font-semibold text-foreground text-center relative z-10")}>
         {task.id}
       </span>
     </div>
