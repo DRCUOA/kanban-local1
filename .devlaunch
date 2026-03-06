@@ -1,5 +1,5 @@
-# rest-express: Express API server with Vite dev middleware
-name = rest-express
+# kanban-local: Express API server with Vite dev middleware
+name = kanban-local
 
 [server]
 cmd  = npm run dev
