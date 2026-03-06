@@ -31,7 +31,7 @@ export function TaskColumn({ id, title, count, stageColor, children }: TaskColum
             {title}
           </h2>
         </div>
-        <Badge variant="secondary" className="font-mono text-[10px] neo-pressed rounded-lg px-2 py-0.5 touch-target-sm">
+        <Badge variant="secondary" className="font-mono text-base font-semibold neo-pressed rounded-lg px-3 py-1 min-h-[28px]">
           {count}
         </Badge>
       </div>

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 
 interface DayPlanSubStageProps {
   stageId: number;
+  stageName?: string;
   subStage: {
     name: string;
     tag: string;
@@ -22,6 +23,7 @@ interface DayPlanSubStageProps {
 
 export function DayPlanSubStage({
   stageId,
+  stageName = "",
   subStage,
   tasks,
   stageColor,
@@ -39,6 +41,11 @@ export function DayPlanSubStage({
   });
 
   const displayStageColor = stageColor || "#3B82F6";
+  const isInProgressStage = (name: string) => {
+    const n = name.toLowerCase();
+    return n.includes("progress") || n.includes("doing") || n.includes("active");
+  };
+  const isInProgress = isInProgressStage(stageName);
 
   return (
     <div
@@ -53,7 +60,7 @@ export function DayPlanSubStage({
         <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           {subStage.name}
         </h3>
-        <Badge variant="secondary" className="text-[9px] font-mono px-1 py-0 touch-target-sm min-h-0 min-w-0 h-4">
+        <Badge variant="secondary" className="text-sm font-semibold font-mono px-2 py-0.5 min-h-[24px]">
           {tasks.length}
         </Badge>
       </div>
@@ -82,7 +89,10 @@ export function DayPlanSubStage({
             )}
           </div>
         ) : (
-          <div className="flex flex-wrap gap-2 content-start min-h-[40px]">
+          <div className={cn(
+            "gap-2 min-h-[40px]",
+            isInProgress ? "flex flex-col" : "flex flex-wrap content-start"
+          )}>
             {tasks.length > 0 ? (
               tasks.map((task) => (
                 <TaskCardSummary
@@ -90,6 +100,7 @@ export function DayPlanSubStage({
                   task={task}
                   onClick={onTaskClick}
                   stageColor={displayStageColor}
+                  isInProgress={isInProgress}
                 />
               ))
             ) : (

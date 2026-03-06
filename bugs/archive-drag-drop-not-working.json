@@ -1,0 +1,40 @@
+{
+  "meta": {
+    "cohort": "c26",
+    "repo": "kanban-local1"
+  },
+  "summary": "Enable drag-to-archive task on Kanban board",
+  "problem_statement": "Users cannot archive tasks by dragging them to the archive zone at the bottom of the Kanban board. The archive zone is visible and shows \"Drag here to archive\" but dropping a task on it does not trigger the archive action. The task either snaps back to its original position or the drop is not registered. This blocks users from using the primary archive workflow and forces them to use alternative methods if any exist.\n\nCollision detection may be failing to identify when the dragged item overlaps the archive droppable. The pointerWithin algorithm can have issues with droppables in scrollable containers. The archive zone may be competing with SortableContext droppables or not receiving collision events when the dragged item's rect intersects it.",
+  "in_scope": [
+    "Investigate why archive zone droppable is not receiving drop events",
+    "Fix collision detection to reliably detect archive zone when dragged item overlaps it",
+    "Verify archive zone works on both mouse and touch input",
+    "Ensure archive zone remains usable when board content is scrolled"
+  ],
+  "out_of_scope": [
+    "Adding alternative archive methods (e.g. context menu) unless required as fallback",
+    "Changing the archive zone visual design beyond what is needed for the fix"
+  ],
+  "requirements": [
+    "Dragging a task over the archive zone and releasing must archive the task",
+    "Archived task must be removed from the board and appear in the Archive page",
+    "Archive zone must show \"Drop to archive\" visual feedback when a task is dragged over it",
+    "Archive must work when the archive zone is visible (including after scrolling)"
+  ],
+  "acceptance_criteria": [
+    "User can drag any task from any stage to the archive zone and drop to archive",
+    "Archive zone highlights when dragged task overlaps it",
+    "Task is archived and removed from board on successful drop",
+    "No console errors during drag-to-archive flow"
+  ],
+  "dependencies": [
+    "dnd-kit core and sortable packages",
+    "ArchiveZone component at client/src/components/ArchiveZone.tsx",
+    "KanbanBoard collision detection at client/src/components/KanbanBoard.tsx"
+  ],
+  "risks": [
+    "dnd-kit collision detection behavior may differ across scroll containers",
+    "Touch drag on mobile may require different activation or collision handling"
+  ],
+  "implementation_notes": "KanbanBoard uses custom collision detection: rectIntersection is run first for archive containers only, then pointerWithin for columns, then closestCenter. ArchiveZone uses useDroppable with id 'archive'. Check that droppableContainers includes the archive when filtering. Consider rectIntersection using the dragged item's collisionRect. Reference: https://docs.dndkit.com/api-documentation/context-provider/collision-detection-algorithms. Files: client/src/components/KanbanBoard.tsx (handleDragEnd, collisionDetection), client/src/components/ArchiveZone.tsx, client/src/hooks/use-tasks.ts (useArchiveTask)."
+}

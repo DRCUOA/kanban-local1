@@ -281,3 +281,11 @@
 .scroll-container {
   -webkit-overflow-scrolling: touch;
 }
+
+/* Task card magnify - only on devices with hover (desktop), avoids sticky hover on touch */
+@media (hover: hover) {
+  .task-card-magnify:hover,
+  .task-summary-magnify:hover {
+    transform: scale(1.03);
+  }
+}
