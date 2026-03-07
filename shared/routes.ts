@@ -1,18 +1,25 @@
-import { z } from "zod";
-import { insertTaskSchema, insertStageSchema, insertSubStageSchema, tasks, stages, subStages } from "./schema";
+import { z } from 'zod';
+import {
+  insertTaskSchema,
+  insertStageSchema,
+  insertSubStageSchema,
+  tasks,
+  stages,
+  subStages,
+} from './schema';
 
 export const api = {
   tasks: {
     list: {
-      method: "GET" as const,
-      path: "/api/tasks",
+      method: 'GET' as const,
+      path: '/api/tasks',
       responses: {
         200: z.array(z.custom<typeof tasks.$inferSelect>()),
       },
     },
     create: {
-      method: "POST" as const,
-      path: "/api/tasks",
+      method: 'POST' as const,
+      path: '/api/tasks',
       input: insertTaskSchema,
       responses: {
         201: z.custom<typeof tasks.$inferSelect>(),
@@ -20,8 +27,8 @@ export const api = {
       },
     },
     update: {
-      method: "PATCH" as const,
-      path: "/api/tasks/:id",
+      method: 'PATCH' as const,
+      path: '/api/tasks/:id',
       input: insertTaskSchema.partial(),
       responses: {
         200: z.custom<typeof tasks.$inferSelect>(),
@@ -29,60 +36,62 @@ export const api = {
       },
     },
     delete: {
-      method: "DELETE" as const,
-      path: "/api/tasks/:id",
+      method: 'DELETE' as const,
+      path: '/api/tasks/:id',
       responses: {
         204: z.void(),
         404: z.object({ message: z.string() }),
       },
     },
     archived: {
-      method: "GET" as const,
-      path: "/api/tasks/archived",
+      method: 'GET' as const,
+      path: '/api/tasks/archived',
       responses: {
         200: z.array(z.custom<typeof tasks.$inferSelect>()),
       },
     },
     archive: {
-      method: "POST" as const,
-      path: "/api/tasks/:id/archive",
+      method: 'POST' as const,
+      path: '/api/tasks/:id/archive',
       responses: {
         200: z.custom<typeof tasks.$inferSelect>(),
         404: z.object({ message: z.string() }),
       },
     },
     unarchive: {
-      method: "POST" as const,
-      path: "/api/tasks/:id/unarchive",
+      method: 'POST' as const,
+      path: '/api/tasks/:id/unarchive',
       responses: {
         200: z.custom<typeof tasks.$inferSelect>(),
         404: z.object({ message: z.string() }),
       },
     },
     history: {
-      method: "GET" as const,
-      path: "/api/tasks/:id/history",
+      method: 'GET' as const,
+      path: '/api/tasks/:id/history',
       responses: {
-        200: z.array(z.object({
-          status: z.string(),
-          timestamp: z.string(),
-          note: z.string().optional(),
-        })),
+        200: z.array(
+          z.object({
+            status: z.string(),
+            timestamp: z.string(),
+            note: z.string().optional(),
+          }),
+        ),
         404: z.object({ message: z.string() }),
       },
     },
   },
   stages: {
     list: {
-      method: "GET" as const,
-      path: "/api/stages",
+      method: 'GET' as const,
+      path: '/api/stages',
       responses: {
         200: z.array(z.custom<typeof stages.$inferSelect>()),
       },
     },
     create: {
-      method: "POST" as const,
-      path: "/api/stages",
+      method: 'POST' as const,
+      path: '/api/stages',
       input: insertStageSchema,
       responses: {
         201: z.custom<typeof stages.$inferSelect>(),
@@ -90,8 +99,8 @@ export const api = {
       },
     },
     update: {
-      method: "PATCH" as const,
-      path: "/api/stages/:id",
+      method: 'PATCH' as const,
+      path: '/api/stages/:id',
       input: insertStageSchema.partial(),
       responses: {
         200: z.custom<typeof stages.$inferSelect>(),
@@ -99,8 +108,8 @@ export const api = {
       },
     },
     delete: {
-      method: "DELETE" as const,
-      path: "/api/stages/:id",
+      method: 'DELETE' as const,
+      path: '/api/stages/:id',
       responses: {
         204: z.void(),
         404: z.object({ message: z.string() }),
@@ -109,22 +118,22 @@ export const api = {
   },
   subStages: {
     list: {
-      method: "GET" as const,
-      path: "/api/sub-stages",
+      method: 'GET' as const,
+      path: '/api/sub-stages',
       responses: {
         200: z.array(z.custom<typeof subStages.$inferSelect>()),
       },
     },
     listByStage: {
-      method: "GET" as const,
-      path: "/api/stages/:stageId/sub-stages",
+      method: 'GET' as const,
+      path: '/api/stages/:stageId/sub-stages',
       responses: {
         200: z.array(z.custom<typeof subStages.$inferSelect>()),
       },
     },
     create: {
-      method: "POST" as const,
-      path: "/api/sub-stages",
+      method: 'POST' as const,
+      path: '/api/sub-stages',
       input: insertSubStageSchema,
       responses: {
         201: z.custom<typeof subStages.$inferSelect>(),
@@ -132,8 +141,8 @@ export const api = {
       },
     },
     update: {
-      method: "PATCH" as const,
-      path: "/api/sub-stages/:id",
+      method: 'PATCH' as const,
+      path: '/api/sub-stages/:id',
       input: insertSubStageSchema.partial(),
       responses: {
         200: z.custom<typeof subStages.$inferSelect>(),
@@ -141,8 +150,8 @@ export const api = {
       },
     },
     delete: {
-      method: "DELETE" as const,
-      path: "/api/sub-stages/:id",
+      method: 'DELETE' as const,
+      path: '/api/sub-stages/:id',
       responses: {
         204: z.void(),
         404: z.object({ message: z.string() }),

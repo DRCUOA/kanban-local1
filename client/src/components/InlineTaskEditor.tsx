@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
-import { useState, useEffect, useRef } from "react";
-import { Task } from "@shared/schema";
-import { useUpdateTask } from "@/hooks/use-tasks";
-import { cn } from "@/lib/utils";
+import { useState, useEffect, useRef } from 'react';
+import { Task } from '@shared/schema';
+import { useUpdateTask } from '@/hooks/use-tasks';
+import { cn } from '@/lib/utils';
 
 interface InlineTaskEditorProps {
   task: Task;
-  field: "title" | "description";
+  field: 'title' | 'description';
   onSave?: () => void;
   onCancel?: () => void;
   className?: string;
@@ -20,7 +20,7 @@ export function InlineTaskEditor({
   className,
 }: InlineTaskEditorProps) {
   const updateTask = useUpdateTask();
-  const [value, setValue] = useState(task[field] || "");
+  const [value, setValue] = useState(task[field] || '');
   const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
@@ -34,7 +34,7 @@ export function InlineTaskEditor({
   }, [isEditing]);
 
   const handleSave = async () => {
-    if (value.trim() !== (task[field] || "")) {
+    if (value.trim() !== (task[field] || '')) {
       await updateTask.mutateAsync({
         id: task.id,
         [field]: value.trim(),
@@ -45,28 +45,28 @@ export function InlineTaskEditor({
   };
 
   const handleCancel = () => {
-    setValue(task[field] || "");
+    setValue(task[field] || '');
     setIsEditing(false);
     onCancel?.();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && field === "title") {
+    if (e.key === 'Enter' && field === 'title') {
       e.preventDefault();
       handleSave();
-    } else if (e.key === "Enter" && field === "description" && !e.shiftKey) {
+    } else if (e.key === 'Enter' && field === 'description' && !e.shiftKey) {
       e.preventDefault();
       handleSave();
-    } else if (e.key === "Escape") {
+    } else if (e.key === 'Escape') {
       e.preventDefault();
       handleCancel();
     }
   };
 
   if (!isEditing) {
-    const displayValue = task[field] || "";
+    const displayValue = task[field] || '';
     const isEmpty = !displayValue;
-    
+
     return (
       <div
         onClick={(e) => {
@@ -81,9 +81,9 @@ export function InlineTaskEditor({
           e.stopPropagation();
         }}
         className={cn(
-          "cursor-text active:bg-muted/30 rounded px-1 py-1 -mx-1 -my-0.5 transition-colors",
-          isEmpty && "text-muted-foreground italic",
-          className
+          'cursor-text active:bg-muted/30 rounded px-1 py-1 -mx-1 -my-0.5 transition-colors',
+          isEmpty && 'text-muted-foreground italic',
+          className,
         )}
       >
         {isEmpty ? `Tap to add ${field}...` : displayValue}
@@ -91,20 +91,28 @@ export function InlineTaskEditor({
     );
   }
 
-  if (field === "description") {
+  if (field === 'description') {
     return (
       <textarea
         ref={inputRef as React.RefObject<HTMLTextAreaElement>}
         value={value}
-        onChange={(e) => { setValue(e.target.value); }}
+        onChange={(e) => {
+          setValue(e.target.value);
+        }}
         onBlur={handleSave}
         onKeyDown={handleKeyDown}
-        onMouseDown={(e) => { e.stopPropagation(); }}
-        onTouchStart={(e) => { e.stopPropagation(); }}
-        onClick={(e) => { e.stopPropagation(); }}
+        onMouseDown={(e) => {
+          e.stopPropagation();
+        }}
+        onTouchStart={(e) => {
+          e.stopPropagation();
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
         className={cn(
-          "w-full resize-none border-none outline-none bg-transparent text-base",
-          className
+          'w-full resize-none border-none outline-none bg-transparent text-base',
+          className,
         )}
         rows={3}
         placeholder={`Enter ${field}...`}
@@ -117,16 +125,21 @@ export function InlineTaskEditor({
       ref={inputRef as React.RefObject<HTMLInputElement>}
       type="text"
       value={value}
-      onChange={(e) => { setValue(e.target.value); }}
+      onChange={(e) => {
+        setValue(e.target.value);
+      }}
       onBlur={handleSave}
       onKeyDown={handleKeyDown}
-      onMouseDown={(e) => { e.stopPropagation(); }}
-      onTouchStart={(e) => { e.stopPropagation(); }}
-      onClick={(e) => { e.stopPropagation(); }}
-      className={cn(
-        "w-full border-none outline-none bg-transparent text-base",
-        className
-      )}
+      onMouseDown={(e) => {
+        e.stopPropagation();
+      }}
+      onTouchStart={(e) => {
+        e.stopPropagation();
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+      }}
+      className={cn('w-full border-none outline-none bg-transparent text-base', className)}
       placeholder={`Enter ${field}...`}
     />
   );

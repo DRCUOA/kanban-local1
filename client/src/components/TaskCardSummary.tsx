@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
-import { Task } from "@shared/schema";
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { cn } from "@/lib/utils";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { GripVertical } from "lucide-react";
+import { Task } from '@shared/schema';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { cn } from '@/lib/utils';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { GripVertical } from 'lucide-react';
 
 interface TaskCardSummaryProps {
   task: Task;
@@ -13,18 +13,16 @@ interface TaskCardSummaryProps {
   isInProgress?: boolean;
 }
 
-export function TaskCardSummary({ task, onClick, stageColor, isInProgress = false }: TaskCardSummaryProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
+export function TaskCardSummary({
+  task,
+  onClick,
+  stageColor,
+  isInProgress = false,
+}: TaskCardSummaryProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: {
-      type: "Task",
+      type: 'Task',
       task,
     },
   });
@@ -36,8 +34,8 @@ export function TaskCardSummary({ task, onClick, stageColor, isInProgress = fals
 
   // Create beveled gradient background
   const getGradientStyle = (color: string): React.CSSProperties => {
-    if (!color?.startsWith("#")) return {};
-    
+    if (!color?.startsWith('#')) return {};
+
     const hexToRgba = (hex: string, alpha: number) => {
       let fullHex = hex;
       if (hex.length === 4) {
@@ -48,7 +46,7 @@ export function TaskCardSummary({ task, onClick, stageColor, isInProgress = fals
       const b = parseInt(fullHex.slice(5, 7), 16);
       return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     };
-    
+
     return {
       background: `radial-gradient(circle, ${hexToRgba(color, 0.7)} 0%, ${hexToRgba(color, 0.65)} 8%, ${hexToRgba(color, 0.5)} 20%, ${hexToRgba(color, 0.3)} 45%, ${hexToRgba(color, 0.15)} 75%, ${hexToRgba(color, 0.05)} 100%)`,
       borderColor: color,
@@ -88,16 +86,15 @@ export function TaskCardSummary({ task, onClick, stageColor, isInProgress = fals
           opacity: 0.5,
         }}
         className={cn(
-          "border-2 border-dashed",
-          isInProgress ? "w-full min-h-[72px] rounded-xl" : "rounded-full"
+          'border-2 border-dashed',
+          isInProgress ? 'w-full min-h-[72px] rounded-xl' : 'rounded-full',
         )}
       />
     );
   }
 
-  const containerStyle = stageColor && !isInProgress
-    ? { ...style, ...getGradientStyle(stageColor) }
-    : style;
+  const containerStyle =
+    stageColor && !isInProgress ? { ...style, ...getGradientStyle(stageColor) } : style;
 
   const triggerContent = isInProgress ? (
     <div
@@ -116,9 +113,9 @@ export function TaskCardSummary({ task, onClick, stageColor, isInProgress = fals
       }}
       onTouchStart={triggerHapticFeedback}
       className={cn(
-        "w-full min-h-[72px] rounded-xl flex items-start gap-2 p-3 cursor-pointer transition-transform duration-200 ease-out border-2",
-        "active:scale-[0.98] focus-visible:scale-[1.02] task-summary-magnify",
-        "neo-raised"
+        'w-full min-h-[72px] rounded-xl flex items-start gap-2 p-3 cursor-pointer transition-transform duration-200 ease-out border-2',
+        'active:scale-[0.98] focus-visible:scale-[1.02] task-summary-magnify',
+        'neo-raised',
       )}
     >
       <div
@@ -146,13 +143,15 @@ export function TaskCardSummary({ task, onClick, stageColor, isInProgress = fals
       onClick={handleClick}
       onTouchStart={triggerHapticFeedback}
       className={cn(
-        "rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 ease-out",
-        "active:scale-[0.88] focus-visible:scale-[1.03] task-summary-magnify",
-        stageColor ? "neo-beveled-circle-colored" : "neo-beveled-circle"
+        'rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 ease-out',
+        'active:scale-[0.88] focus-visible:scale-[1.03] task-summary-magnify',
+        stageColor ? 'neo-beveled-circle-colored' : 'neo-beveled-circle',
       )}
       title={`${task.title} (effort: ${effort}/5)`}
     >
-      <span className={cn(circleFontSize, "font-semibold text-foreground text-center relative z-10")}>
+      <span
+        className={cn(circleFontSize, 'font-semibold text-foreground text-center relative z-10')}
+      >
         {task.id}
       </span>
     </div>
@@ -160,18 +159,12 @@ export function TaskCardSummary({ task, onClick, stageColor, isInProgress = fals
 
   return (
     <HoverCard openDelay={300}>
-      <HoverCardTrigger asChild>
-        {triggerContent}
-      </HoverCardTrigger>
+      <HoverCardTrigger asChild>{triggerContent}</HoverCardTrigger>
       <HoverCardContent>
         <div className="space-y-2">
-          <p className="text-base font-semibold leading-tight text-foreground">
-            {task.title}
-          </p>
+          <p className="text-base font-semibold leading-tight text-foreground">{task.title}</p>
           {task.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {task.description}
-            </p>
+            <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
           )}
         </div>
       </HoverCardContent>

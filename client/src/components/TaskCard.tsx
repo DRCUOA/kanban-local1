@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
-import { Task } from "@shared/schema";
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { GripVertical, Clock, AlertCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { InlineTaskEditor } from "./InlineTaskEditor";
-import { format, isPast, isToday } from "date-fns";
+import { Task } from '@shared/schema';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { GripVertical, Clock, AlertCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { InlineTaskEditor } from './InlineTaskEditor';
+import { format, isPast, isToday } from 'date-fns';
 
 interface TaskCardProps {
   task: Task;
@@ -17,17 +17,10 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: {
-      type: "Task",
+      type: 'Task',
       task,
     },
   });
@@ -39,12 +32,12 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
 
   // Priority styling
   const priorityStyles = {
-    low: { borderWidth: "1px", dotOpacity: 0.3 },
-    normal: { borderWidth: "2px", dotOpacity: 0.5 },
-    high: { borderWidth: "3px", dotOpacity: 0.7 },
-    critical: { borderWidth: "4px", dotOpacity: 1 },
+    low: { borderWidth: '1px', dotOpacity: 0.3 },
+    normal: { borderWidth: '2px', dotOpacity: 0.5 },
+    high: { borderWidth: '3px', dotOpacity: 0.7 },
+    critical: { borderWidth: '4px', dotOpacity: 1 },
   };
-  const priority = (task.priority as keyof typeof priorityStyles) || "normal";
+  const priority = (task.priority as keyof typeof priorityStyles) || 'normal';
   const priorityStyle = priorityStyles[priority] || priorityStyles.normal;
 
   // Overdue check
@@ -75,20 +68,24 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
         }}
         {...attributes}
         className={cn(
-          "group relative cursor-pointer transition-transform duration-200 ease-out active:scale-[0.97] focus-visible:scale-[1.03] task-card-magnify",
-          stageColor && "border-2",
-          isOverdue && "opacity-90 saturate-75",
-          isDueToday && "ring-2 ring-yellow-500/30"
+          'group relative cursor-pointer transition-transform duration-200 ease-out active:scale-[0.97] focus-visible:scale-[1.03] task-card-magnify',
+          stageColor && 'border-2',
+          isOverdue && 'opacity-90 saturate-75',
+          isDueToday && 'ring-2 ring-yellow-500/30',
         )}
-        style={stageColor ? { 
-          borderColor: stageColor,
-          borderWidth: priorityStyle.borderWidth,
-        } : {
-          borderWidth: priorityStyle.borderWidth,
-        }}
+        style={
+          stageColor
+            ? {
+                borderColor: stageColor,
+                borderWidth: priorityStyle.borderWidth,
+              }
+            : {
+                borderWidth: priorityStyle.borderWidth,
+              }
+        }
       >
         {/* Drag handle - always visible on mobile, touch-action: none so drag works */}
-        <div 
+        <div
           className="drag-handle absolute top-0 right-0 p-3 cursor-grab active:cursor-grabbing z-10"
           style={{ touchAction: 'none' }}
           {...listeners}
@@ -98,12 +95,7 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
 
         <CardHeader className="p-3 pb-1">
           <CardTitle className="text-base font-semibold leading-tight pr-8 inline-editor">
-            <InlineTaskEditor
-              task={task}
-              field="title"
-              onSave={onInlineEdit}
-              className="w-full"
-            />
+            <InlineTaskEditor task={task} field="title" onSave={onInlineEdit} className="w-full" />
           </CardTitle>
         </CardHeader>
         <CardContent className="p-3 pt-1">
@@ -115,23 +107,26 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
               className="text-sm text-muted-foreground"
             />
           </div>
-          
+
           {/* Priority and Effort - compact row */}
           <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-            {task.priority && task.priority !== "normal" && (
-              <Badge 
-                variant="outline" 
+            {task.priority && task.priority !== 'normal' && (
+              <Badge
+                variant="outline"
                 className={cn(
-                  "text-xs font-normal px-1.5 py-0 touch-target-sm min-h-0 min-w-0 h-5",
-                  priority === "high" && "border-orange-500/50 text-orange-600",
-                  priority === "critical" && "border-red-500/50 text-red-600"
+                  'text-xs font-normal px-1.5 py-0 touch-target-sm min-h-0 min-w-0 h-5',
+                  priority === 'high' && 'border-orange-500/50 text-orange-600',
+                  priority === 'critical' && 'border-red-500/50 text-red-600',
                 )}
               >
                 {priority}
               </Badge>
             )}
             {task.effort && (
-              <Badge variant="secondary" className="text-xs font-normal px-1.5 py-0 touch-target-sm min-h-0 min-w-0 h-5">
+              <Badge
+                variant="secondary"
+                className="text-xs font-normal px-1.5 py-0 touch-target-sm min-h-0 min-w-0 h-5"
+              >
                 {task.effort}/5
               </Badge>
             )}
@@ -139,15 +134,17 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
 
           {/* Due date */}
           {dueDate && (
-            <div className={cn(
-              "flex items-center gap-1 mb-2 text-xs",
-              isOverdue && "text-red-600 font-medium",
-              isDueToday && "text-yellow-600 font-medium",
-              !isOverdue && !isDueToday && "text-muted-foreground"
-            )}>
+            <div
+              className={cn(
+                'flex items-center gap-1 mb-2 text-xs',
+                isOverdue && 'text-red-600 font-medium',
+                isDueToday && 'text-yellow-600 font-medium',
+                !isOverdue && !isDueToday && 'text-muted-foreground',
+              )}
+            >
               {isOverdue && <AlertCircle className="h-3 w-3" />}
               {isDueToday && <Clock className="h-3 w-3" />}
-              <span>Due: {format(dueDate, "MMM d")}</span>
+              <span>Due: {format(dueDate, 'MMM d')}</span>
             </div>
           )}
 
@@ -155,7 +152,11 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
           {task.tags && task.tags.length > 0 && (
             <div className="flex items-center gap-1 mb-2 flex-wrap">
               {task.tags.slice(0, 3).map((tag: string, idx: number) => (
-                <Badge key={idx} variant="outline" className="text-xs px-1 py-0 touch-target-sm min-h-0 min-w-0 h-4">
+                <Badge
+                  key={idx}
+                  variant="outline"
+                  className="text-xs px-1 py-0 touch-target-sm min-h-0 min-w-0 h-4"
+                >
                   {tag}
                 </Badge>
               ))}
@@ -167,8 +168,8 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
 
           {/* Footer */}
           <div className="flex items-center justify-between mt-1">
-            <Badge 
-              variant="secondary" 
+            <Badge
+              variant="secondary"
               className="text-xs font-normal bg-secondary/50 text-secondary-foreground/80 px-1.5 py-0 touch-target-sm min-h-0 min-w-0 h-5"
             >
               #{task.id}

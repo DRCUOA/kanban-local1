@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, type InsertTask } from "@shared/routes";
-import { Task } from "@shared/schema";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api, type InsertTask } from '@shared/routes';
+import { Task } from '@shared/schema';
 
 export function useTasks() {
   return useQuery({
@@ -11,12 +11,16 @@ export function useTasks() {
         const res = await fetch(api.tasks.list.path);
         if (!res.ok) {
           const errorText = await res.text();
-          throw new Error(`Failed to fetch tasks: ${res.status} ${res.statusText}${errorText ? ` - ${errorText}` : ''}`);
+          throw new Error(
+            `Failed to fetch tasks: ${res.status} ${res.statusText}${errorText ? ` - ${errorText}` : ''}`,
+          );
         }
         return api.tasks.list.responses[200].parse(await res.json());
       } catch (error) {
         if (error instanceof TypeError && error.message.includes('fetch')) {
-          throw new Error("Network error: Unable to connect to server. Please check if the server is running.");
+          throw new Error(
+            'Network error: Unable to connect to server. Please check if the server is running.',
+          );
         }
         throw error;
       }
@@ -31,11 +35,11 @@ export function useCreateTask() {
       try {
         const res = await fetch(api.tasks.create.path, {
           method: api.tasks.create.method,
-          headers: { "Content-Type": "application/json" },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(task),
         });
         if (!res.ok) {
-          let errorMessage = "Failed to create task";
+          let errorMessage = 'Failed to create task';
           try {
             const error = await res.json();
             errorMessage = error.message || errorMessage;
@@ -47,7 +51,9 @@ export function useCreateTask() {
         return api.tasks.create.responses[201].parse(await res.json());
       } catch (error) {
         if (error instanceof TypeError && error.message.includes('fetch')) {
-          throw new Error("Network error: Unable to connect to server. Please check if the server is running.");
+          throw new Error(
+            'Network error: Unable to connect to server. Please check if the server is running.',
+          );
         }
         throw error;
       }
@@ -63,16 +69,16 @@ export function useUpdateTask() {
   return useMutation({
     mutationFn: async ({ id, ...updates }: { id: number } & Partial<InsertTask>) => {
       try {
-        const url = api.tasks.update.path.replace(":id", id.toString());
-        
+        const url = api.tasks.update.path.replace(':id', id.toString());
+
         const res = await fetch(url, {
           method: api.tasks.update.method,
-          headers: { "Content-Type": "application/json" },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updates),
         });
-        
+
         if (!res.ok) {
-          let errorMessage = "Failed to update task";
+          let errorMessage = 'Failed to update task';
           try {
             const error = await res.json();
             errorMessage = error.message || errorMessage;
@@ -84,7 +90,9 @@ export function useUpdateTask() {
         return api.tasks.update.responses[200].parse(await res.json());
       } catch (error) {
         if (error instanceof TypeError && error.message.includes('fetch')) {
-          throw new Error("Network error: Unable to connect to server. Please check if the server is running.");
+          throw new Error(
+            'Network error: Unable to connect to server. Please check if the server is running.',
+          );
         }
         throw error;
       }
@@ -100,13 +108,13 @@ export function useDeleteTask() {
   return useMutation({
     mutationFn: async (id: number) => {
       try {
-        const url = api.tasks.delete.path.replace(":id", id.toString());
+        const url = api.tasks.delete.path.replace(':id', id.toString());
         const res = await fetch(url, {
           method: api.tasks.delete.method,
         });
-        
+
         if (!res.ok) {
-          let errorMessage = "Failed to delete task";
+          let errorMessage = 'Failed to delete task';
           try {
             const error = await res.json();
             errorMessage = error.message || errorMessage;
@@ -117,7 +125,9 @@ export function useDeleteTask() {
         }
       } catch (error) {
         if (error instanceof TypeError && error.message.includes('fetch')) {
-          throw new Error("Network error: Unable to connect to server. Please check if the server is running.");
+          throw new Error(
+            'Network error: Unable to connect to server. Please check if the server is running.',
+          );
         }
         throw error;
       }
@@ -136,12 +146,16 @@ export function useArchivedTasks() {
         const res = await fetch(api.tasks.archived.path);
         if (!res.ok) {
           const errorText = await res.text();
-          throw new Error(`Failed to fetch archived tasks: ${res.status} ${res.statusText}${errorText ? ` - ${errorText}` : ''}`);
+          throw new Error(
+            `Failed to fetch archived tasks: ${res.status} ${res.statusText}${errorText ? ` - ${errorText}` : ''}`,
+          );
         }
         return api.tasks.archived.responses[200].parse(await res.json());
       } catch (error) {
         if (error instanceof TypeError && error.message.includes('fetch')) {
-          throw new Error("Network error: Unable to connect to server. Please check if the server is running.");
+          throw new Error(
+            'Network error: Unable to connect to server. Please check if the server is running.',
+          );
         }
         throw error;
       }
@@ -154,12 +168,12 @@ export function useArchiveTask() {
   return useMutation({
     mutationFn: async (id: number) => {
       try {
-        const url = api.tasks.archive.path.replace(":id", id.toString());
+        const url = api.tasks.archive.path.replace(':id', id.toString());
         const res = await fetch(url, {
           method: api.tasks.archive.method,
         });
         if (!res.ok) {
-          let errorMessage = "Failed to archive task";
+          let errorMessage = 'Failed to archive task';
           try {
             const error = await res.json();
             errorMessage = error.message || errorMessage;
@@ -171,7 +185,9 @@ export function useArchiveTask() {
         return api.tasks.archive.responses[200].parse(await res.json());
       } catch (error) {
         if (error instanceof TypeError && error.message.includes('fetch')) {
-          throw new Error("Network error: Unable to connect to server. Please check if the server is running.");
+          throw new Error(
+            'Network error: Unable to connect to server. Please check if the server is running.',
+          );
         }
         throw error;
       }
@@ -188,12 +204,12 @@ export function useUnarchiveTask() {
   return useMutation({
     mutationFn: async (id: number) => {
       try {
-        const url = api.tasks.unarchive.path.replace(":id", id.toString());
+        const url = api.tasks.unarchive.path.replace(':id', id.toString());
         const res = await fetch(url, {
           method: api.tasks.unarchive.method,
         });
         if (!res.ok) {
-          let errorMessage = "Failed to unarchive task";
+          let errorMessage = 'Failed to unarchive task';
           try {
             const error = await res.json();
             errorMessage = error.message || errorMessage;
@@ -205,7 +221,9 @@ export function useUnarchiveTask() {
         return api.tasks.unarchive.responses[200].parse(await res.json());
       } catch (error) {
         if (error instanceof TypeError && error.message.includes('fetch')) {
-          throw new Error("Network error: Unable to connect to server. Please check if the server is running.");
+          throw new Error(
+            'Network error: Unable to connect to server. Please check if the server is running.',
+          );
         }
         throw error;
       }

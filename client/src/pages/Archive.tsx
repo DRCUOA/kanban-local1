@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
-import { useState } from "react";
-import { useArchivedTasks, useUnarchiveTask } from "@/hooks/use-tasks";
-import { EditTaskDialog } from "@/components/EditTaskDialog";
-import { Task } from "@shared/schema";
-import { Loader2, Archive as ArchiveIcon, Search, ArrowLeft, X } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useLocation } from "wouter";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from 'react';
+import { useArchivedTasks, useUnarchiveTask } from '@/hooks/use-tasks';
+import { EditTaskDialog } from '@/components/EditTaskDialog';
+import { Task } from '@shared/schema';
+import { Loader2, Archive as ArchiveIcon, Search, ArrowLeft, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { useLocation } from 'wouter';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Archive() {
   const [, navigate] = useLocation();
@@ -18,7 +18,7 @@ export default function Archive() {
   const unarchiveTask = useUnarchiveTask();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
 
   const handleTaskClick = (task: Task) => {
@@ -30,17 +30,18 @@ export default function Archive() {
     if ('vibrate' in navigator) navigator.vibrate(10);
     unarchiveTask.mutate(task.id, {
       onSuccess: () => {
-        toast({ title: "Task restored", description: "The task has been restored to the board." });
+        toast({ title: 'Task restored', description: 'The task has been restored to the board.' });
       },
       onError: (error) => {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
       },
     });
   };
 
-  const filteredTasks = archivedTasks?.filter(t => 
-    t.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (t.description && t.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredTasks = archivedTasks?.filter(
+    (t) =>
+      t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (t.description && t.description.toLowerCase().includes(searchQuery.toLowerCase())),
   );
 
   if (isLoading) {
@@ -59,9 +60,11 @@ export default function Archive() {
       <div className="h-screen w-full flex items-center justify-center bg-background px-6">
         <div className="text-center space-y-4 w-full">
           <div className="text-destructive font-bold text-lg">Error loading archived tasks</div>
-          <p className="text-muted-foreground text-sm">{(error).message}</p>
-          <button 
-            onClick={() => { window.location.reload(); }}
+          <p className="text-muted-foreground text-sm">{error.message}</p>
+          <button
+            onClick={() => {
+              window.location.reload();
+            }}
             className="text-primary font-medium text-sm py-3 px-6 neo-raised rounded-xl active:scale-95 transition-transform"
           >
             Try Refreshing
@@ -79,7 +82,9 @@ export default function Archive() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => { navigate("/"); }}
+            onClick={() => {
+              navigate('/');
+            }}
             className="rounded-lg h-10 w-10 shrink-0"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -89,7 +94,9 @@ export default function Archive() {
               <ArchiveIcon className="text-primary h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-lg font-bold tracking-tight text-foreground leading-tight">Archive</h1>
+              <h1 className="text-lg font-bold tracking-tight text-foreground leading-tight">
+                Archive
+              </h1>
               <p className="text-[10px] text-muted-foreground leading-tight">Archived Tasks</p>
             </div>
           </div>
@@ -97,7 +104,9 @@ export default function Archive() {
             variant="ghost"
             size="icon"
             className="rounded-lg h-10 w-10"
-            onClick={() => { setShowSearch(!showSearch); }}
+            onClick={() => {
+              setShowSearch(!showSearch);
+            }}
           >
             <Search className="h-5 w-5" />
           </Button>
@@ -108,11 +117,13 @@ export default function Archive() {
           <div className="mt-3 flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-              <Input 
-                placeholder="Search archived tasks..." 
+              <Input
+                placeholder="Search archived tasks..."
                 className="pl-10 h-11 rounded-xl"
                 value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); }}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                }}
                 autoFocus
               />
             </div>
@@ -120,7 +131,10 @@ export default function Archive() {
               variant="ghost"
               size="icon"
               className="rounded-lg h-10 w-10 shrink-0"
-              onClick={() => { setShowSearch(false); setSearchQuery(""); }}
+              onClick={() => {
+                setShowSearch(false);
+                setSearchQuery('');
+              }}
             >
               <X className="h-5 w-5" />
             </Button>
@@ -137,14 +151,19 @@ export default function Archive() {
                 <Card
                   key={task.id}
                   className="cursor-pointer transition-all duration-200 active:scale-[0.98] rounded-xl"
-                  onClick={() => { handleTaskClick(task); }}
+                  onClick={() => {
+                    handleTaskClick(task);
+                  }}
                 >
                   <CardHeader className="p-3 pb-1">
                     <div className="flex items-start justify-between">
                       <CardTitle className="text-sm font-semibold leading-tight pr-4 flex-1">
                         {task.title}
                       </CardTitle>
-                      <Badge variant="secondary" className="text-[10px] font-normal neo-pressed rounded-lg px-1.5 py-0 shrink-0 touch-target-sm min-h-0 min-w-0 h-5">
+                      <Badge
+                        variant="secondary"
+                        className="text-[10px] font-normal neo-pressed rounded-lg px-1.5 py-0 shrink-0 touch-target-sm min-h-0 min-w-0 h-5"
+                      >
                         #{task.id}
                       </Badge>
                     </div>
@@ -182,9 +201,9 @@ export default function Archive() {
               </div>
               <h3 className="text-lg font-bold mb-2 text-foreground">No archived tasks</h3>
               <p className="text-muted-foreground text-sm">
-                {searchQuery 
-                  ? "No archived tasks match your search."
-                  : "Tasks you archive will appear here."}
+                {searchQuery
+                  ? 'No archived tasks match your search.'
+                  : 'Tasks you archive will appear here.'}
               </p>
             </div>
           )}
@@ -192,10 +211,10 @@ export default function Archive() {
       </main>
 
       {/* Edit Dialog */}
-      <EditTaskDialog 
-        task={selectedTask} 
-        open={isEditDialogOpen} 
-        onOpenChange={setIsEditDialogOpen} 
+      <EditTaskDialog
+        task={selectedTask}
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
       />
     </div>
   );

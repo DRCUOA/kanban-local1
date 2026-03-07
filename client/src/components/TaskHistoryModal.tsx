@@ -1,13 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
-import { Task, type TaskHistoryEntry } from "@shared/schema";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { format } from "date-fns";
-import { Clock, Archive, CheckCircle2, Circle, XCircle } from "lucide-react";
+import { Task, type TaskHistoryEntry } from '@shared/schema';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { format } from 'date-fns';
+import { Clock, Archive, CheckCircle2, Circle, XCircle } from 'lucide-react';
 
 interface TaskHistoryModalProps {
   task: Task | null;
@@ -24,18 +19,14 @@ const statusIcons = {
 };
 
 const statusLabels = {
-  backlog: "Backlog",
-  in_progress: "In Progress",
-  done: "Done",
-  abandoned: "Abandoned",
-  archived: "Archived",
+  backlog: 'Backlog',
+  in_progress: 'In Progress',
+  done: 'Done',
+  abandoned: 'Abandoned',
+  archived: 'Archived',
 };
 
-export function TaskHistoryModal({
-  task,
-  open,
-  onOpenChange,
-}: TaskHistoryModalProps) {
+export function TaskHistoryModal({ task, open, onOpenChange }: TaskHistoryModalProps) {
   if (!task) return null;
 
   const history: TaskHistoryEntry[] = task.history || [];
@@ -45,9 +36,7 @@ export function TaskHistoryModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-full h-full max-h-full rounded-none m-0 flex flex-col">
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="text-lg leading-tight pr-8">
-            History: {task.title}
-          </DialogTitle>
+          <DialogTitle className="text-lg leading-tight pr-8">History: {task.title}</DialogTitle>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto scroll-container space-y-3 mt-3">
           {/* Created */}
@@ -58,7 +47,7 @@ export function TaskHistoryModal({
             <div className="flex-1">
               <div className="font-medium text-sm">Task Created</div>
               <div className="text-[11px] text-muted-foreground mt-0.5">
-                {format(createdDate, "PPpp")}
+                {format(createdDate, 'PPpp')}
               </div>
             </div>
           </div>
@@ -71,7 +60,8 @@ export function TaskHistoryModal({
           ) : (
             history.map((entry, index) => {
               const StatusIcon = statusIcons[entry.status as keyof typeof statusIcons] || Circle;
-              const statusLabel = statusLabels[entry.status as keyof typeof statusLabels] || entry.status;
+              const statusLabel =
+                statusLabels[entry.status as keyof typeof statusLabels] || entry.status;
               const entryDate = new Date(entry.timestamp);
 
               return (
@@ -83,16 +73,12 @@ export function TaskHistoryModal({
                     <StatusIcon className="h-4 w-4 text-primary" />
                   </div>
                   <div className="flex-1">
-                    <div className="font-medium text-sm">
-                      Moved to {statusLabel}
-                    </div>
+                    <div className="font-medium text-sm">Moved to {statusLabel}</div>
                     {entry.note && (
-                      <div className="text-[11px] text-muted-foreground mt-0.5">
-                        {entry.note}
-                      </div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">{entry.note}</div>
                     )}
                     <div className="text-[11px] text-muted-foreground mt-0.5">
-                      {format(entryDate, "PPpp")}
+                      {format(entryDate, 'PPpp')}
                     </div>
                   </div>
                 </div>
@@ -110,7 +96,7 @@ export function TaskHistoryModal({
                 <div className="font-medium text-sm">Currently Archived</div>
                 {task.updatedAt && (
                   <div className="text-[11px] text-muted-foreground mt-0.5">
-                    {format(new Date(task.updatedAt), "PPpp")}
+                    {format(new Date(task.updatedAt), 'PPpp')}
                   </div>
                 )}
               </div>
