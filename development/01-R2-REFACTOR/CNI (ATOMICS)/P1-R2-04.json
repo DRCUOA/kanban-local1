@@ -1,0 +1,38 @@
+{
+  "meta": {
+    "cohort": "c26",
+    "repo": "befly"
+  },
+  "summary": "Configure Vitest reporting and npm test script",
+  "problem_statement": "The project has no test runner configured. Without a working test harness and reporting, the testing phases (Phase 7) cannot execute. Vitest must be set up early so that subsequent refactoring work can optionally validate behaviour as it proceeds, and Phase 7 has a ready foundation.",
+  "in_scope": [
+    "Install Vitest as a dev dependency",
+    "Create a Vitest configuration file with appropriate TypeScript and path resolution settings",
+    "Add an npm run test script that runs the full test suite",
+    "Configure a test reporter that outputs results suitable for CI consumption (e.g. verbose or junit)",
+    "Add a minimal smoke test that verifies the harness works (e.g. a trivial assertion)"
+  ],
+  "out_of_scope": [
+    "Writing substantive application tests — deferred to Phase 7 (P7-R2-22 through P7-R2-25)",
+    "Code coverage thresholds or enforcement — not specified in the R2 epic",
+    "CI/CD pipeline integration — tooling is CI-ready but pipeline config is separate"
+  ],
+  "requirements": [
+    "Vitest is installed as a dev dependency",
+    "npm run test executes Vitest and exits with code 0",
+    "Vitest is configured with TypeScript path resolution matching the project's tsconfig",
+    "A test reporter produces output suitable for CI consumption"
+  ],
+  "acceptance_criteria": [
+    "npm run test passes with the smoke test",
+    "Vitest configuration resolves TypeScript paths and aliases correctly",
+    "Test output includes a reporter format usable in CI (verbose, junit, or equivalent)"
+  ],
+  "dependencies": [
+    "None — Vitest setup is independent of ESLint/Prettier but logically follows P1-R2-01 through P1-R2-03 in the phase sequence"
+  ],
+  "risks": [
+    "Path alias resolution in Vitest may require additional vite/vitest config to mirror tsconfig paths"
+  ],
+  "implementation_notes": "Align Vitest's resolve.alias with the project's tsconfig paths. Consider using vitest/config for shared settings. The epic specifies an npm run check script that should be added to compose lint, format:check, and test together — coordinate with the other P1 tasks."
+}

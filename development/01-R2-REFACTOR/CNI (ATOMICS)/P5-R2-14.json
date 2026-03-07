@@ -1,0 +1,42 @@
+{
+  "meta": {
+    "cohort": "c26",
+    "repo": "befly"
+  },
+  "summary": "Decompose Dashboard.tsx into focused modules",
+  "problem_statement": "Dashboard.tsx is an oversized monolithic component combining data fetching, layout, multiple widget renderings, and state management in a single file. Its size makes it hard to understand, test, and modify without risking unintended side effects. Decomposition into focused modules isolates concerns and makes each piece independently testable.",
+  "in_scope": [
+    "Analyse Dashboard.tsx to identify distinct responsibilities and logical boundaries",
+    "Split Dashboard.tsx into focused child components and/or utility modules",
+    "Use 200 LOC as a preferred target for resulting modules but do not force artificial splits where readability would worsen",
+    "Ensure the decomposed components compose to produce identical behaviour to the original Dashboard.tsx",
+    "Apply the typed prop interfaces defined in P2-R2-06 to the new child components"
+  ],
+  "out_of_scope": [
+    "Adding new dashboard features, widgets, or capabilities — R2 is purely structural",
+    "Visual or design changes to the dashboard — styling remains as-is",
+    "Decomposing other components — each hotspot has its own task",
+    "Changing the data model or API endpoints used by Dashboard"
+  ],
+  "requirements": [
+    "Dashboard.tsx is decomposed into focused modules with clear single responsibilities",
+    "Resulting modules target approximately 200 LOC each unless a larger module preserves better readability",
+    "All child components have typed prop interfaces",
+    "The composed result produces identical behaviour and rendering to the pre-decomposition Dashboard.tsx"
+  ],
+  "acceptance_criteria": [
+    "Dashboard.tsx is decomposed into clearer modules with preserved behaviour",
+    "No new features, visual changes, or API changes are introduced",
+    "npm run check passes with no new type errors introduced",
+    "The dashboard functions identically to the pre-refactor version"
+  ],
+  "dependencies": [
+    "P2-R2-06 — typed prop interfaces for Dashboard and its children should be defined",
+    "P3-R2-08 — shared hooks (useStages, useSubStages) should be available if Dashboard uses them",
+    "P3-R2-09 — apiRequest wrapper should be available if Dashboard makes API calls"
+  ],
+  "risks": [
+    "Dashboard may have complex inter-widget state dependencies that complicate clean decomposition"
+  ],
+  "implementation_notes": "Look for natural visual/logical boundaries: summary cards, charts, task lists, filters. Extract each widget into its own component. Use shared hooks for data fetching. Keep the top-level Dashboard as a composition root that arranges child components."
+}

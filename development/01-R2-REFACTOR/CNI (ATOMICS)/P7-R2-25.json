@@ -1,0 +1,42 @@
+{
+  "meta": {
+    "cohort": "c26",
+    "repo": "befly"
+  },
+  "summary": "Add focused component tests for refactored hotspots where logic was extracted",
+  "problem_statement": "The Phase 5 decomposition restructured Admin, Dashboard, KanbanBoard, and EditTaskDialog into multiple modules. Without component tests, it is impossible to verify that the decomposition preserved behaviour. Focused tests on the refactored hotspots catch rendering regressions and validate that extracted logic integrates correctly with the UI.",
+  "in_scope": [
+    "Write focused Vitest + React Testing Library component tests for decomposed Admin modules",
+    "Write focused component tests for decomposed Dashboard modules",
+    "Write focused component tests for decomposed KanbanBoard modules",
+    "Write focused component tests for decomposed EditTaskDialog modules",
+    "Test rendering, key user interactions, and prop-driven behaviour for each decomposed module"
+  ],
+  "out_of_scope": [
+    "Testing components not decomposed in Phase 5",
+    "Visual regression testing or screenshot comparisons",
+    "End-to-end user flow testing",
+    "Full integration tests with a running server"
+  ],
+  "requirements": [
+    "Each decomposed hotspot has at least one component test verifying its primary rendering path",
+    "Tests validate that key user interactions (clicks, form submissions) trigger expected callbacks or state changes",
+    "Tests use Vitest and React Testing Library",
+    "Tests mock API calls and external dependencies appropriately"
+  ],
+  "acceptance_criteria": [
+    "Focused component tests exist for refactored UI hotspots where logic was moved or isolated",
+    "All tests pass via npm run test",
+    "Tests cover rendering and primary interaction paths for each hotspot",
+    "npm run check passes with no new type errors introduced"
+  ],
+  "dependencies": [
+    "P1-R2-04 — Vitest must be configured",
+    "P5-R2-13 through P5-R2-16 — component decomposition must be complete",
+    "P3-R2-08 — shared hooks must be available for mocking"
+  ],
+  "risks": [
+    "Components with complex drag-and-drop (KanbanBoard) or dialog interactions (EditTaskDialog) may require specialised test setup and event simulation"
+  ],
+  "implementation_notes": "Use @testing-library/react for rendering and interaction. Mock shared hooks (useStages, useSubStages) and the apiRequest wrapper in component tests. Focus on testing the decomposed pieces individually rather than the full composed view — integration of pieces is verified by the fact that the app still works."
+}

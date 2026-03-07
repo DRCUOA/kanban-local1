@@ -1,0 +1,39 @@
+{
+  "meta": {
+    "cohort": "c26",
+    "repo": "befly"
+  },
+  "summary": "Add React ErrorBoundary at app root",
+  "problem_statement": "Unhandled JavaScript errors in React components currently crash the entire application with a white screen, providing no feedback to the user and no recovery path. A React ErrorBoundary at the app root catches these errors and renders a fallback UI, keeping the application usable and providing a path to recovery (reload, navigate away).",
+  "in_scope": [
+    "Create a React ErrorBoundary component using the componentDidCatch / getDerivedStateFromError lifecycle",
+    "Design a simple, informative fallback UI that displays when an unhandled error is caught",
+    "Wrap the app root with the ErrorBoundary so all component tree errors are caught",
+    "Log caught errors to the console (or to the logger from P6-R2-19 if available)"
+  ],
+  "out_of_scope": [
+    "Server-side error handling — handled in P6-R2-17",
+    "Error reporting to an external service (Sentry, etc.) — not in R2 scope",
+    "Granular per-component error boundaries — only the app-root boundary is in scope",
+    "Handling errors in event handlers or async code (ErrorBoundary only catches render errors)"
+  ],
+  "requirements": [
+    "A React ErrorBoundary component exists and is mounted at the app root",
+    "The ErrorBoundary catches unhandled component errors and renders a fallback UI",
+    "The fallback UI provides the user with an actionable recovery path (e.g. reload button)",
+    "Caught errors are logged"
+  ],
+  "acceptance_criteria": [
+    "A React ErrorBoundary catches and renders fallback UI for unhandled client errors",
+    "The fallback UI is informative and provides a recovery action",
+    "The ErrorBoundary wraps the entire app component tree",
+    "npm run check passes with no new type errors introduced"
+  ],
+  "dependencies": [
+    "None — can be implemented independently, though P6-R2-19 (logger) enhances error logging if available"
+  ],
+  "risks": [
+    "ErrorBoundary does not catch errors in event handlers, async code, or server-side rendering — this is a known React limitation, not a scope gap"
+  ],
+  "implementation_notes": "Use a class component (React ErrorBoundary requires lifecycle methods not available in function components). Consider a simple fallback with an error message and a 'Reload' button. Place the ErrorBoundary in the component tree above the router but below any providers that should remain active during error recovery."
+}

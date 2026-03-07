@@ -1,0 +1,41 @@
+{
+  "meta": {
+    "cohort": "c26",
+    "repo": "befly"
+  },
+  "summary": "Type server route handlers and storage layer contracts",
+  "problem_statement": "Server route handlers and storage methods lack explicit type contracts. Request/response shapes are implicit, storage method signatures use loose typing, and there are no defined interfaces for the storage layer API. This means type errors in the server are invisible until they cause runtime failures, and the storage layer cannot be tested against a contract.",
+  "in_scope": [
+    "Define and export explicit TypeScript interfaces for Stage, SubStage, Task, InsertTask, and other domain entities used on the server",
+    "Define and export typed interfaces for API request and response shapes used in route handlers",
+    "Define and export an IStorage interface (or equivalent contract) describing all storage methods with typed signatures",
+    "Apply typed request/response generics to Express route handler signatures in refactored routes",
+    "Verify strict TypeScript settings (strict: true, noUncheckedIndexedAccess, etc.) are active in tsconfig"
+  ],
+  "out_of_scope": [
+    "Database schema changes — the existing Drizzle schema and migrations remain unchanged",
+    "Changing storage implementation behaviour — contracts describe the existing API surface",
+    "Client-side typing — handled in P2-R2-05 and P2-R2-06"
+  ],
+  "requirements": [
+    "An IStorage interface (or equivalent) exists with fully typed method signatures",
+    "Domain entity interfaces (Stage, SubStage, Task, InsertTask) are defined and exported",
+    "API response shapes are typed with explicit interfaces",
+    "npm run check passes with no new type errors introduced",
+    "Strict TypeScript compiler options are verified as active"
+  ],
+  "acceptance_criteria": [
+    "npm run check passes with no new type errors introduced",
+    "IStorage contract interface is defined with typed signatures for all storage methods",
+    "Domain entity types are explicitly defined and exported",
+    "API response shapes have explicit type interfaces",
+    "tsconfig strict mode and related strict flags are confirmed active"
+  ],
+  "dependencies": [
+    "P1-R2-01 — ESLint strict TypeScript rules must be active"
+  ],
+  "risks": [
+    "Existing storage methods may have implicit return types that are difficult to type without changing implementation"
+  ],
+  "implementation_notes": "The IStorage interface will be consumed by Phase 7 tests (P7-R2-23) to verify contract compliance. Use Drizzle's inferred types (e.g. typeof tasks.$inferSelect) as the basis for domain entity interfaces where appropriate. Express route handlers can be typed using Request<Params, ResBody, ReqBody> generics."
+}

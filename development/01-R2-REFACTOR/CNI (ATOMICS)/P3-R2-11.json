@@ -1,0 +1,36 @@
+{
+  "meta": {
+    "cohort": "c26",
+    "repo": "befly"
+  },
+  "summary": "Create parseIdParam helper and refactor repeated route parsing",
+  "problem_statement": "Multiple server route handlers repeat the same parseInt/isNaN pattern to extract and validate numeric ID parameters from request params. This duplication is error-prone — each handler implements validation slightly differently, and some may lack proper error responses for invalid IDs. A shared helper eliminates the repetition and standardises the validation and error response.",
+  "in_scope": [
+    "Create a parseIdParam helper function that extracts a numeric ID from Express request params, validates it, and returns the parsed number or throws/returns a consistent error",
+    "Refactor all repeated parseInt/isNaN route param parsing in server routes to use the helper",
+    "Ensure the helper returns consistent error responses (400 status with descriptive message) for invalid IDs"
+  ],
+  "out_of_scope": [
+    "Parsing non-ID parameters (query strings, body fields) — only route param ID parsing is in scope",
+    "Adding new route parameters or changing route signatures",
+    "Changing the HTTP status codes or response shapes beyond standardising the error for invalid IDs"
+  ],
+  "requirements": [
+    "A parseIdParam helper function exists with a typed signature",
+    "All repeated parseInt/isNaN route param parsing in refactored routes uses the helper",
+    "Invalid ID params return a 400 response with a descriptive error message"
+  ],
+  "acceptance_criteria": [
+    "Repeated route id parsing is replaced by a shared helper in refactored server routes",
+    "The helper returns consistent 400 errors for invalid ID params",
+    "npm run check passes with no new type errors introduced",
+    "Existing valid-ID route behaviour is preserved exactly"
+  ],
+  "dependencies": [
+    "P2-R2-07 — server route typing should be in place so the helper integrates with typed handlers"
+  ],
+  "risks": [
+    "Some routes may use param names other than 'id' (e.g. 'taskId', 'stageId') — the helper must be flexible or accept the param name"
+  ],
+  "implementation_notes": "The helper can accept a param name string and the Express request object, or accept the raw string value directly. Consider a middleware approach if the pattern is used uniformly, or a pure function if routes need different error handling. Place in a shared server utilities module."
+}

@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "cohort": "c26",
+    "repo": "befly"
+  },
+  "summary": "Fix rethrow-after-response bug in server error handler",
+  "problem_statement": "There is a known bug in server/index.ts where an error is rethrown after a response has already been sent to the client. This causes an unhandled exception (Cannot set headers after they are sent) that crashes the server process. The bug is explicitly called out in the epic as a required fix.",
+  "in_scope": [
+    "Locate the rethrow-after-response pattern in server/index.ts or the error handling path",
+    "Fix the bug so that errors are not rethrown after a response has been sent",
+    "Ensure the fix preserves proper error logging and does not silently swallow errors",
+    "Verify the fix works with the error-handling middleware from P6-R2-17"
+  ],
+  "out_of_scope": [
+    "Redesigning the overall error-handling architecture — handled in P6-R2-17",
+    "Fixing other unrelated bugs in server/index.ts",
+    "Adding new error handling capabilities beyond fixing this specific bug"
+  ],
+  "requirements": [
+    "The rethrow-after-response bug is fixed",
+    "Errors are still logged appropriately even when not rethrown",
+    "The server does not crash from 'Cannot set headers after they are sent' in the fixed path"
+  ],
+  "acceptance_criteria": [
+    "The known server error-handler crash caused by rethrowing after sending a response is fixed",
+    "Error logging is preserved for the affected code path",
+    "The fix integrates cleanly with the Express error-handling middleware from P6-R2-17",
+    "npm run check passes with no new type errors introduced"
+  ],
+  "dependencies": [
+    "P6-R2-17 — the Express error-handling middleware should be in place for proper error flow"
+  ],
+  "risks": [
+    "The fix may mask errors if not careful — ensure errors are still logged even when not rethrown"
+  ],
+  "implementation_notes": "Check if res.headersSent before attempting to send an error response or rethrow. If headers are already sent, log the error and call next(err) to let Express handle it, or simply log and return. Do not rethrow after res.json() or res.send() has been called."
+}

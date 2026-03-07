@@ -1,0 +1,618 @@
+[
+  {
+    "id": 137,
+    "title": "P1-R2-01 Add ESLint strict-TypeScript configuration and npm lint script",
+    "description": "Install ESLint with typescript-eslint strict type-checked preset. Create config, add npm run lint script, fix lint errors in R2-touched code so the script exits cleanly.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "high",
+    "effort": 2,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:30:00.000Z",
+    "createdAt": "2026-03-07T14:30:00.000Z",
+    "tags": ["r2", "p1_tooling"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:30:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 138,
+    "title": "P1-R2-02 Add Prettier configuration and npm format script",
+    "description": "Install Prettier, create config, add npm run format and format:check scripts. Integrate with ESLint via eslint-config-prettier to prevent rule conflicts.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "high",
+    "effort": 1,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:31:00.000Z",
+    "createdAt": "2026-03-07T14:31:00.000Z",
+    "tags": ["r2", "p1_tooling"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:31:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 139,
+    "title": "P1-R2-03 Add Husky + lint-staged pre-commit hooks",
+    "description": "Install Husky and lint-staged. Configure pre-commit hook to run ESLint --fix and Prettier --write on staged TS/JS files. Wire via prepare script.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "high",
+    "effort": 1,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:32:00.000Z",
+    "createdAt": "2026-03-07T14:32:00.000Z",
+    "tags": ["r2", "p1_tooling"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:32:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 140,
+    "title": "P1-R2-04 Configure Vitest reporting and npm test script",
+    "description": "Install Vitest, create config with TypeScript path resolution, add npm run test script, configure CI-suitable reporter, add a minimal smoke test to verify the harness.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "high",
+    "effort": 2,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:33:00.000Z",
+    "createdAt": "2026-03-07T14:33:00.000Z",
+    "tags": ["r2", "p1_tooling"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:33:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 141,
+    "title": "P2-R2-05 Audit and remove 'any' from shared/core code paths",
+    "description": "Audit all shared/core TypeScript files for 'any' usage. Replace with explicit types, generics, or 'unknown' with narrowing. Preserve runtime behaviour.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "high",
+    "effort": 3,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:34:00.000Z",
+    "createdAt": "2026-03-07T14:34:00.000Z",
+    "tags": ["r2", "p2_types"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:34:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 142,
+    "title": "P2-R2-06 Type component props with explicit interfaces for refactored hotspots",
+    "description": "Define and export explicit TypeScript prop interfaces for Admin, Dashboard, KanbanBoard, and EditTaskDialog components and their future child components.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "high",
+    "effort": 2,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:35:00.000Z",
+    "createdAt": "2026-03-07T14:35:00.000Z",
+    "tags": ["r2", "p2_types"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:35:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 143,
+    "title": "P2-R2-07 Type server route handlers and storage layer contracts",
+    "description": "Define IStorage interface, domain entity types (Stage, SubStage, Task, InsertTask), API response shapes, and typed Express route handler signatures. Verify strict TS settings.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "high",
+    "effort": 3,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:36:00.000Z",
+    "createdAt": "2026-03-07T14:36:00.000Z",
+    "tags": ["r2", "p2_types"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:36:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 144,
+    "title": "P3-R2-08 Extract useStages and useSubStages shared hooks",
+    "description": "Create useStages and useSubStages hooks encapsulating data fetching, caching, loading, and error state. Replace all inline stage/sub-stage fetching across components.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "high",
+    "effort": 2,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:37:00.000Z",
+    "createdAt": "2026-03-07T14:37:00.000Z",
+    "tags": ["r2", "p3_dry"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:37:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 145,
+    "title": "P3-R2-09 Unify API fetch layer into typed apiRequest<T> wrapper",
+    "description": "Create a typed apiRequest<T> wrapper handling URL construction, headers, JSON parsing, and error handling. Refactor all client-side API fetch calls to use it.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "high",
+    "effort": 2,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:38:00.000Z",
+    "createdAt": "2026-03-07T14:38:00.000Z",
+    "tags": ["r2", "p3_dry"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:38:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 146,
+    "title": "P3-R2-10 Extract shared constants module for app-level constants in current use",
+    "description": "Identify scattered hardcoded values (status strings, route paths, config defaults, magic numbers). Create a shared constants module and replace inline values in refactored paths.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "normal",
+    "effort": 1,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:39:00.000Z",
+    "createdAt": "2026-03-07T14:39:00.000Z",
+    "tags": ["r2", "p3_dry"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:39:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 147,
+    "title": "P3-R2-11 Create parseIdParam helper and refactor repeated route parsing",
+    "description": "Create a parseIdParam helper to extract and validate numeric IDs from Express request params. Replace all repeated parseInt/isNaN patterns in server routes.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "normal",
+    "effort": 1,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:40:00.000Z",
+    "createdAt": "2026-03-07T14:40:00.000Z",
+    "tags": ["r2", "p3_dry"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:40:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 148,
+    "title": "P4-R2-12 Extract seed/bootstrap logic out of server/routes.ts",
+    "description": "Move seed data and bootstrap/initialisation logic from server/routes.ts into a dedicated seed/bootstrap module. Update server startup to invoke it. Preserve exact seeding behaviour.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "normal",
+    "effort": 1,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:41:00.000Z",
+    "createdAt": "2026-03-07T14:41:00.000Z",
+    "tags": ["r2", "p4_server"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:41:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 149,
+    "title": "P5-R2-13 Decompose Admin.tsx into focused modules",
+    "description": "Split Admin.tsx into focused child components with single responsibilities. Target ~200 LOC per module. Apply typed prop interfaces. Preserve identical behaviour.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "high",
+    "effort": 3,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:42:00.000Z",
+    "createdAt": "2026-03-07T14:42:00.000Z",
+    "tags": ["r2", "p5_decompose"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:42:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 150,
+    "title": "P5-R2-14 Decompose Dashboard.tsx into focused modules",
+    "description": "Split Dashboard.tsx into focused child components with single responsibilities. Target ~200 LOC per module. Apply typed prop interfaces. Preserve identical behaviour.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "high",
+    "effort": 3,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:43:00.000Z",
+    "createdAt": "2026-03-07T14:43:00.000Z",
+    "tags": ["r2", "p5_decompose"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:43:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 151,
+    "title": "P5-R2-15 Decompose KanbanBoard.tsx into focused modules",
+    "description": "Split KanbanBoard.tsx into focused child components (columns, cards, drag-drop handlers). Target ~200 LOC per module. Apply typed prop interfaces. Preserve identical behaviour including drag-and-drop.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "high",
+    "effort": 3,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:44:00.000Z",
+    "createdAt": "2026-03-07T14:44:00.000Z",
+    "tags": ["r2", "p5_decompose"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:44:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 152,
+    "title": "P5-R2-16 Decompose EditTaskDialog.tsx into focused modules",
+    "description": "Split EditTaskDialog.tsx into focused child components (form sections, field groups, submission handler). Target ~200 LOC per module. Apply typed prop interfaces. Preserve identical behaviour.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "high",
+    "effort": 3,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:45:00.000Z",
+    "createdAt": "2026-03-07T14:45:00.000Z",
+    "tags": ["r2", "p5_decompose"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:45:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 153,
+    "title": "P6-R2-17 Implement Express error-handling middleware and consistent error responses",
+    "description": "Create Express error-handling middleware (err, req, res, next), define consistent JSON error response shape, create custom AppError class with status codes. Wire as final middleware.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "high",
+    "effort": 2,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:46:00.000Z",
+    "createdAt": "2026-03-07T14:46:00.000Z",
+    "tags": ["r2", "p6_errors"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:46:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 154,
+    "title": "P6-R2-18 Add React ErrorBoundary at app root",
+    "description": "Create a React ErrorBoundary class component with fallback UI and recovery action. Wrap the app root to catch unhandled component errors. Log caught errors.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "normal",
+    "effort": 1,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:47:00.000Z",
+    "createdAt": "2026-03-07T14:47:00.000Z",
+    "tags": ["r2", "p6_errors"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:47:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 155,
+    "title": "P6-R2-19 Replace console logging with environment-gated logger",
+    "description": "Create a lightweight logger module with log levels (debug, info, warn, error) gated by NODE_ENV. Replace raw console.log/error in production code paths. Works on both server and client.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "normal",
+    "effort": 2,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:48:00.000Z",
+    "createdAt": "2026-03-07T14:48:00.000Z",
+    "tags": ["r2", "p6_errors"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:48:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 156,
+    "title": "P6-R2-20 Fix rethrow-after-response bug in server error handler",
+    "description": "Fix the known bug in server/index.ts where an error is rethrown after a response has been sent, causing 'Cannot set headers after they are sent' crash. Check res.headersSent before acting.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "high",
+    "effort": 1,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:49:00.000Z",
+    "createdAt": "2026-03-07T14:49:00.000Z",
+    "tags": ["r2", "p6_errors"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:49:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 157,
+    "title": "P6-R2-21 Stop request logging from leaking full response bodies",
+    "description": "Modify request logging to capture metadata (method, URL, status, duration) without including response body content. Gate verbose logging behind debug level for development only.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "normal",
+    "effort": 1,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:50:00.000Z",
+    "createdAt": "2026-03-07T14:50:00.000Z",
+    "tags": ["r2", "p6_errors"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:50:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 158,
+    "title": "P7-R2-22 Write tests for shared hooks and extracted utilities",
+    "description": "Write Vitest unit tests for useStages, useSubStages, apiRequest, parseIdParam, logger, and shared constants. Cover primary success and error paths. Mock external dependencies.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "high",
+    "effort": 3,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:51:00.000Z",
+    "createdAt": "2026-03-07T14:51:00.000Z",
+    "tags": ["r2", "p7_tests"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:51:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 159,
+    "title": "P7-R2-23 Write integration tests against the IStorage contract",
+    "description": "Write Vitest integration tests exercising each IStorage method. Test CRUD for tasks, stages, sub-stages. Cover edge cases (not-found, invalid input). Use test database or in-memory adapter.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "high",
+    "effort": 3,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:52:00.000Z",
+    "createdAt": "2026-03-07T14:52:00.000Z",
+    "tags": ["r2", "p7_tests"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:52:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 160,
+    "title": "P7-R2-24 Write API route tests for critical paths touched by the refactor",
+    "description": "Write Vitest route tests for critical CRUD endpoints using supertest. Test success paths (status codes, response shapes) and error paths (invalid IDs, missing fields, not-found).",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "high",
+    "effort": 3,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:53:00.000Z",
+    "createdAt": "2026-03-07T14:53:00.000Z",
+    "tags": ["r2", "p7_tests"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:53:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 161,
+    "title": "P7-R2-25 Add focused component tests for refactored hotspots where logic was extracted",
+    "description": "Write Vitest + React Testing Library component tests for decomposed Admin, Dashboard, KanbanBoard, and EditTaskDialog modules. Test rendering, key interactions, and prop-driven behaviour.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "high",
+    "effort": 3,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:54:00.000Z",
+    "createdAt": "2026-03-07T14:54:00.000Z",
+    "tags": ["r2", "p7_tests"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:54:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 162,
+    "title": "P8-R2-26 Remove confirmed-unused dependencies",
+    "description": "Audit package.json against actual imports. Remove dependencies confirmed to have zero references. Verify build, start, and all quality checks pass after removal.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "normal",
+    "effort": 1,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:55:00.000Z",
+    "createdAt": "2026-03-07T14:55:00.000Z",
+    "tags": ["r2", "p8_cleanup"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:55:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 163,
+    "title": "P8-R2-27 Gate or remove Replit-specific plugins for non-Replit environments",
+    "description": "Identify Replit-specific plugins and config. Gate behind environment detection (process.env.REPL_ID) or remove if Replit is no longer used. Eliminate non-Replit warnings/errors.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "normal",
+    "effort": 1,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:56:00.000Z",
+    "createdAt": "2026-03-07T14:56:00.000Z",
+    "tags": ["r2", "p8_cleanup"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:56:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": 164,
+    "title": "P8-R2-28 Update ARCHITECTURE.md and COMPONENT_INDEX.md to reflect the R2 structure",
+    "description": "Update ARCHITECTURE.md and COMPONENT_INDEX.md to reflect post-R2 module structure: decomposed components, shared hooks/utilities, error handling architecture. Remove stale references.",
+    "stageId": 7,
+    "archived": false,
+    "status": "backlog",
+    "priority": "normal",
+    "effort": 1,
+    "dueDate": null,
+    "updatedAt": "2026-03-07T14:57:00.000Z",
+    "createdAt": "2026-03-07T14:57:00.000Z",
+    "tags": ["r2", "p8_cleanup"],
+    "parentTaskId": 134,
+    "recurrence": "none",
+    "history": [
+      {
+        "status": "backlog",
+        "timestamp": "2026-03-07T14:57:00.000Z"
+      }
+    ]
+  }
+]

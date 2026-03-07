@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "cohort": "c26",
+    "repo": "befly"
+  },
+  "summary": "Add Husky and lint-staged pre-commit hooks",
+  "problem_statement": "Without automated pre-commit checks, linting and formatting violations slip into the repository and are only caught during review or CI — if at all. A pre-commit gate ensures every commit meets the project's quality baseline before it enters the history.",
+  "in_scope": [
+    "Install Husky and lint-staged as dev dependencies",
+    "Configure Husky to run lint-staged on the pre-commit hook",
+    "Configure lint-staged to run ESLint and Prettier on staged TypeScript and JavaScript files",
+    "Verify the hook triggers correctly on a test commit"
+  ],
+  "out_of_scope": [
+    "CI/CD pipeline setup — tooling is CI-ready but pipeline configuration is a separate concern",
+    "Commit message linting (commitlint) — not in R2 scope",
+    "Running tests in the pre-commit hook — test execution is not gated at commit time in R2"
+  ],
+  "requirements": [
+    "Husky and lint-staged are installed as dev dependencies",
+    "A pre-commit hook runs lint-staged on every git commit",
+    "lint-staged runs ESLint --fix and Prettier --write on staged .ts/.tsx/.js/.jsx files"
+  ],
+  "acceptance_criteria": [
+    "Committing a file with a lint error or formatting violation triggers the hook and blocks the commit",
+    "Committing a clean file passes the hook without errors",
+    "Husky hooks are installed via a postinstall or prepare script"
+  ],
+  "dependencies": [
+    "P1-R2-01 — ESLint configuration must exist",
+    "P1-R2-02 — Prettier configuration must exist"
+  ],
+  "risks": [
+    "Husky init may not run automatically for all contributors if prepare script is missing or skipped"
+  ],
+  "implementation_notes": "Use the prepare script in package.json to ensure Husky installs hooks on npm install. lint-staged config can live in package.json or a dedicated .lintstagedrc file."
+}

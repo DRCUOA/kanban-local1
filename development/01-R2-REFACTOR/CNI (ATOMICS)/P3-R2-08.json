@@ -1,0 +1,39 @@
+{
+  "meta": {
+    "cohort": "c26",
+    "repo": "befly"
+  },
+  "summary": "Extract useStages and useSubStages shared hooks",
+  "problem_statement": "Stage and sub-stage data fetching is duplicated inline across multiple components. Each component independently queries, caches, and error-handles the same data, creating maintenance overhead and inconsistency. A shared hook for each resource eliminates this duplication and provides a single point of control for fetching logic.",
+  "in_scope": [
+    "Create a useStages hook that encapsulates stage data fetching, caching, loading, and error state",
+    "Create a useSubStages hook that encapsulates sub-stage data fetching, caching, loading, and error state",
+    "Replace all inline stage/sub-stage fetching in existing components with the new shared hooks",
+    "Ensure hooks use the typed apiRequest wrapper if P3-R2-09 is complete, or a typed fetch pattern otherwise"
+  ],
+  "out_of_scope": [
+    "Changing the API endpoints or response shapes for stages/sub-stages",
+    "Adding new data fetching capabilities beyond what currently exists inline",
+    "Refactoring other data fetching patterns not related to stages/sub-stages",
+    "Component decomposition — handled in Phase 5"
+  ],
+  "requirements": [
+    "A useStages hook exists and returns typed stage data with loading and error states",
+    "A useSubStages hook exists and returns typed sub-stage data with loading and error states",
+    "No inline stage/sub-stage fetching remains outside the shared hooks",
+    "All components using the hooks behave identically to the pre-refactor versions"
+  ],
+  "acceptance_criteria": [
+    "All stage/sub-stage data fetching uses shared hooks (useStages, useSubStages) with no inline duplication for those resources outside the hooks",
+    "Existing component behaviour is preserved exactly",
+    "npm run check passes with no new type errors introduced"
+  ],
+  "dependencies": [
+    "P2-R2-05 — 'any' removal ensures the hooks can be built with proper types",
+    "P2-R2-07 — domain entity types (Stage, SubStage) should be defined"
+  ],
+  "risks": [
+    "Components may use slightly different fetch patterns (different query keys, refetch intervals) that need to be unified carefully"
+  ],
+  "implementation_notes": "If the project uses TanStack Query (React Query), the hooks should wrap useQuery with the appropriate query key and fetch function. Export hooks from a shared hooks directory. Ensure the hooks accept parameters needed by different consumers (e.g. filtering by parent ID for sub-stages)."
+}

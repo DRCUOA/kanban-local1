@@ -1,0 +1,38 @@
+{
+  "meta": {
+    "cohort": "c26",
+    "repo": "befly"
+  },
+  "summary": "Extract seed and bootstrap logic out of server routes",
+  "problem_statement": "Seed data and bootstrap logic are currently embedded inside the route registration module (server/routes.ts). This conflates two concerns — route definitions and data initialisation — making the routes file harder to read, test, and maintain. Extracting seed logic into a dedicated module isolates the concern and simplifies the routes file.",
+  "in_scope": [
+    "Identify all seed data and bootstrap/initialisation logic currently inside server/routes.ts",
+    "Extract that logic into a dedicated seed or bootstrap module (e.g. server/seed.ts or server/bootstrap.ts)",
+    "Update server startup to invoke the extracted module at the appropriate point",
+    "Ensure the extracted module preserves the exact same seeding behaviour and data"
+  ],
+  "out_of_scope": [
+    "Changing the seed data itself or the conditions under which seeding runs",
+    "Database schema changes — the existing Drizzle schema and migrations remain unchanged",
+    "Adding new seed data or a seed management framework",
+    "Refactoring route handlers beyond removing seed logic — route cleanup is handled by other tasks"
+  ],
+  "requirements": [
+    "All seed/bootstrap logic is removed from server/routes.ts and placed in a dedicated module",
+    "The dedicated module is invoked during server startup and produces the same result as the original inline logic",
+    "server/routes.ts contains only route registration after extraction"
+  ],
+  "acceptance_criteria": [
+    "server/routes.ts no longer contains seed data or bootstrap logic",
+    "A dedicated seed/bootstrap module exists and is invoked during server startup",
+    "Application behaviour at startup is unchanged — same data is seeded under the same conditions",
+    "npm run check passes with no new type errors introduced"
+  ],
+  "dependencies": [
+    "P2-R2-07 — storage layer contracts should be typed so the extracted module can reference typed storage methods"
+  ],
+  "risks": [
+    "Seed logic may be tightly coupled to route registration timing (e.g. runs after certain middleware) — extraction must preserve execution order"
+  ],
+  "implementation_notes": "Keep behaviour unchanged. The extracted module should export a function (e.g. seedDatabase or bootstrap) that accepts the storage instance and runs the existing seed logic. Call it from the server entry point (server/index.ts or equivalent) after storage is initialised but before routes are registered."
+}

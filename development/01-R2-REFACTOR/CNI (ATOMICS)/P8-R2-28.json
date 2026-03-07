@@ -1,0 +1,39 @@
+{
+  "meta": {
+    "cohort": "c26",
+    "repo": "befly"
+  },
+  "summary": "Update ARCHITECTURE.md and COMPONENT_INDEX.md to reflect R2 structure",
+  "problem_statement": "The R2 refactor significantly changes the project's module structure: components are decomposed, shared hooks and utilities are extracted, error handling is centralised, and the server is restructured. If documentation is not updated to reflect these changes, it becomes misleading — directing developers to files and patterns that no longer exist and omitting the new shared modules they should use.",
+  "in_scope": [
+    "Update ARCHITECTURE.md to reflect the new module structure introduced by R2 (shared hooks, utilities, error handling, decomposed components)",
+    "Update COMPONENT_INDEX.md to list the new decomposed component modules and remove references to the old monolithic files",
+    "Document the new shared modules (apiRequest, useStages, useSubStages, parseIdParam, logger, constants)",
+    "Document the error-handling architecture (Express middleware, ErrorBoundary, custom error class)"
+  ],
+  "out_of_scope": [
+    "Writing new documentation beyond ARCHITECTURE.md and COMPONENT_INDEX.md",
+    "API documentation or OpenAPI specs",
+    "User-facing documentation or changelogs",
+    "Creating documentation for features not changed by R2"
+  ],
+  "requirements": [
+    "ARCHITECTURE.md accurately describes the post-R2 module structure",
+    "COMPONENT_INDEX.md lists all decomposed components and their locations",
+    "New shared modules are documented with their purpose and location",
+    "No references to pre-R2 monolithic file structures remain in either document"
+  ],
+  "acceptance_criteria": [
+    "ARCHITECTURE.md and COMPONENT_INDEX.md are updated to reflect the R2 structure",
+    "New shared modules, hooks, and utilities are documented",
+    "Decomposed component locations are listed accurately",
+    "No stale references to pre-refactor file structures remain"
+  ],
+  "dependencies": [
+    "All prior R2 phases — documentation should reflect the final state after all refactoring is complete"
+  ],
+  "risks": [
+    "Documentation may need further updates if late-phase changes alter the structure — update docs as the final task"
+  ],
+  "implementation_notes": "This should be the final task executed in the R2 sequence. Review the actual file structure after all refactoring is complete rather than documenting the planned structure. Include a brief section on the shared modules directory and how to use the extracted hooks and utilities."
+}

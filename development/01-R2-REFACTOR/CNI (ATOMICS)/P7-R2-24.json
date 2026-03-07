@@ -1,0 +1,42 @@
+{
+  "meta": {
+    "cohort": "c26",
+    "repo": "befly"
+  },
+  "summary": "Write API route tests for critical paths touched by the refactor",
+  "problem_statement": "The server's API routes are the primary interface between client and server, but they have no automated tests. Any refactoring to route handlers (error handling, param parsing, response shaping) risks introducing regressions that are only caught manually. Route-level tests verify that endpoints return correct status codes, response shapes, and handle errors as expected.",
+  "in_scope": [
+    "Write Vitest API route tests for critical CRUD endpoints (tasks, stages, sub-stages)",
+    "Test success paths: correct status codes, response shapes matching typed interfaces",
+    "Test error paths: invalid IDs, missing required fields, not-found resources",
+    "Use supertest or direct Express app testing to make HTTP requests against the route handlers"
+  ],
+  "out_of_scope": [
+    "End-to-end tests through a running server — tests exercise the Express app directly",
+    "Testing routes not touched by the R2 refactor",
+    "Load testing or performance benchmarking",
+    "Authentication/authorization testing — not in R2 scope"
+  ],
+  "requirements": [
+    "Critical API routes have at least one success-path and one error-path test each",
+    "Tests verify status codes and response body shapes against the typed interfaces from P2-R2-07",
+    "Tests run via npm run test and use the Vitest framework",
+    "Tests are isolated and do not depend on external state"
+  ],
+  "acceptance_criteria": [
+    "Automated tests exist for critical API route paths touched by the refactor",
+    "All tests pass via npm run test",
+    "Tests validate both success and error response shapes",
+    "npm run check passes with no new type errors introduced"
+  ],
+  "dependencies": [
+    "P1-R2-04 — Vitest must be configured",
+    "P2-R2-07 — API response type interfaces must be defined",
+    "P3-R2-11 — parseIdParam helper should be in use by routes under test",
+    "P6-R2-17 — error-handling middleware should be in place"
+  ],
+  "risks": [
+    "Route tests may need a test database or mock storage to isolate from persistence — coordinate with P7-R2-23 test setup"
+  ],
+  "implementation_notes": "Export the Express app instance separately from the server listen call so tests can import the app without starting a server. Use supertest for HTTP-level testing. Mock or inject a test storage instance to isolate route logic from database state."
+}
