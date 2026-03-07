@@ -34,7 +34,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-export default function Admin() {
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- page component; props will grow during Phase 5 decomposition
+export interface AdminProps {}
+
+export default function Admin(_props: AdminProps) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [editingId, setEditingId] = useState<number | null>(null);

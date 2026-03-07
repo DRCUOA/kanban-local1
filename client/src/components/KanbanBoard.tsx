@@ -28,7 +28,7 @@ import { DayPlanSubStage } from './DayPlanSubStage';
 import { useUpdateTask, useArchiveTask } from '@/hooks/use-tasks';
 import { cn } from '@/lib/utils';
 
-interface KanbanBoardProps {
+export interface KanbanBoardProps {
   tasks: Task[];
   onTaskClick: (task: Task) => void;
   viewMode?: 'detail' | 'summary';

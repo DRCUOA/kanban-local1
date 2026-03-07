@@ -30,7 +30,10 @@ import { api } from '@shared/routes';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-export default function Dashboard() {
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- page component; props will grow during Phase 5 decomposition
+export interface DashboardProps {}
+
+export default function Dashboard(_props: DashboardProps) {
   const { data: tasks, isLoading, error } = useTasks();
   const createTask = useCreateTask();
   const { toast } = useToast();
