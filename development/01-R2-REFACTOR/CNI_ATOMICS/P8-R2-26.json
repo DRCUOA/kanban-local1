@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Remove confirmed-unused dependencies from the project",
   "problem_statement": "The project's dependency tree includes packages that were added during MVP development but are no longer referenced in the codebase. Unused dependencies increase install times, enlarge the attack surface, and create false signals during security audits. Removing them reduces maintenance burden and clarifies the project's actual dependency footprint.",

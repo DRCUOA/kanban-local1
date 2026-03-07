@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Decompose Dashboard.tsx into focused modules",
   "problem_statement": "Dashboard.tsx is an oversized monolithic component combining data fetching, layout, multiple widget renderings, and state management in a single file. Its size makes it hard to understand, test, and modify without risking unintended side effects. Decomposition into focused modules isolates concerns and makes each piece independently testable.",

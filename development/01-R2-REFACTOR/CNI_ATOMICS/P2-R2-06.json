@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Type component props with explicit interfaces for refactored hotspots",
   "problem_statement": "The refactored hotspot components (Admin, Dashboard, KanbanBoard, EditTaskDialog) lack explicitly typed prop interfaces. This makes it impossible to verify correct prop passing at compile time, increases the risk of runtime errors during the Phase 5 decomposition, and prevents IDE tooling from providing accurate completions and documentation.",

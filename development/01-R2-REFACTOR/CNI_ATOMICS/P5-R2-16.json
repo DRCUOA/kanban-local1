@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Decompose EditTaskDialog.tsx into focused modules",
   "problem_statement": "EditTaskDialog.tsx is an oversized monolithic component that handles form state, validation, multiple field types, submission logic, and dialog chrome in a single file. Its complexity makes it the most error-prone component to modify. Decomposition into focused modules isolates form sections, validation, and submission logic for independent reasoning and testing.",

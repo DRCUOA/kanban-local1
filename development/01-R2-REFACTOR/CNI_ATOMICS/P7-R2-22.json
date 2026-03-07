@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Write tests for shared hooks and extracted utilities",
   "problem_statement": "The shared hooks (useStages, useSubStages) and extracted utilities (apiRequest, parseIdParam, logger, constants) are consumed across the application. Without automated tests, regressions in these shared modules silently break every consumer. Tests for these high-leverage modules provide the greatest coverage-to-effort ratio.",

@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Replace console logging with environment-gated logger",
   "problem_statement": "The codebase uses raw console.log and console.error throughout production code paths. Debug logging reaches end users in production, clutters browser consoles, and can leak sensitive information (request bodies, internal state). A lightweight logger module gated by NODE_ENV centralises control over what is logged and when.",

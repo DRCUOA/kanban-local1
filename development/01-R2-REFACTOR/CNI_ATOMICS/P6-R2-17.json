@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Implement Express error-handling middleware and consistent error responses",
   "problem_statement": "The server lacks a centralised error-handling strategy. Route handlers catch and respond to errors independently with inconsistent JSON shapes, status codes, and levels of detail. Some errors go unhandled entirely and crash the process. A dedicated Express error-handling middleware provides a single place to catch, format, and respond to errors consistently.",

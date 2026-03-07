@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Type server route handlers and storage layer contracts",
   "problem_statement": "Server route handlers and storage methods lack explicit type contracts. Request/response shapes are implicit, storage method signatures use loose typing, and there are no defined interfaces for the storage layer API. This means type errors in the server are invisible until they cause runtime failures, and the storage layer cannot be tested against a contract.",

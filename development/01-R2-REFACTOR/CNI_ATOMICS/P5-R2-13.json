@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Decompose Admin.tsx into focused modules",
   "problem_statement": "Admin.tsx is an oversized monolithic component that bundles multiple responsibilities (data display, CRUD operations, configuration management) into a single file. This makes the component difficult to reason about, test in isolation, and modify safely. Decomposition into focused modules improves readability, testability, and maintenance.",

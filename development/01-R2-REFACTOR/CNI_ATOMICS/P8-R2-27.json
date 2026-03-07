@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Gate or remove Replit-specific plugins for non-Replit environments",
   "problem_statement": "The project includes Replit-specific plugins and configuration from its MVP development environment. These plugins add unnecessary overhead, cause warnings or errors in non-Replit environments, and confuse developers who are not running on Replit. They should be gated behind environment detection or removed entirely if no longer needed.",

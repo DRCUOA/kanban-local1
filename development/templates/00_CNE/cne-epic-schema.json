@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://befly.dev/schemas/cne-epic.json",
+  "$id": "https://kanban-local1.dev/schemas/cne-epic.json",
   "title": "CNE Epic",
   "description": "Schema for epic JSON files consumed by the cne script (Create New Epic). An epic groups related atomic issues (CNIs) under a single strategic goal. Use this format exactly when creating new epics. Run: cne path/to/epic.json",
   "type": "object",

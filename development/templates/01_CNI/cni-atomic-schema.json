@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://befly.dev/schemas/cni-atomic.json",
+  "$id": "https://kanban-local1.dev/schemas/cni-atomic.json",
   "title": "CNI Atomic Issue",
   "description": "Schema for atomic issue JSON files consumed by the cni script (Create Atomic Issue + Branch). Use this format exactly when creating new CNIs. Run: cni path/to/issue.json",
   "type": "object",
@@ -21,7 +21,7 @@
         "repo": {
           "type": "string",
           "description": "Repository name. Passed to workrepo.",
-          "examples": ["befly"]
+          "examples": ["kanban-local1"]
         }
       }
     },

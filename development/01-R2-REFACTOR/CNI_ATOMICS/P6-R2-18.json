@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Add React ErrorBoundary at app root",
   "problem_statement": "Unhandled JavaScript errors in React components currently crash the entire application with a white screen, providing no feedback to the user and no recovery path. A React ErrorBoundary at the app root catches these errors and renders a fallback UI, keeping the application usable and providing a path to recovery (reload, navigate away).",

@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "One-sentence description of the atomic work (no commas, no 'and' — must be a single action)",
   "problem_statement": "Why this work matters. Describe the problem or risk being addressed. No solutions here — focus on the gap, constraint, or failure mode.",

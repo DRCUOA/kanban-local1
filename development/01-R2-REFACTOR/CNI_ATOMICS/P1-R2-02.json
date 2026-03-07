@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Add Prettier configuration and npm format script",
   "problem_statement": "The codebase has no enforced formatting standard. Inconsistent whitespace, quote styles, and line lengths create noisy diffs, increase merge conflicts, and make code review harder. A single Prettier config eliminates formatting debates and ensures uniform style across all contributors.",

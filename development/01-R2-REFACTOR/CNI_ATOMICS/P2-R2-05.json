@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Audit and remove 'any' from shared and core code paths",
   "problem_statement": "Widespread use of 'any' across the codebase defeats TypeScript's type system, hiding bugs that only surface at runtime. Shared utilities, hooks, and core business logic are the highest-leverage targets because every consumer inherits the type weakness. Removing 'any' from these paths restores compiler-enforced safety where it matters most.",

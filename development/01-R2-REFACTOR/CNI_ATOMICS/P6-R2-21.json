@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Stop request logging from leaking full response bodies",
   "problem_statement": "The current request logging middleware logs full response bodies, which can contain sensitive user data, large payloads, and internal state. This creates a security and privacy risk, bloats log output, and makes logs harder to parse. Request logging should capture metadata (method, URL, status, duration) without echoing entire response payloads.",

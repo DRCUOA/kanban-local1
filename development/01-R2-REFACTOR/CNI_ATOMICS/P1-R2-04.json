@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Configure Vitest reporting and npm test script",
   "problem_statement": "The project has no test runner configured. Without a working test harness and reporting, the testing phases (Phase 7) cannot execute. Vitest must be set up early so that subsequent refactoring work can optionally validate behaviour as it proceeds, and Phase 7 has a ready foundation.",

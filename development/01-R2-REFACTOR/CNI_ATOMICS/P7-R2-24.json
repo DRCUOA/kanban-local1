@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Write API route tests for critical paths touched by the refactor",
   "problem_statement": "The server's API routes are the primary interface between client and server, but they have no automated tests. Any refactoring to route handlers (error handling, param parsing, response shaping) risks introducing regressions that are only caught manually. Route-level tests verify that endpoints return correct status codes, response shapes, and handle errors as expected.",

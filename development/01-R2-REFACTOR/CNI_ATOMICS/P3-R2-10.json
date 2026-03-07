@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Extract shared constants module for app-level constants in current use",
   "problem_statement": "Hardcoded values (status strings, route paths, configuration defaults, UI labels) are scattered across multiple files. When a value needs to change, every occurrence must be found and updated independently, risking inconsistencies and bugs. Centralising these into a shared constants module makes the codebase easier to maintain and reduces the surface area for errors.",

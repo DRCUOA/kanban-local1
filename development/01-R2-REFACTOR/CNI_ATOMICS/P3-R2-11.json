@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Create parseIdParam helper and refactor repeated route parsing",
   "problem_statement": "Multiple server route handlers repeat the same parseInt/isNaN pattern to extract and validate numeric ID parameters from request params. This duplication is error-prone — each handler implements validation slightly differently, and some may lack proper error responses for invalid IDs. A shared helper eliminates the repetition and standardises the validation and error response.",

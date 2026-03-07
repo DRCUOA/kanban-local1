@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Update ARCHITECTURE.md and COMPONENT_INDEX.md to reflect R2 structure",
   "problem_statement": "The R2 refactor significantly changes the project's module structure: components are decomposed, shared hooks and utilities are extracted, error handling is centralised, and the server is restructured. If documentation is not updated to reflect these changes, it becomes misleading — directing developers to files and patterns that no longer exist and omitting the new shared modules they should use.",

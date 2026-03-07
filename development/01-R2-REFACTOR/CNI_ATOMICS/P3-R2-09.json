@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Unify API fetch layer into typed apiRequest wrapper",
   "problem_statement": "API calls are scattered across the client codebase with inconsistent error handling, response parsing, and type assertions. Each call site independently constructs URLs, sets headers, parses JSON, and handles errors. A single typed wrapper centralises this logic, reduces duplication, and ensures every API call returns properly typed data with consistent error handling.",

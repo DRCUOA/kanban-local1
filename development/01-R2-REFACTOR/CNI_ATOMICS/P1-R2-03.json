@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Add Husky and lint-staged pre-commit hooks",
   "problem_statement": "Without automated pre-commit checks, linting and formatting violations slip into the repository and are only caught during review or CI — if at all. A pre-commit gate ensures every commit meets the project's quality baseline before it enters the history.",

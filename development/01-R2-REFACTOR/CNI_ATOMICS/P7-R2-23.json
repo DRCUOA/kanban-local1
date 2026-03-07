@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Write integration tests against the IStorage contract",
   "problem_statement": "The storage layer is the persistence backbone of the application, but it has no automated tests verifying that its methods behave according to their contract. Bugs in storage logic (incorrect queries, missing fields, constraint violations) propagate silently to every route handler. Contract tests verify each IStorage method against expected inputs and outputs.",

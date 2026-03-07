@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Add focused component tests for refactored hotspots where logic was extracted",
   "problem_statement": "The Phase 5 decomposition restructured Admin, Dashboard, KanbanBoard, and EditTaskDialog into multiple modules. Without component tests, it is impossible to verify that the decomposition preserved behaviour. Focused tests on the refactored hotspots catch rendering regressions and validate that extracted logic integrates correctly with the UI.",

@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Decompose KanbanBoard.tsx into focused modules",
   "problem_statement": "KanbanBoard.tsx is an oversized monolithic component that handles board layout, column rendering, card rendering, drag-and-drop logic, and state management in a single file. This density makes the core user-facing component fragile and difficult to maintain. Decomposition isolates each concern into a focused module that can be understood and tested independently.",

@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Extract useStages and useSubStages shared hooks",
   "problem_statement": "Stage and sub-stage data fetching is duplicated inline across multiple components. Each component independently queries, caches, and error-handles the same data, creating maintenance overhead and inconsistency. A shared hook for each resource eliminates this duplication and provides a single point of control for fetching logic.",

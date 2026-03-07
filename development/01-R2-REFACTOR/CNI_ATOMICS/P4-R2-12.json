@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Extract seed and bootstrap logic out of server routes",
   "problem_statement": "Seed data and bootstrap logic are currently embedded inside the route registration module (server/routes.ts). This conflates two concerns — route definitions and data initialisation — making the routes file harder to read, test, and maintain. Extracting seed logic into a dedicated module isolates the concern and simplifies the routes file.",

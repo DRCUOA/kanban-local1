@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Fix rethrow-after-response bug in server error handler",
   "problem_statement": "There is a known bug in server/index.ts where an error is rethrown after a response has already been sent to the client. This causes an unhandled exception (Cannot set headers after they are sent) that crashes the server process. The bug is explicitly called out in the epic as a required fix.",

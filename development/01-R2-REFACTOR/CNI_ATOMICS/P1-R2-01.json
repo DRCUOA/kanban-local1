@@ -1,7 +1,7 @@
 {
   "meta": {
     "cohort": "c26",
-    "repo": "befly"
+    "repo": "kanban-local1"
   },
   "summary": "Add ESLint strict-TypeScript configuration and npm lint script",
   "problem_statement": "The codebase lacks automated static analysis. Without ESLint enforcing strict TypeScript rules, type-unsafe patterns (widespread 'any', implicit returns, unhandled promises) go undetected until they cause runtime failures. Every subsequent R2 refactoring phase depends on a linter baseline to prevent regressions.",
