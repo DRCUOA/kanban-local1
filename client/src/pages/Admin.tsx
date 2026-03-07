@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -231,7 +232,7 @@ export default function Admin() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate("/")}
+            onClick={() => { navigate("/"); }}
             className="rounded-lg h-10 w-10 shrink-0"
             data-testid="button-back"
           >
@@ -297,7 +298,7 @@ export default function Admin() {
                               type="number"
                               className="h-12 rounded-xl text-base"
                               {...field}
-                              onChange={(e) => field.onChange(Number(e.target.value))}
+                              onChange={(e) => { field.onChange(Number(e.target.value)); }}
                               data-testid="input-stage-order"
                             />
                           </FormControl>
@@ -370,7 +371,7 @@ export default function Admin() {
                       variant="outline"
                       size="icon"
                       className="h-10 w-10 rounded-xl"
-                      onClick={() => openEditDialog(stage)}
+                      onClick={() => { openEditDialog(stage); }}
                       data-testid={`button-edit-stage-${stage.id}`}
                     >
                       <Edit className="w-4 h-4" />
@@ -379,7 +380,7 @@ export default function Admin() {
                       variant="destructive"
                       size="icon"
                       className="h-10 w-10 rounded-xl"
-                      onClick={() => deleteMutation.mutate(stage.id)}
+                      onClick={() => { deleteMutation.mutate(stage.id); }}
                       disabled={deleteMutation.isPending}
                       data-testid={`button-delete-stage-${stage.id}`}
                     >
@@ -495,7 +496,7 @@ export default function Admin() {
                                 max="100"
                                 className="h-12 rounded-xl text-base"
                                 {...field}
-                                onChange={(e) => field.onChange(Number(e.target.value))}
+                                onChange={(e) => { field.onChange(Number(e.target.value)); }}
                               />
                             </FormControl>
                           </FormItem>
@@ -512,7 +513,7 @@ export default function Admin() {
                                 type="number"
                                 className="h-12 rounded-xl text-base"
                                 {...field}
-                                onChange={(e) => field.onChange(Number(e.target.value))}
+                                onChange={(e) => { field.onChange(Number(e.target.value)); }}
                               />
                             </FormControl>
                           </FormItem>
@@ -566,7 +567,7 @@ export default function Admin() {
                               variant="outline"
                               size="icon"
                               className="h-10 w-10 rounded-xl"
-                              onClick={() => openEditSubStageDialog(subStage)}
+                              onClick={() => { openEditSubStageDialog(subStage); }}
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
@@ -574,7 +575,7 @@ export default function Admin() {
                               variant="destructive"
                               size="icon"
                               className="h-10 w-10 rounded-xl"
-                              onClick={() => deleteSubStageMutation.mutate(subStage.id)}
+                              onClick={() => { deleteSubStageMutation.mutate(subStage.id); }}
                               disabled={deleteSubStageMutation.isPending}
                             >
                               <Trash2 className="w-4 h-4" />

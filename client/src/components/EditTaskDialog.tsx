@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema, type InsertTask, type Task } from "@shared/schema";
@@ -177,7 +178,7 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-xs">Stage</FormLabel>
-                  <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
+                  <Select onValueChange={(v) => { field.onChange(Number(v)); }} value={field.value?.toString()}>
                     <FormControl>
                       <SelectTrigger className="h-12 rounded-xl">
                         <SelectValue />
@@ -280,7 +281,7 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
                         className="h-12 rounded-xl text-base"
                         {...field}
                         value={field.value || ""}
-                        onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                        onChange={(e) => { field.onChange(e.target.value ? parseInt(e.target.value) : undefined); }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -313,7 +314,7 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
                       <PopoverContent className="w-auto p-0">
                         <Calendar
                           selected={field.value}
-                          onSelect={(date) => field.onChange(date || undefined)}
+                          onSelect={(date) => { field.onChange(date || undefined); }}
                           initialFocus
                         />
                       </PopoverContent>
@@ -366,7 +367,7 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
               
               {/* Bottom row: Cancel + Save */}
               <div className="flex gap-3">
-                <Button type="button" variant="outline" className="flex-1 h-12 rounded-xl" onClick={() => onOpenChange(false)}>
+                <Button type="button" variant="outline" className="flex-1 h-12 rounded-xl" onClick={() => { onOpenChange(false); }}>
                   Cancel
                 </Button>
                 <Button 

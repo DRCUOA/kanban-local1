@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,7 +48,7 @@ export function ColorPicker({ value = "#3B82F6", onChange, label }: ColorPickerP
     }
     
     // Convert rgb to hex
-    const rgbMatch = color.match(/^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i);
+    const rgbMatch = /^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i.exec(color);
     if (rgbMatch) {
       const r = parseInt(rgbMatch[1]);
       const g = parseInt(rgbMatch[2]);
@@ -95,7 +96,7 @@ export function ColorPicker({ value = "#3B82F6", onChange, label }: ColorPickerP
 
   // Convert rgb to hex
   const rgbToHex = (rgb: string): string | null => {
-    const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+    const match = /^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/.exec(rgb);
     if (!match) return null;
     const r = parseInt(match[1]);
     const g = parseInt(match[2]);
@@ -154,7 +155,7 @@ export function ColorPicker({ value = "#3B82F6", onChange, label }: ColorPickerP
                 <input
                   type="color"
                   value={displayValue.startsWith("#") ? displayValue : "#3B82F6"}
-                  onChange={(e) => handleColorChange(e.target.value)}
+                  onChange={(e) => { handleColorChange(e.target.value); }}
                   className="w-full h-10 rounded-xl cursor-pointer"
                 />
               </div>

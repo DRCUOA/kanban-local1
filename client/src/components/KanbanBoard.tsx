@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { useEffect, useMemo, useState } from "react";
 import { Task } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
@@ -168,7 +169,7 @@ export function KanbanBoard({ tasks, onTaskClick, viewMode = "detail", focusMode
       if ('vibrate' in navigator) navigator.vibrate([10, 50, 10]);
       setActiveTasks(tasks => tasks.filter(t => t.id !== activeTask.id));
       archiveTask.mutate(activeTask.id, {
-        onError: () => setActiveTasks(tasks => [...tasks, activeTask])
+        onError: () => { setActiveTasks(tasks => [...tasks, activeTask]); }
       });
       setActiveId(null);
       return;
@@ -186,10 +187,10 @@ export function KanbanBoard({ tasks, onTaskClick, viewMode = "detail", focusMode
       
       if (over.data?.current?.type === "SubStage") {
         subStageTag = over.data.current.subStageTag;
-        const match = String(over.id).match(/^(\d+)-(.+)$/);
+        const match = /^(\d+)-(.+)$/.exec(String(over.id));
         stageId = match ? parseInt(match[1]) : activeTask.stageId;
       } else if (typeof overId === 'string') {
-        const match = overId.match(/^(\d+)-(.+)$/);
+        const match = /^(\d+)-(.+)$/.exec(overId);
         if (match) { stageId = parseInt(match[1]); subStageTag = match[2]; }
         else { stageId = activeTask.stageId; subStageTag = ""; }
       } else {

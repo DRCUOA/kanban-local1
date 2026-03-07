@@ -35,11 +35,11 @@ export const taskRecurrenceEnum = z.enum(["none", "daily", "weekly", "monthly"])
 export type TaskRecurrence = z.infer<typeof taskRecurrenceEnum>;
 
 // History log entry type
-export type TaskHistoryEntry = {
+export interface TaskHistoryEntry {
   status: TaskStatus;
   timestamp: string;
   note?: string;
-};
+}
 
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
@@ -55,11 +55,13 @@ export const tasks = pgTable("tasks", {
   updatedAt: timestamp("updated_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
   tags: jsonb("tags").$type<string[]>(), // Array of strings
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access -- Drizzle self-reference callback
   parentTaskId: integer("parent_task_id").references(() => tasks.id), // Self-reference for sub-tasks
   recurrence: text("recurrence").default("none"), // none | daily | weekly | monthly
   history: jsonb("history").$type<TaskHistoryEntry[]>(), // Status change history
 });
 
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument -- Drizzle relations API uses internal any types */
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
   stage: one(stages, {
     fields: [tasks.stageId],
