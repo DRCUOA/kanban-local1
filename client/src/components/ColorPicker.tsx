@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
-import React, { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import React, { useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface ColorPickerProps {
   value?: string;
@@ -13,19 +13,19 @@ interface ColorPickerProps {
 
 // Predefined color palette
 const PRESET_COLORS = [
-  "#3B82F6", // Blue
-  "#10B981", // Green
-  "#F59E0B", // Amber
-  "#EF4444", // Red
-  "#8B5CF6", // Purple
-  "#EC4899", // Pink
-  "#06B6D4", // Cyan
-  "#84CC16", // Lime
-  "#F97316", // Orange
-  "#6366F1", // Indigo
+  '#3B82F6', // Blue
+  '#10B981', // Green
+  '#F59E0B', // Amber
+  '#EF4444', // Red
+  '#8B5CF6', // Purple
+  '#EC4899', // Pink
+  '#06B6D4', // Cyan
+  '#84CC16', // Lime
+  '#F97316', // Orange
+  '#6366F1', // Indigo
 ];
 
-export function ColorPicker({ value = "#3B82F6", onChange, label }: ColorPickerProps) {
+export function ColorPicker({ value = '#3B82F6', onChange, label }: ColorPickerProps) {
   const [inputValue, setInputValue] = useState(value);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -36,29 +36,31 @@ export function ColorPicker({ value = "#3B82F6", onChange, label }: ColorPickerP
 
   // Normalize color to hex format
   const normalizeToHex = (color: string): string => {
-    if (!color || color === "") return "#3B82F6"; // Default fallback
-    
+    if (!color || color === '') return '#3B82F6'; // Default fallback
+
     // If already hex, return as is
-    if (color.startsWith("#")) {
+    if (color.startsWith('#')) {
       // Expand short hex (#RGB to #RRGGBB)
       if (color.length === 4) {
         return `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`;
       }
       return color;
     }
-    
+
     // Convert rgb to hex
     const rgbMatch = /^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i.exec(color);
     if (rgbMatch) {
       const r = parseInt(rgbMatch[1]);
       const g = parseInt(rgbMatch[2]);
       const b = parseInt(rgbMatch[3]);
-      return `#${[r, g, b].map((x) => {
-        const hex = x.toString(16);
-        return hex.length === 1 ? "0" + hex : hex;
-      }).join("")}`;
+      return `#${[r, g, b]
+        .map((x) => {
+          const hex = x.toString(16);
+          return hex.length === 1 ? '0' + hex : hex;
+        })
+        .join('')}`;
     }
-    
+
     return color; // Return as-is if can't normalize
   };
 
@@ -101,14 +103,16 @@ export function ColorPicker({ value = "#3B82F6", onChange, label }: ColorPickerP
     const r = parseInt(match[1]);
     const g = parseInt(match[2]);
     const b = parseInt(match[3]);
-    return `#${[r, g, b].map((x) => {
-      const hex = x.toString(16);
-      return hex.length === 1 ? "0" + hex : hex;
-    }).join("")}`;
+    return `#${[r, g, b]
+      .map((x) => {
+        const hex = x.toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+      })
+      .join('')}`;
   };
 
-  const displayValue = inputValue.startsWith("rgb") 
-    ? rgbToHex(inputValue) || inputValue 
+  const displayValue = inputValue.startsWith('rgb')
+    ? rgbToHex(inputValue) || inputValue
     : inputValue;
 
   return (
@@ -120,8 +124,8 @@ export function ColorPicker({ value = "#3B82F6", onChange, label }: ColorPickerP
             <button
               type="button"
               className={cn(
-                "w-12 h-12 rounded-xl border-2 border-border neo-raised cursor-pointer transition-all hover:scale-105",
-                "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                'w-12 h-12 rounded-xl border-2 border-border neo-raised cursor-pointer transition-all hover:scale-105',
+                'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2',
               )}
               style={{ backgroundColor: displayValue }}
               title="Click to open color picker"
@@ -137,8 +141,10 @@ export function ColorPicker({ value = "#3B82F6", onChange, label }: ColorPickerP
                       key={color}
                       type="button"
                       className={cn(
-                        "w-10 h-10 rounded-lg border-2 transition-all hover:scale-110",
-                        displayValue === color ? "border-foreground scale-110" : "border-transparent"
+                        'w-10 h-10 rounded-lg border-2 transition-all hover:scale-110',
+                        displayValue === color
+                          ? 'border-foreground scale-110'
+                          : 'border-transparent',
                       )}
                       style={{ backgroundColor: color }}
                       onClick={() => {
@@ -154,15 +160,17 @@ export function ColorPicker({ value = "#3B82F6", onChange, label }: ColorPickerP
                 <Label className="text-xs text-muted-foreground mb-2 block">Custom Color</Label>
                 <input
                   type="color"
-                  value={displayValue.startsWith("#") ? displayValue : "#3B82F6"}
-                  onChange={(e) => { handleColorChange(e.target.value); }}
+                  value={displayValue.startsWith('#') ? displayValue : '#3B82F6'}
+                  onChange={(e) => {
+                    handleColorChange(e.target.value);
+                  }}
                   className="w-full h-10 rounded-xl cursor-pointer"
                 />
               </div>
             </div>
           </PopoverContent>
         </Popover>
-        
+
         <div className="flex-1">
           <Input
             type="text"
@@ -171,9 +179,7 @@ export function ColorPicker({ value = "#3B82F6", onChange, label }: ColorPickerP
             onChange={handleInputChange}
             className="font-mono text-sm"
           />
-          <p className="text-xs text-muted-foreground mt-1">
-            Enter hex (#RRGGBB) or rgb(r, g, b)
-          </p>
+          <p className="text-xs text-muted-foreground mt-1">Enter hex (#RRGGBB) or rgb(r, g, b)</p>
         </div>
       </div>
     </div>

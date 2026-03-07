@@ -1,5 +1,5 @@
-import { Button } from "@/components/ui/button";
-import { Focus } from "lucide-react";
+import { Button } from '@/components/ui/button';
+import { Focus } from 'lucide-react';
 
 interface FocusModeToggleProps {
   enabled: boolean;
@@ -9,7 +9,7 @@ interface FocusModeToggleProps {
 export function FocusModeToggle({ enabled, onToggle }: FocusModeToggleProps) {
   return (
     <Button
-      variant={enabled ? "default" : "outline"}
+      variant={enabled ? 'default' : 'outline'}
       size="icon"
       className="rounded-xl h-11 w-11 active:scale-90 transition-transform"
       onClick={() => {

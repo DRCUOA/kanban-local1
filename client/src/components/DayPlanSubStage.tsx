@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
-import { useDroppable } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { Task } from "@shared/schema";
-import { TaskCard } from "./TaskCard";
-import { TaskCardSummary } from "./TaskCardSummary";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { useDroppable } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { Task } from '@shared/schema';
+import { TaskCard } from './TaskCard';
+import { TaskCardSummary } from './TaskCardSummary';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface DayPlanSubStageProps {
   stageId: number;
@@ -18,13 +18,13 @@ interface DayPlanSubStageProps {
   };
   tasks: Task[];
   stageColor: string;
-  viewMode: "detail" | "summary";
+  viewMode: 'detail' | 'summary';
   onTaskClick: (task: Task) => void;
 }
 
 export function DayPlanSubStage({
   stageId,
-  stageName = "",
+  stageName = '',
   subStage,
   tasks,
   stageColor,
@@ -32,19 +32,19 @@ export function DayPlanSubStage({
   onTaskClick,
 }: DayPlanSubStageProps) {
   const subStageId = `${stageId}-${subStage.tag}`;
-  
+
   const { setNodeRef, isOver } = useDroppable({
     id: subStageId,
     data: {
-      type: "SubStage",
+      type: 'SubStage',
       subStageTag: subStage.tag,
     },
   });
 
-  const displayStageColor = stageColor || "#3B82F6";
+  const displayStageColor = stageColor || '#3B82F6';
   const isInProgressStage = (name: string) => {
     const n = name.toLowerCase();
-    return n.includes("progress") || n.includes("doing") || n.includes("active");
+    return n.includes('progress') || n.includes('doing') || n.includes('active');
   };
   const isInProgress = isInProgressStage(stageName);
 
@@ -52,26 +52,29 @@ export function DayPlanSubStage({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col gap-2 p-2.5 rounded-xl transition-colors min-h-[60px]",
+        'flex flex-col gap-2 p-2.5 rounded-xl transition-colors min-h-[60px]',
         subStage.bgClass,
-        isOver && "ring-2 ring-primary/50"
+        isOver && 'ring-2 ring-primary/50',
       )}
     >
       <div className="flex items-center justify-between mb-1 px-1">
         <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           {subStage.name}
         </h3>
-        <Badge variant="secondary" className="text-sm font-semibold font-mono px-2 py-0.5 min-h-[24px]">
+        <Badge
+          variant="secondary"
+          className="text-sm font-semibold font-mono px-2 py-0.5 min-h-[24px]"
+        >
           {tasks.length}
         </Badge>
       </div>
-      
+
       <SortableContext
         id={subStageId}
-        items={tasks.map(t => t.id)}
+        items={tasks.map((t) => t.id)}
         strategy={verticalListSortingStrategy}
       >
-        {viewMode === "detail" ? (
+        {viewMode === 'detail' ? (
           <div className="flex flex-col gap-2 min-h-[40px]">
             {tasks.length > 0 ? (
               tasks.map((task) => (
@@ -90,10 +93,12 @@ export function DayPlanSubStage({
             )}
           </div>
         ) : (
-          <div className={cn(
-            "gap-2 min-h-[40px]",
-            isInProgress ? "flex flex-col" : "flex flex-wrap content-start"
-          )}>
+          <div
+            className={cn(
+              'gap-2 min-h-[40px]',
+              isInProgress ? 'flex flex-col' : 'flex flex-wrap content-start',
+            )}
+          >
             {tasks.length > 0 ? (
               tasks.map((task) => (
                 <TaskCardSummary

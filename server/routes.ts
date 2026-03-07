@@ -1,46 +1,43 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
-import type { Express } from "express";
-import type { Server } from "http";
-import { storage } from "./storage";
-import { api } from "@shared/routes";
-import { z } from "zod";
+import type { Express } from 'express';
+import type { Server } from 'http';
+import { storage } from './storage';
+import { api } from '@shared/routes';
+import { z } from 'zod';
 
-export async function registerRoutes(
-  httpServer: Server,
-  app: Express
-): Promise<Server> {
+export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   // Seed data
   const existingStages = await storage.getStages();
   if (existingStages.length === 0) {
     const backlogStage = await storage.createStage({
-      name: "Backlog",
+      name: 'Backlog',
       order: 1,
     });
     const inProgressStage = await storage.createStage({
-      name: "In Progress",
+      name: 'In Progress',
       order: 2,
     });
     const doneStage = await storage.createStage({
-      name: "Done",
+      name: 'Done',
       order: 3,
     });
 
     await storage.createTask({
-      title: "Research competitors",
-      description: "Look at Trello, Jira, Asana",
+      title: 'Research competitors',
+      description: 'Look at Trello, Jira, Asana',
       stageId: backlogStage.id,
     });
     await storage.createTask({
-      title: "Set up project repo",
-      description: "Initialize Git and basic structure",
+      title: 'Set up project repo',
+      description: 'Initialize Git and basic structure',
       stageId: inProgressStage.id,
     });
     await storage.createTask({
-      title: "Ideation phase",
-      description: "Brainstorm core features",
+      title: 'Ideation phase',
+      description: 'Brainstorm core features',
       stageId: doneStage.id,
     });
-    console.log("Seeded database with initial stages and tasks");
+    console.log('Seeded database with initial stages and tasks');
   }
 
   // Task endpoints
@@ -58,7 +55,7 @@ export async function registerRoutes(
       if (error instanceof z.ZodError) {
         res.status(400).json({ message: error.errors[0].message });
       } else {
-        res.status(500).json({ message: "Internal Server Error" });
+        res.status(500).json({ message: 'Internal Server Error' });
       }
     }
   });
@@ -67,19 +64,19 @@ export async function registerRoutes(
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid ID" });
+        return res.status(400).json({ message: 'Invalid ID' });
       }
       const updates = api.tasks.update.input.parse(req.body);
       const updatedTask = await storage.updateTask(id, updates);
       if (!updatedTask) {
-        return res.status(404).json({ message: "Task not found" });
+        return res.status(404).json({ message: 'Task not found' });
       }
       res.json(updatedTask);
     } catch (error) {
       if (error instanceof z.ZodError) {
         res.status(400).json({ message: error.errors[0].message });
       } else {
-        res.status(500).json({ message: "Internal Server Error" });
+        res.status(500).json({ message: 'Internal Server Error' });
       }
     }
   });
@@ -87,7 +84,7 @@ export async function registerRoutes(
   app.delete(api.tasks.delete.path, async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid ID" });
+      return res.status(400).json({ message: 'Invalid ID' });
     }
     await storage.deleteTask(id);
     res.status(204).send();
@@ -101,11 +98,11 @@ export async function registerRoutes(
   app.post(api.tasks.archive.path, async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid ID" });
+      return res.status(400).json({ message: 'Invalid ID' });
     }
     const task = await storage.archiveTask(id);
     if (!task) {
-      return res.status(404).json({ message: "Task not found" });
+      return res.status(404).json({ message: 'Task not found' });
     }
     res.json(task);
   });
@@ -113,11 +110,11 @@ export async function registerRoutes(
   app.post(api.tasks.unarchive.path, async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid ID" });
+      return res.status(400).json({ message: 'Invalid ID' });
     }
     const task = await storage.unarchiveTask(id);
     if (!task) {
-      return res.status(404).json({ message: "Task not found" });
+      return res.status(404).json({ message: 'Task not found' });
     }
     res.json(task);
   });
@@ -137,7 +134,7 @@ export async function registerRoutes(
       if (error instanceof z.ZodError) {
         res.status(400).json({ message: error.errors[0].message });
       } else {
-        res.status(500).json({ message: "Internal Server Error" });
+        res.status(500).json({ message: 'Internal Server Error' });
       }
     }
   });
@@ -146,19 +143,19 @@ export async function registerRoutes(
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid ID" });
+        return res.status(400).json({ message: 'Invalid ID' });
       }
       const updates = api.stages.update.input.parse(req.body);
       const updatedStage = await storage.updateStage(id, updates);
       if (!updatedStage) {
-        return res.status(404).json({ message: "Stage not found" });
+        return res.status(404).json({ message: 'Stage not found' });
       }
       res.json(updatedStage);
     } catch (error) {
       if (error instanceof z.ZodError) {
         res.status(400).json({ message: error.errors[0].message });
       } else {
-        res.status(500).json({ message: "Internal Server Error" });
+        res.status(500).json({ message: 'Internal Server Error' });
       }
     }
   });
@@ -166,7 +163,7 @@ export async function registerRoutes(
   app.delete(api.stages.delete.path, async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid ID" });
+      return res.status(400).json({ message: 'Invalid ID' });
     }
     await storage.deleteStage(id);
     res.status(204).send();
@@ -176,11 +173,11 @@ export async function registerRoutes(
   app.get(api.tasks.history.path, async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid ID" });
+      return res.status(400).json({ message: 'Invalid ID' });
     }
     const task = await storage.getTaskById(id);
     if (!task) {
-      return res.status(404).json({ message: "Task not found" });
+      return res.status(404).json({ message: 'Task not found' });
     }
     res.json(task.history || []);
   });
@@ -194,7 +191,7 @@ export async function registerRoutes(
   app.get(api.subStages.listByStage.path, async (req, res) => {
     const stageId = parseInt(req.params.stageId);
     if (isNaN(stageId)) {
-      return res.status(400).json({ message: "Invalid stage ID" });
+      return res.status(400).json({ message: 'Invalid stage ID' });
     }
     const subStages = await storage.getSubStagesByStage(stageId);
     res.json(subStages);
@@ -209,7 +206,7 @@ export async function registerRoutes(
       if (error instanceof z.ZodError) {
         res.status(400).json({ message: error.errors[0].message });
       } else {
-        res.status(500).json({ message: "Internal Server Error" });
+        res.status(500).json({ message: 'Internal Server Error' });
       }
     }
   });
@@ -217,20 +214,20 @@ export async function registerRoutes(
   app.patch(api.subStages.update.path, async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid ID" });
+      return res.status(400).json({ message: 'Invalid ID' });
     }
     try {
       const validated = api.subStages.update.input.parse(req.body);
       const subStage = await storage.updateSubStage(id, validated);
       if (!subStage) {
-        return res.status(404).json({ message: "Sub-stage not found" });
+        return res.status(404).json({ message: 'Sub-stage not found' });
       }
       res.json(subStage);
     } catch (error) {
       if (error instanceof z.ZodError) {
         res.status(400).json({ message: error.errors[0].message });
       } else {
-        res.status(500).json({ message: "Internal Server Error" });
+        res.status(500).json({ message: 'Internal Server Error' });
       }
     }
   });
@@ -238,7 +235,7 @@ export async function registerRoutes(
   app.delete(api.subStages.delete.path, async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid ID" });
+      return res.status(400).json({ message: 'Invalid ID' });
     }
     await storage.deleteSubStage(id);
     res.status(204).send();

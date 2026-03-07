@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertTaskSchema, type InsertTask } from "@shared/schema";
-import { useCreateTask } from "@/hooks/use-tasks";
-import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@shared/routes";
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { insertTaskSchema, type InsertTask } from '@shared/schema';
+import { useCreateTask } from '@/hooks/use-tasks';
+import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@shared/routes';
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -21,13 +21,19 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { Plus, X } from "lucide-react";
-import { useState } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Plus, X } from 'lucide-react';
+import { useState } from 'react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface CreateTaskDialogProps {
   iconOnly?: boolean;
@@ -45,12 +51,16 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
         const res = await fetch(api.stages.list.path);
         if (!res.ok) {
           const errorText = await res.text();
-          throw new Error(`Failed to fetch stages: ${res.status} ${res.statusText}${errorText ? ` - ${errorText}` : ''}`);
+          throw new Error(
+            `Failed to fetch stages: ${res.status} ${res.statusText}${errorText ? ` - ${errorText}` : ''}`,
+          );
         }
         return res.json();
       } catch (error) {
         if (error instanceof TypeError && error.message.includes('fetch')) {
-          throw new Error("Network error: Unable to connect to server. Please check if the server is running.");
+          throw new Error(
+            'Network error: Unable to connect to server. Please check if the server is running.',
+          );
         }
         throw error;
       }
@@ -58,16 +68,16 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
   });
 
   const defaultStageId = stages[0]?.id || 1;
-  
+
   const form = useForm<InsertTask>({
     resolver: zodResolver(insertTaskSchema),
     defaultValues: {
-      title: "",
-      description: "",
+      title: '',
+      description: '',
       stageId: defaultStageId,
-      status: "backlog",
-      priority: "normal",
-      recurrence: "none",
+      status: 'backlog',
+      priority: 'normal',
+      recurrence: 'none',
     },
   });
 
@@ -76,22 +86,42 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
     let status = data.status;
     if (!status && selectedStage) {
       const stageName = selectedStage.name.toLowerCase();
-      if (stageName.includes("progress") || stageName.includes("doing") || stageName.includes("active")) status = "in_progress";
-      else if (stageName.includes("done") || stageName.includes("complete") || stageName.includes("finished")) status = "done";
-      else status = "backlog";
+      if (
+        stageName.includes('progress') ||
+        stageName.includes('doing') ||
+        stageName.includes('active')
+      )
+        status = 'in_progress';
+      else if (
+        stageName.includes('done') ||
+        stageName.includes('complete') ||
+        stageName.includes('finished')
+      )
+        status = 'done';
+      else status = 'backlog';
     }
-    
-    createTask.mutate({ ...data, status: status || "backlog" }, {
-      onSuccess: () => {
-        if ('vibrate' in navigator) navigator.vibrate(10);
-        toast({ title: "Task created", description: "Your new task has been added." });
-        setOpen(false);
-        form.reset({ stageId: defaultStageId, title: "", description: "", status: "backlog", priority: "normal", recurrence: "none" });
+
+    createTask.mutate(
+      { ...data, status: status || 'backlog' },
+      {
+        onSuccess: () => {
+          if ('vibrate' in navigator) navigator.vibrate(10);
+          toast({ title: 'Task created', description: 'Your new task has been added.' });
+          setOpen(false);
+          form.reset({
+            stageId: defaultStageId,
+            title: '',
+            description: '',
+            status: 'backlog',
+            priority: 'normal',
+            recurrence: 'none',
+          });
+        },
+        onError: (error) => {
+          toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        },
       },
-      onError: (error) => {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
-      },
-    });
+    );
   };
 
   return (
@@ -108,8 +138,8 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
             <span className="text-[10px] font-medium">Add</span>
           </button>
         ) : (
-          <Button 
-            className="gap-2 rounded-xl active:scale-95 transition-transform w-full" 
+          <Button
+            className="gap-2 rounded-xl active:scale-95 transition-transform w-full"
             data-testid="button-add-task"
           >
             <Plus className="h-5 w-5" />
@@ -121,13 +151,14 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
         <DialogHeader className="flex-shrink-0 flex flex-row items-center justify-between">
           <div>
             <DialogTitle className="text-lg">Create New Task</DialogTitle>
-            <DialogDescription className="text-xs">
-              Add a new task to your board.
-            </DialogDescription>
+            <DialogDescription className="text-xs">Add a new task to your board.</DialogDescription>
           </div>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col gap-4 overflow-y-auto">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex-1 flex flex-col gap-4 overflow-y-auto"
+          >
             <FormField
               control={form.control}
               name="title"
@@ -135,11 +166,11 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
                 <FormItem>
                   <FormLabel className="text-xs">Title</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="e.g., Design homepage" 
-                      {...field} 
+                    <Input
+                      placeholder="e.g., Design homepage"
+                      {...field}
                       className="h-12 text-base rounded-xl"
-                      data-testid="input-task-title" 
+                      data-testid="input-task-title"
                     />
                   </FormControl>
                   <FormMessage />
@@ -152,7 +183,12 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-xs">Stage</FormLabel>
-                  <Select onValueChange={(v) => { field.onChange(Number(v)); }} defaultValue={field.value?.toString()}>
+                  <Select
+                    onValueChange={(v) => {
+                      field.onChange(Number(v));
+                    }}
+                    defaultValue={field.value?.toString()}
+                  >
                     <FormControl>
                       <SelectTrigger className="h-12 rounded-xl">
                         <SelectValue placeholder="Select stage" />
@@ -182,7 +218,7 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
                       className="resize-none rounded-xl text-base"
                       rows={4}
                       {...field}
-                      value={field.value || ""}
+                      value={field.value || ''}
                       data-testid="input-task-description"
                     />
                   </FormControl>
@@ -190,7 +226,7 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
                 </FormItem>
               )}
             />
-            
+
             <div className="grid grid-cols-2 gap-3">
               <FormField
                 control={form.control}
@@ -198,24 +234,32 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-xs">Priority</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || "normal"}>
+                    <Select onValueChange={field.onChange} value={field.value || 'normal'}>
                       <FormControl>
                         <SelectTrigger className="h-12 rounded-xl">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="low" className="py-3">Low</SelectItem>
-                        <SelectItem value="normal" className="py-3">Normal</SelectItem>
-                        <SelectItem value="high" className="py-3">High</SelectItem>
-                        <SelectItem value="critical" className="py-3">Critical</SelectItem>
+                        <SelectItem value="low" className="py-3">
+                          Low
+                        </SelectItem>
+                        <SelectItem value="normal" className="py-3">
+                          Normal
+                        </SelectItem>
+                        <SelectItem value="high" className="py-3">
+                          High
+                        </SelectItem>
+                        <SelectItem value="critical" className="py-3">
+                          Critical
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="effort"
@@ -229,8 +273,10 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
                         max="5"
                         className="h-12 rounded-xl text-base"
                         {...field}
-                        value={field.value || ""}
-                        onChange={(e) => { field.onChange(e.target.value ? parseInt(e.target.value) : undefined); }}
+                        value={field.value || ''}
+                        onChange={(e) => {
+                          field.onChange(e.target.value ? parseInt(e.target.value) : undefined);
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -238,26 +284,28 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
                 )}
               />
             </div>
-            
+
             {/* Spacer to push button to bottom */}
             <div className="flex-1" />
-            
+
             <div className="flex gap-3 pt-4 pb-safe-bottom sticky bottom-0 bg-background">
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 className="flex-1 h-12 rounded-xl"
-                onClick={() => { setOpen(false); }}
+                onClick={() => {
+                  setOpen(false);
+                }}
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
-                disabled={createTask.isPending} 
+              <Button
+                type="submit"
+                disabled={createTask.isPending}
                 className="flex-1 h-12 rounded-xl active:scale-95 transition-transform"
                 data-testid="button-submit-task"
               >
-                {createTask.isPending ? "Creating..." : "Create Task"}
+                {createTask.isPending ? 'Creating...' : 'Create Task'}
               </Button>
             </div>
           </form>
