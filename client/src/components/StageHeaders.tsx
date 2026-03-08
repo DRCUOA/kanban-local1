@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { useMemo } from 'react';
 import { Task } from '@shared/schema';
+import { DEFAULT_STAGE_COLORS } from '@shared/constants';
 import { useStages } from '@/hooks/use-stages';
 import { Badge } from '@/components/ui/badge';
 
@@ -8,22 +9,8 @@ interface StageHeadersProps {
   tasks: Task[];
 }
 
-const defaultStageColors = [
-  '#3B82F6',
-  '#10B981',
-  '#F59E0B',
-  '#EF4444',
-  '#8B5CF6',
-  '#EC4899',
-  '#06B6D4',
-  '#84CC16',
-  '#F97316',
-  '#6366F1',
-];
-
-const getDefaultStageColor = (index: number): string => {
-  return defaultStageColors[index % defaultStageColors.length];
-};
+const getDefaultStageColor = (index: number): string =>
+  DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length]!;
 
 export function StageHeaders({ tasks }: StageHeadersProps) {
   const { data: stages = [] } = useStages();
@@ -48,7 +35,7 @@ export function StageHeaders({ tasks }: StageHeadersProps) {
       {/* Horizontal scrollable stage tabs */}
       <div className="scroll-tabs px-1 py-1">
         {sortedStages.map((stage: any) => {
-          const stageColor = stageColorMap.get(stage.id) || defaultStageColors[0];
+          const stageColor = stageColorMap.get(stage.id) || DEFAULT_STAGE_COLORS[0];
           const stageCount = activeTasks.filter((t) => t.stageId === stage.id).length;
           return (
             <div

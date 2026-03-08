@@ -9,6 +9,15 @@ import { TaskWarnings } from '@/components/TaskWarnings';
 import { StageHeaders } from '@/components/StageHeaders';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { type Task, type InsertTask, type Stage } from '@shared/schema';
+import {
+  TASK_STATUS,
+  TASK_PRIORITY,
+  TASK_RECURRENCE,
+  PRIORITY_SORT_ORDER,
+  ROUTES,
+  getStatusFromStageName,
+  type TaskPriorityValue,
+} from '@shared/constants';
 import { apiGet } from '@/lib/api';
 import {
   Loader2,
@@ -79,22 +88,17 @@ export default function Dashboard(_props: DashboardProps) {
       const getTaskStatus = (t: Task): string => {
         if (t.status) return t.status;
         const stage = stages.find((s: any) => s.id === t.stageId);
-        if (stage) {
-          const name = stage.name.toLowerCase();
-          if (name.includes('progress') || name.includes('doing') || name.includes('active'))
-            return 'in_progress';
-          if (name.includes('done') || name.includes('complete') || name.includes('finished'))
-            return 'done';
-        }
-        return 'backlog';
+        if (stage) return getStatusFromStageName(stage.name);
+        return TASK_STATUS.BACKLOG;
       };
 
-      const inProgress = filtered.filter((t) => getTaskStatus(t) === 'in_progress');
-      const backlog = filtered.filter((t) => getTaskStatus(t) === 'backlog');
+      const inProgress = filtered.filter((t) => getTaskStatus(t) === TASK_STATUS.IN_PROGRESS);
+      const backlog = filtered.filter((t) => getTaskStatus(t) === TASK_STATUS.BACKLOG);
       const nextTask = backlog.sort((a, b) => {
-        const priorityOrder = { critical: 4, high: 3, normal: 2, low: 1 };
-        const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] || 2;
-        const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] || 2;
+        const aPriority =
+          PRIORITY_SORT_ORDER[(a.priority as TaskPriorityValue) || TASK_PRIORITY.NORMAL];
+        const bPriority =
+          PRIORITY_SORT_ORDER[(b.priority as TaskPriorityValue) || TASK_PRIORITY.NORMAL];
         return bPriority - aPriority;
       })[0];
 
@@ -177,17 +181,17 @@ export default function Dashboard(_props: DashboardProps) {
               const taskToCreate = {
                 title: taskData.title || 'Untitled Task',
                 description: taskData.description || '',
-                stageId: taskData.stageId || stagesData[0].id,
-                status: taskData.status || 'backlog',
-                priority: taskData.priority || 'normal',
+                stageId: taskData.stageId || stagesData[0]!.id,
+                status: taskData.status || TASK_STATUS.BACKLOG,
+                priority: taskData.priority || TASK_PRIORITY.NORMAL,
                 effort: taskData.effort || undefined,
                 dueDate: taskData.dueDate ? new Date(taskData.dueDate) : undefined,
                 tags: Array.isArray(taskData.tags) ? taskData.tags : [],
-                recurrence: taskData.recurrence || 'none',
+                recurrence: taskData.recurrence || TASK_RECURRENCE.NONE,
               } as InsertTask;
 
               if (!stagesData.find((s: any) => s.id === taskToCreate.stageId)) {
-                taskToCreate.stageId = stagesData[0].id;
+                taskToCreate.stageId = stagesData[0]!.id;
               }
 
               await createTask.mutateAsync(taskToCreate);
@@ -424,8 +428,8 @@ export default function Dashboard(_props: DashboardProps) {
 
           {/* More Actions Menu */}
           <MoreActionsMenu
-            onArchive={() => (window.location.href = '/archive')}
-            onAdmin={() => (window.location.href = '/admin')}
+            onArchive={() => (window.location.href = ROUTES.ARCHIVE)}
+            onAdmin={() => (window.location.href = ROUTES.ADMIN)}
             onExport={handleExport}
             onImport={handleImport}
           />

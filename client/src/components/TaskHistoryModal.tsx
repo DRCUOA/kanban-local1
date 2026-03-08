@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { Task, type TaskHistoryEntry } from '@shared/schema';
+import { TASK_STATUS, TASK_STATUS_LABEL } from '@shared/constants';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { Clock, Archive, CheckCircle2, Circle, XCircle } from 'lucide-react';
@@ -11,18 +12,15 @@ interface TaskHistoryModalProps {
 }
 
 const statusIcons = {
-  backlog: Circle,
-  in_progress: Clock,
-  done: CheckCircle2,
-  abandoned: XCircle,
+  [TASK_STATUS.BACKLOG]: Circle,
+  [TASK_STATUS.IN_PROGRESS]: Clock,
+  [TASK_STATUS.DONE]: CheckCircle2,
+  [TASK_STATUS.ABANDONED]: XCircle,
   archived: Archive,
 };
 
-const statusLabels = {
-  backlog: 'Backlog',
-  in_progress: 'In Progress',
-  done: 'Done',
-  abandoned: 'Abandoned',
+const statusLabels: Record<string, string> = {
+  ...TASK_STATUS_LABEL,
   archived: 'Archived',
 };
 

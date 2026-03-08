@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { Task } from '@shared/schema';
+import { EFFORT_MAX } from '@shared/constants';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
@@ -99,14 +100,14 @@ export function TaskCardSummary({
   const triggerContent = isInProgress ? (
     <div
       ref={setNodeRef}
-      role="button"
-      tabIndex={0}
       style={{
         ...style,
         touchAction: 'none',
         ...(stageColor ? { borderColor: stageColor, borderWidth: '2px' } : {}),
       }}
       {...attributes}
+      role="button"
+      tabIndex={0}
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('.drag-handle')) return;
         handleClick();
@@ -135,11 +136,11 @@ export function TaskCardSummary({
   ) : (
     <div
       ref={setNodeRef}
-      role="button"
-      tabIndex={0}
       style={{ ...containerStyle, touchAction: 'none', width: circleSizePx, height: circleSizePx }}
       {...attributes}
       {...listeners}
+      role="button"
+      tabIndex={0}
       onClick={handleClick}
       onTouchStart={triggerHapticFeedback}
       className={cn(
@@ -147,7 +148,7 @@ export function TaskCardSummary({
         'active:scale-[0.88] focus-visible:scale-[1.03] task-summary-magnify',
         stageColor ? 'neo-beveled-circle-colored' : 'neo-beveled-circle',
       )}
-      title={`${task.title} (effort: ${effort}/5)`}
+      title={`${task.title} (effort: ${effort}/${EFFORT_MAX})`}
     >
       <span
         className={cn(circleFontSize, 'font-semibold text-foreground text-center relative z-10')}

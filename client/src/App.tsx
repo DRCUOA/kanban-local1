@@ -3,6 +3,7 @@ import { queryClient } from './lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { ROUTES } from '@shared/constants';
 import Dashboard from '@/pages/Dashboard';
 import Admin from '@/pages/Admin';
 import Archive from '@/pages/Archive';
@@ -11,9 +12,9 @@ import NotFound from '@/pages/not-found';
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/admin" component={Admin} />
-      <Route path="/archive" component={Archive} />
+      <Route path={ROUTES.DASHBOARD} component={Dashboard} />
+      <Route path={ROUTES.ADMIN} component={Admin} />
+      <Route path={ROUTES.ARCHIVE} component={Archive} />
       <Route component={NotFound} />
     </Switch>
   );

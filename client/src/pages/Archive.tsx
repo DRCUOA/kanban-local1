@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useLocation } from 'wouter';
+import { ROUTES } from '@shared/constants';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Archive() {
@@ -83,7 +84,7 @@ export default function Archive() {
             variant="ghost"
             size="icon"
             onClick={() => {
-              navigate('/');
+              navigate(ROUTES.DASHBOARD);
             }}
             className="rounded-lg h-10 w-10 shrink-0"
           >

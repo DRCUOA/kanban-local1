@@ -2,6 +2,7 @@ import { pgTable, text, serial, timestamp, integer, boolean, jsonb } from 'drizz
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
 import { relations } from 'drizzle-orm';
+import { TASK_STATUS, TASK_PRIORITY, TASK_RECURRENCE, EFFORT_MIN, EFFORT_MAX } from './constants';
 
 export const stages = pgTable('stages', {
   id: serial('id').primaryKey(),
@@ -24,16 +25,31 @@ export const subStages = pgTable('sub_stages', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-// Task status enum
-export const taskStatusEnum = z.enum(['backlog', 'in_progress', 'done', 'abandoned']);
+// Task status enum — values sourced from shared/constants.ts
+export const taskStatusEnum = z.enum([
+  TASK_STATUS.BACKLOG,
+  TASK_STATUS.IN_PROGRESS,
+  TASK_STATUS.DONE,
+  TASK_STATUS.ABANDONED,
+]);
 export type TaskStatus = z.infer<typeof taskStatusEnum>;
 
-// Task priority enum
-export const taskPriorityEnum = z.enum(['low', 'normal', 'high', 'critical']);
+// Task priority enum — values sourced from shared/constants.ts
+export const taskPriorityEnum = z.enum([
+  TASK_PRIORITY.LOW,
+  TASK_PRIORITY.NORMAL,
+  TASK_PRIORITY.HIGH,
+  TASK_PRIORITY.CRITICAL,
+]);
 export type TaskPriority = z.infer<typeof taskPriorityEnum>;
 
-// Task recurrence enum
-export const taskRecurrenceEnum = z.enum(['none', 'daily', 'weekly', 'monthly']);
+// Task recurrence enum — values sourced from shared/constants.ts
+export const taskRecurrenceEnum = z.enum([
+  TASK_RECURRENCE.NONE,
+  TASK_RECURRENCE.DAILY,
+  TASK_RECURRENCE.WEEKLY,
+  TASK_RECURRENCE.MONTHLY,
+]);
 export type TaskRecurrence = z.infer<typeof taskRecurrenceEnum>;
 
 // History log entry type
@@ -52,16 +68,15 @@ export const tasks = pgTable('tasks', {
     .references(() => stages.id),
   archived: boolean('archived').notNull().default(false),
   // Enhanced fields
-  status: text('status').default('backlog'), // backlog | in_progress | done | abandoned
-  priority: text('priority').default('normal'), // low | normal | high | critical
-  effort: integer('effort'), // 1-5
+  status: text('status').default(TASK_STATUS.BACKLOG),
+  priority: text('priority').default(TASK_PRIORITY.NORMAL),
+  effort: integer('effort'), // EFFORT_MIN–EFFORT_MAX
   dueDate: timestamp('due_date'), // Optional due date
   updatedAt: timestamp('updated_at').defaultNow(),
   createdAt: timestamp('created_at').defaultNow(),
-  tags: jsonb('tags').$type<string[]>(), // Array of strings
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access -- Drizzle self-reference callback
-  parentTaskId: integer('parent_task_id').references(() => tasks.id), // Self-reference for sub-tasks
-  recurrence: text('recurrence').default('none'), // none | daily | weekly | monthly
+  tags: jsonb('tags').$type<string[]>(),
+  parentTaskId: integer('parent_task_id'), // FK to tasks(id) enforced at DB level, not via Drizzle .references() to avoid circular type inference
+  recurrence: text('recurrence').default(TASK_RECURRENCE.NONE),
   history: jsonb('history').$type<TaskHistoryEntry[]>(), // Status change history
 });
 
@@ -115,6 +130,8 @@ export const insertSubStageSchema = createInsertSchema(subStages)
     opacity: z.number().min(0).max(100), // Store as 0-100 integer
   });
 
+// Explicit overrides for every field — `createInsertSchema(tasks)` infers `any`
+// because the `tasks` table self-references via `parentTaskId.references(() => tasks.id)`.
 export const insertTaskSchema = createInsertSchema(tasks)
   .omit({
     id: true,
@@ -122,9 +139,13 @@ export const insertTaskSchema = createInsertSchema(tasks)
     updatedAt: true,
   })
   .extend({
+    title: z.string().min(1),
+    description: z.string().optional().nullable(),
+    stageId: z.number(),
+    archived: z.boolean().optional(),
     status: taskStatusEnum.optional(),
     priority: taskPriorityEnum.optional(),
-    effort: z.number().min(1).max(5).optional().nullable(),
+    effort: z.number().min(EFFORT_MIN).max(EFFORT_MAX).optional().nullable(),
     dueDate: z.coerce.date().optional().nullable(),
     tags: z.array(z.string()).optional().nullable(),
     parentTaskId: z.number().optional().nullable(),

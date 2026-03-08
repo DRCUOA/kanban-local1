@@ -25,6 +25,11 @@ import { TaskCardSummary } from './TaskCardSummary';
 import { ArchiveZone } from './ArchiveZone';
 import { DayPlanSubStage } from './DayPlanSubStage';
 import { useUpdateTask, useArchiveTask } from '@/hooks/use-tasks';
+import {
+  DEFAULT_STAGE_COLORS,
+  getStatusFromStageName,
+  isInProgressStageName,
+} from '@shared/constants';
 import { cn } from '@/lib/utils';
 
 export interface KanbanBoardProps {
@@ -116,18 +121,6 @@ export function KanbanBoard({
     setIsOverArchive(!!isArchive);
   }
 
-  const getStatusFromStageName = (
-    stageName: string,
-  ): 'backlog' | 'in_progress' | 'done' | 'abandoned' => {
-    const name = stageName.toLowerCase();
-    if (name.includes('progress') || name.includes('doing') || name.includes('active'))
-      return 'in_progress';
-    if (name.includes('done') || name.includes('complete') || name.includes('finished'))
-      return 'done';
-    if (name.includes('abandon') || name.includes('cancel')) return 'abandoned';
-    return 'backlog';
-  };
-
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     setIsOverArchive(false);
@@ -169,12 +162,12 @@ export function KanbanBoard({
       if (over.data?.current?.type === 'SubStage') {
         subStageTag = over.data.current.subStageTag;
         const match = /^(\d+)-(.+)$/.exec(String(over.id));
-        stageId = match ? parseInt(match[1]) : activeTask.stageId;
+        stageId = match ? parseInt(match[1]!) : activeTask.stageId;
       } else if (typeof overId === 'string') {
         const match = /^(\d+)-(.+)$/.exec(overId);
         if (match) {
-          stageId = parseInt(match[1]);
-          subStageTag = match[2];
+          stageId = parseInt(match[1]!);
+          subStageTag = match[2]!;
         } else {
           stageId = activeTask.stageId;
           subStageTag = '';
@@ -264,20 +257,8 @@ export function KanbanBoard({
     setActiveId(null);
   }
 
-  const defaultStageColors = [
-    '#3B82F6',
-    '#10B981',
-    '#F59E0B',
-    '#EF4444',
-    '#8B5CF6',
-    '#EC4899',
-    '#06B6D4',
-    '#84CC16',
-    '#F97316',
-    '#6366F1',
-  ];
   const getDefaultStageColor = (index: number): string =>
-    defaultStageColors[index % defaultStageColors.length];
+    DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length]!;
 
   const sortedStages = useMemo(
     () => [...stages].sort((a: any, b: any) => a.order - b.order),
@@ -308,7 +289,7 @@ export function KanbanBoard({
       {/* Mobile: vertical stack of full-width columns */}
       <div className="flex flex-col h-full gap-3 pb-4">
         {sortedStages.map((stage: any) => {
-          const stageColor = stageColorMap.get(stage.id) || defaultStageColors[0];
+          const stageColor = stageColorMap.get(stage.id) || DEFAULT_STAGE_COLORS[0];
           return (
             <TaskColumn
               key={stage.id}
@@ -385,11 +366,7 @@ export function KanbanBoard({
                     );
                   }
 
-                  const isInProgressStage = (name: string) => {
-                    const n = name.toLowerCase();
-                    return n.includes('progress') || n.includes('doing') || n.includes('active');
-                  };
-                  const inProgress = isInProgressStage(stage.name);
+                  const inProgress = isInProgressStageName(stage.name);
                   return viewMode === 'detail' ? (
                     <div className="flex flex-col gap-2 min-h-[60px]">
                       {stageTasks.map((task) => (
@@ -435,13 +412,9 @@ export function KanbanBoard({
               const activeTask = activeTasks.find((t) => t.id === activeId);
               if (!activeTask) return null;
               const activeStageColor =
-                stageColorMap.get(activeTask.stageId) || defaultStageColors[0];
+                stageColorMap.get(activeTask.stageId) || DEFAULT_STAGE_COLORS[0];
               const activeStage = sortedStages.find((s: any) => s.id === activeTask.stageId);
               const activeStageName = activeStage?.name ?? '';
-              const isInProgressStage = (name: string) => {
-                const n = name.toLowerCase();
-                return n.includes('progress') || n.includes('doing') || n.includes('active');
-              };
               return (
                 <div className="opacity-80 rotate-1 cursor-grabbing">
                   {viewMode === 'detail' ? (
@@ -451,7 +424,7 @@ export function KanbanBoard({
                       task={activeTask}
                       onClick={() => {}}
                       stageColor={activeStageColor}
-                      isInProgress={isInProgressStage(activeStageName)}
+                      isInProgress={isInProgressStageName(activeStageName)}
                     />
                   )}
                 </div>
