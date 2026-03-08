@@ -35,9 +35,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         res.status(201).json(task);
       } catch (error) {
         if (error instanceof z.ZodError) {
-          res.status(400).json({ message: error.errors[0]?.message ?? 'Validation error' });
+          res
+            .status(400)
+            .json({ error: error.errors[0]?.message ?? 'Validation error', status: 400 });
         } else {
-          res.status(500).json({ message: 'Internal Server Error' });
+          res.status(500).json({ error: 'Internal Server Error', status: 500 });
         }
       }
     },
@@ -55,14 +57,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const updates = api.tasks.update.input.parse(req.body);
         const updatedTask = await storage.updateTask(id, updates);
         if (!updatedTask) {
-          return res.status(404).json({ message: 'Task not found' });
+          return res.status(404).json({ error: 'Task not found', status: 404 });
         }
         res.json(updatedTask);
       } catch (error) {
         if (error instanceof z.ZodError) {
-          res.status(400).json({ message: error.errors[0]?.message ?? 'Validation error' });
+          res
+            .status(400)
+            .json({ error: error.errors[0]?.message ?? 'Validation error', status: 400 });
         } else {
-          res.status(500).json({ message: 'Internal Server Error' });
+          res.status(500).json({ error: 'Internal Server Error', status: 500 });
         }
       }
     },
@@ -90,7 +94,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (id === null) return;
       const task = await storage.archiveTask(id);
       if (!task) {
-        return res.status(404).json({ message: 'Task not found' });
+        return res.status(404).json({ error: 'Task not found', status: 404 });
       }
       res.json(task);
     },
@@ -103,7 +107,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (id === null) return;
       const task = await storage.unarchiveTask(id);
       if (!task) {
-        return res.status(404).json({ message: 'Task not found' });
+        return res.status(404).json({ error: 'Task not found', status: 404 });
       }
       res.json(task);
     },
@@ -127,9 +131,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         res.status(201).json(stage);
       } catch (error) {
         if (error instanceof z.ZodError) {
-          res.status(400).json({ message: error.errors[0]?.message ?? 'Validation error' });
+          res
+            .status(400)
+            .json({ error: error.errors[0]?.message ?? 'Validation error', status: 400 });
         } else {
-          res.status(500).json({ message: 'Internal Server Error' });
+          res.status(500).json({ error: 'Internal Server Error', status: 500 });
         }
       }
     },
@@ -147,14 +153,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const updates = api.stages.update.input.parse(req.body);
         const updatedStage = await storage.updateStage(id, updates);
         if (!updatedStage) {
-          return res.status(404).json({ message: 'Stage not found' });
+          return res.status(404).json({ error: 'Stage not found', status: 404 });
         }
         res.json(updatedStage);
       } catch (error) {
         if (error instanceof z.ZodError) {
-          res.status(400).json({ message: error.errors[0]?.message ?? 'Validation error' });
+          res
+            .status(400)
+            .json({ error: error.errors[0]?.message ?? 'Validation error', status: 400 });
         } else {
-          res.status(500).json({ message: 'Internal Server Error' });
+          res.status(500).json({ error: 'Internal Server Error', status: 500 });
         }
       }
     },
@@ -178,7 +186,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (id === null) return;
       const task = await storage.getTaskById(id);
       if (!task) {
-        return res.status(404).json({ message: 'Task not found' });
+        return res.status(404).json({ error: 'Task not found', status: 404 });
       }
       res.json(task.history ?? []);
     },
@@ -212,9 +220,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         res.status(201).json(subStage);
       } catch (error) {
         if (error instanceof z.ZodError) {
-          res.status(400).json({ message: error.errors[0]?.message ?? 'Validation error' });
+          res
+            .status(400)
+            .json({ error: error.errors[0]?.message ?? 'Validation error', status: 400 });
         } else {
-          res.status(500).json({ message: 'Internal Server Error' });
+          res.status(500).json({ error: 'Internal Server Error', status: 500 });
         }
       }
     },
@@ -232,14 +242,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const validated = api.subStages.update.input.parse(req.body);
         const subStage = await storage.updateSubStage(id, validated);
         if (!subStage) {
-          return res.status(404).json({ message: 'Sub-stage not found' });
+          return res.status(404).json({ error: 'Sub-stage not found', status: 404 });
         }
         res.json(subStage);
       } catch (error) {
         if (error instanceof z.ZodError) {
-          res.status(400).json({ message: error.errors[0]?.message ?? 'Validation error' });
+          res
+            .status(400)
+            .json({ error: error.errors[0]?.message ?? 'Validation error', status: 400 });
         } else {
-          res.status(500).json({ message: 'Internal Server Error' });
+          res.status(500).json({ error: 'Internal Server Error', status: 500 });
         }
       }
     },

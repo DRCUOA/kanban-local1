@@ -2,7 +2,9 @@ import type { Task, Stage, SubStage, TaskHistoryEntry } from './schema';
 
 /** Standard error response shape returned by all API endpoints on failure */
 export interface ApiErrorResponse {
-  message: string;
+  error: string;
+  status: number;
+  details?: unknown;
 }
 
 /** Route params for endpoints containing :id */

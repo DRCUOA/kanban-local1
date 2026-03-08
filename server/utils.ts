@@ -7,7 +7,7 @@ import type { Response } from 'express';
 export function parseIdParam(raw: string | undefined, res: Response, label = 'ID'): number | null {
   const parsed = raw !== undefined ? parseInt(raw, 10) : NaN;
   if (isNaN(parsed)) {
-    res.status(400).json({ message: `Invalid ${label}` });
+    res.status(400).json({ error: `Invalid ${label}`, status: 400 });
     return null;
   }
   return parsed;
