@@ -4,36 +4,14 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Clock } from 'lucide-react';
 import { isPast, isToday, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@shared/routes';
+import { useStages } from '@/hooks/use-stages';
 
 interface TaskWarningsProps {
   tasks: Task[];
 }
 
 export function TaskWarnings({ tasks }: TaskWarningsProps) {
-  const { data: stages = [] } = useQuery({
-    queryKey: [api.stages.list.path],
-    queryFn: async () => {
-      try {
-        const res = await fetch(api.stages.list.path);
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(
-            `Failed to fetch stages: ${res.status} ${res.statusText}${errorText ? ` - ${errorText}` : ''}`,
-          );
-        }
-        return res.json();
-      } catch (error) {
-        if (error instanceof TypeError && error.message.includes('fetch')) {
-          throw new Error(
-            'Network error: Unable to connect to server. Please check if the server is running.',
-          );
-        }
-        throw error;
-      }
-    },
-  });
+  const { data: stages = [] } = useStages();
 
   const activeTasks = tasks.filter((t) => !t.archived);
 

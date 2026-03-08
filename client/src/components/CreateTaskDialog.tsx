@@ -4,8 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { insertTaskSchema, type InsertTask } from '@shared/schema';
 import { useCreateTask } from '@/hooks/use-tasks';
 import { useToast } from '@/hooks/use-toast';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@shared/routes';
+import { useStages } from '@/hooks/use-stages';
 import {
   Dialog,
   DialogContent,
@@ -44,28 +43,7 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
   const { toast } = useToast();
   const createTask = useCreateTask();
 
-  const { data: stages = [] } = useQuery({
-    queryKey: [api.stages.list.path],
-    queryFn: async () => {
-      try {
-        const res = await fetch(api.stages.list.path);
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(
-            `Failed to fetch stages: ${res.status} ${res.statusText}${errorText ? ` - ${errorText}` : ''}`,
-          );
-        }
-        return res.json();
-      } catch (error) {
-        if (error instanceof TypeError && error.message.includes('fetch')) {
-          throw new Error(
-            'Network error: Unable to connect to server. Please check if the server is running.',
-          );
-        }
-        throw error;
-      }
-    },
-  });
+  const { data: stages = [] } = useStages();
 
   const defaultStageId = stages[0]?.id || 1;
 
