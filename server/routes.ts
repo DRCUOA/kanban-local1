@@ -2,6 +2,7 @@
 import type { Express, Request, Response } from 'express';
 import type { Server } from 'http';
 import { storage } from './storage';
+import { parseIdParam } from './utils';
 import { api } from '@shared/routes';
 import { SEED_STAGE_NAMES } from '@shared/constants';
 import { z } from 'zod';
@@ -84,10 +85,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res: Response<Task | ApiErrorResponse>,
     ) => {
       try {
-        const id = parseInt(req.params.id);
-        if (isNaN(id)) {
-          return res.status(400).json({ message: 'Invalid ID' });
-        }
+        const id = parseIdParam(req.params.id, res);
+        if (id === null) return;
         const updates = api.tasks.update.input.parse(req.body);
         const updatedTask = await storage.updateTask(id, updates);
         if (!updatedTask) {
@@ -107,10 +106,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.delete(
     api.tasks.delete.path,
     async (req: Request<IdParams>, res: Response<ApiErrorResponse>) => {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: 'Invalid ID' });
-      }
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
       await storage.deleteTask(id);
       res.status(204).send();
     },
@@ -124,10 +121,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post(
     api.tasks.archive.path,
     async (req: Request<IdParams>, res: Response<Task | ApiErrorResponse>) => {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: 'Invalid ID' });
-      }
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
       const task = await storage.archiveTask(id);
       if (!task) {
         return res.status(404).json({ message: 'Task not found' });
@@ -139,10 +134,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post(
     api.tasks.unarchive.path,
     async (req: Request<IdParams>, res: Response<Task | ApiErrorResponse>) => {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: 'Invalid ID' });
-      }
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
       const task = await storage.unarchiveTask(id);
       if (!task) {
         return res.status(404).json({ message: 'Task not found' });
@@ -184,10 +177,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res: Response<Stage | ApiErrorResponse>,
     ) => {
       try {
-        const id = parseInt(req.params.id);
-        if (isNaN(id)) {
-          return res.status(400).json({ message: 'Invalid ID' });
-        }
+        const id = parseIdParam(req.params.id, res);
+        if (id === null) return;
         const updates = api.stages.update.input.parse(req.body);
         const updatedStage = await storage.updateStage(id, updates);
         if (!updatedStage) {
@@ -207,10 +198,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.delete(
     api.stages.delete.path,
     async (req: Request<IdParams>, res: Response<ApiErrorResponse>) => {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: 'Invalid ID' });
-      }
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
       await storage.deleteStage(id);
       res.status(204).send();
     },
@@ -220,10 +209,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get(
     api.tasks.history.path,
     async (req: Request<IdParams>, res: Response<TaskHistoryEntry[] | ApiErrorResponse>) => {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: 'Invalid ID' });
-      }
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
       const task = await storage.getTaskById(id);
       if (!task) {
         return res.status(404).json({ message: 'Task not found' });
@@ -241,10 +228,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get(
     api.subStages.listByStage.path,
     async (req: Request<StageIdParams>, res: Response<SubStage[] | ApiErrorResponse>) => {
-      const stageId = parseInt(req.params.stageId);
-      if (isNaN(stageId)) {
-        return res.status(400).json({ message: 'Invalid stage ID' });
-      }
+      const stageId = parseIdParam(req.params.stageId, res, 'stage ID');
+      if (stageId === null) return;
       const subStageList = await storage.getSubStagesByStage(stageId);
       res.json(subStageList);
     },
@@ -276,10 +261,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       req: Request<IdParams, SubStage | ApiErrorResponse, Partial<InsertSubStage>>,
       res: Response<SubStage | ApiErrorResponse>,
     ) => {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: 'Invalid ID' });
-      }
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
       try {
         const validated = api.subStages.update.input.parse(req.body);
         const subStage = await storage.updateSubStage(id, validated);
@@ -300,10 +283,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.delete(
     api.subStages.delete.path,
     async (req: Request<IdParams>, res: Response<ApiErrorResponse>) => {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: 'Invalid ID' });
-      }
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
       await storage.deleteSubStage(id);
       res.status(204).send();
     },
