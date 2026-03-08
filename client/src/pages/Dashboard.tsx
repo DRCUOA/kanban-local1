@@ -8,7 +8,8 @@ import { TaskHistoryModal } from '@/components/TaskHistoryModal';
 import { TaskWarnings } from '@/components/TaskWarnings';
 import { StageHeaders } from '@/components/StageHeaders';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
-import { Task, type InsertTask } from '@shared/schema';
+import { type Task, type InsertTask, type Stage } from '@shared/schema';
+import { apiGet } from '@/lib/api';
 import {
   Loader2,
   LayoutDashboard,
@@ -143,18 +144,15 @@ export default function Dashboard(_props: DashboardProps) {
 
           let stagesData = stages;
           try {
-            const stagesResponse = await fetch(api.stages.list.path);
-            if (!stagesResponse.ok)
-              throw new Error(`Failed to fetch stages: ${stagesResponse.status}`);
-            const fetchedStages = await stagesResponse.json();
+            const fetchedStages = await apiGet<Stage[]>(api.stages.list.path);
             if (Array.isArray(fetchedStages) && fetchedStages.length > 0)
               stagesData = fetchedStages;
-          } catch (error: any) {
+          } catch (error: unknown) {
             console.error('Error fetching stages:', error);
             if (!stagesData || stagesData.length === 0) {
               toast({
                 title: 'Error fetching stages',
-                description: error.message || 'Could not load stages.',
+                description: error instanceof Error ? error.message : 'Could not load stages.',
                 variant: 'destructive',
               });
               return;

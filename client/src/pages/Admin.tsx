@@ -21,8 +21,11 @@ import {
   insertSubStageSchema,
   type InsertStage,
   type InsertSubStage,
+  type Stage,
+  type SubStage,
 } from '@shared/schema';
-import { queryClient, apiRequest } from '@/lib/queryClient';
+import { queryClient } from '@/lib/queryClient';
+import { apiPost, apiPatch, apiDelete } from '@/lib/api';
 import { Trash2, Edit, ChevronLeft, Settings } from 'lucide-react';
 import { ColorPicker } from '@/components/ColorPicker';
 import { useState } from 'react';
@@ -52,10 +55,7 @@ export default function Admin(_props: AdminProps) {
   const { data: subStages = [] } = useSubStages();
 
   const createMutation = useMutation({
-    mutationFn: async (data: InsertStage) => {
-      const response = await apiRequest(api.stages.create.method, api.stages.create.path, data);
-      return response.json();
-    },
+    mutationFn: (data: InsertStage) => apiPost<Stage>(api.stages.create.path, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.stages.list.path] });
       queryClient.refetchQueries({ queryKey: [api.stages.list.path] });
@@ -66,10 +66,9 @@ export default function Admin(_props: AdminProps) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<InsertStage> }) => {
+    mutationFn: ({ id, data }: { id: number; data: Partial<InsertStage> }) => {
       const url = api.stages.update.path.replace(':id', String(id));
-      const response = await apiRequest(api.stages.update.method, url, data);
-      return response.json();
+      return apiPatch<Stage>(url, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.stages.list.path] });
@@ -88,9 +87,9 @@ export default function Admin(_props: AdminProps) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: (id: number) => {
       const url = api.stages.delete.path.replace(':id', String(id));
-      return apiRequest(api.stages.delete.method, url);
+      return apiDelete(url);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.stages.list.path] });
@@ -123,14 +122,7 @@ export default function Admin(_props: AdminProps) {
   });
 
   const createSubStageMutation = useMutation({
-    mutationFn: async (data: InsertSubStage) => {
-      const response = await apiRequest(
-        api.subStages.create.method,
-        api.subStages.create.path,
-        data,
-      );
-      return response.json();
-    },
+    mutationFn: (data: InsertSubStage) => apiPost<SubStage>(api.subStages.create.path, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.subStages.list.path] });
       toast({ description: 'Sub-stage created' });
@@ -153,10 +145,9 @@ export default function Admin(_props: AdminProps) {
   });
 
   const updateSubStageMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<InsertSubStage> }) => {
+    mutationFn: ({ id, data }: { id: number; data: Partial<InsertSubStage> }) => {
       const url = api.subStages.update.path.replace(':id', String(id));
-      const response = await apiRequest(api.subStages.update.method, url, data);
-      return response.json();
+      return apiPatch<SubStage>(url, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.subStages.list.path] });
@@ -181,9 +172,9 @@ export default function Admin(_props: AdminProps) {
   });
 
   const deleteSubStageMutation = useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: (id: number) => {
       const url = api.subStages.delete.path.replace(':id', String(id));
-      return apiRequest(api.subStages.delete.method, url);
+      return apiDelete(url);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.subStages.list.path] });
