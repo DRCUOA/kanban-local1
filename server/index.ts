@@ -2,6 +2,8 @@
 import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from 'express';
 import { registerRoutes } from './routes';
+import { seedDatabase } from './seed';
+import { storage } from './storage';
 import { serveStatic } from './static';
 import { createServer } from 'http';
 
@@ -62,6 +64,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  await seedDatabase(storage);
   await registerRoutes(httpServer, app);
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
