@@ -50,9 +50,9 @@ export function ColorPicker({ value = '#3B82F6', onChange, label }: ColorPickerP
     // Convert rgb to hex
     const rgbMatch = /^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i.exec(color);
     if (rgbMatch) {
-      const r = parseInt(rgbMatch[1]);
-      const g = parseInt(rgbMatch[2]);
-      const b = parseInt(rgbMatch[3]);
+      const r = parseInt(rgbMatch[1]!);
+      const g = parseInt(rgbMatch[2]!);
+      const b = parseInt(rgbMatch[3]!);
       return `#${[r, g, b]
         .map((x) => {
           const hex = x.toString(16);
@@ -92,7 +92,7 @@ export function ColorPicker({ value = '#3B82F6', onChange, label }: ColorPickerP
   const hexToRgb = (hex: string): string | null => {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result
-      ? `rgb(${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)})`
+      ? `rgb(${parseInt(result[1]!, 16)}, ${parseInt(result[2]!, 16)}, ${parseInt(result[3]!, 16)})`
       : null;
   };
 
@@ -100,9 +100,9 @@ export function ColorPicker({ value = '#3B82F6', onChange, label }: ColorPickerP
   const rgbToHex = (rgb: string): string | null => {
     const match = /^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/.exec(rgb);
     if (!match) return null;
-    const r = parseInt(match[1]);
-    const g = parseInt(match[2]);
-    const b = parseInt(match[3]);
+    const r = parseInt(match[1]!);
+    const g = parseInt(match[2]!);
+    const b = parseInt(match[3]!);
     return `#${[r, g, b]
       .map((x) => {
         const hex = x.toString(16);

@@ -2,6 +2,16 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { insertTaskSchema, type InsertTask } from '@shared/schema';
+import {
+  TASK_STATUS,
+  TASK_PRIORITY,
+  TASK_PRIORITY_LABEL,
+  TASK_RECURRENCE,
+  EFFORT_MIN,
+  EFFORT_MAX,
+  getStatusFromStageName,
+  type TaskPriorityValue,
+} from '@shared/constants';
 import { useCreateTask } from '@/hooks/use-tasks';
 import { useToast } from '@/hooks/use-toast';
 import { useStages } from '@/hooks/use-stages';
@@ -53,9 +63,9 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
       title: '',
       description: '',
       stageId: defaultStageId,
-      status: 'backlog',
-      priority: 'normal',
-      recurrence: 'none',
+      status: TASK_STATUS.BACKLOG,
+      priority: TASK_PRIORITY.NORMAL,
+      recurrence: TASK_RECURRENCE.NONE,
     },
   });
 
@@ -63,24 +73,11 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
     const selectedStage = stages.find((s: any) => s.id === data.stageId);
     let status = data.status;
     if (!status && selectedStage) {
-      const stageName = selectedStage.name.toLowerCase();
-      if (
-        stageName.includes('progress') ||
-        stageName.includes('doing') ||
-        stageName.includes('active')
-      )
-        status = 'in_progress';
-      else if (
-        stageName.includes('done') ||
-        stageName.includes('complete') ||
-        stageName.includes('finished')
-      )
-        status = 'done';
-      else status = 'backlog';
+      status = getStatusFromStageName(selectedStage.name);
     }
 
     createTask.mutate(
-      { ...data, status: status || 'backlog' },
+      { ...data, status: status || TASK_STATUS.BACKLOG },
       {
         onSuccess: () => {
           if ('vibrate' in navigator) navigator.vibrate(10);
@@ -90,9 +87,9 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
             stageId: defaultStageId,
             title: '',
             description: '',
-            status: 'backlog',
-            priority: 'normal',
-            recurrence: 'none',
+            status: TASK_STATUS.BACKLOG,
+            priority: TASK_PRIORITY.NORMAL,
+            recurrence: TASK_RECURRENCE.NONE,
           });
         },
         onError: (error) => {
@@ -212,25 +209,21 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-xs">Priority</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || 'normal'}>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || TASK_PRIORITY.NORMAL}
+                    >
                       <FormControl>
                         <SelectTrigger className="h-12 rounded-xl">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="low" className="py-3">
-                          Low
-                        </SelectItem>
-                        <SelectItem value="normal" className="py-3">
-                          Normal
-                        </SelectItem>
-                        <SelectItem value="high" className="py-3">
-                          High
-                        </SelectItem>
-                        <SelectItem value="critical" className="py-3">
-                          Critical
-                        </SelectItem>
+                        {(Object.values(TASK_PRIORITY) as TaskPriorityValue[]).map((priority) => (
+                          <SelectItem key={priority} value={priority} className="py-3">
+                            {TASK_PRIORITY_LABEL[priority]}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -243,12 +236,14 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
                 name="effort"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs">Effort (1-5)</FormLabel>
+                    <FormLabel className="text-xs">
+                      Effort ({EFFORT_MIN}-{EFFORT_MAX})
+                    </FormLabel>
                     <FormControl>
                       <Input
                         type="number"
-                        min="1"
-                        max="5"
+                        min={EFFORT_MIN}
+                        max={EFFORT_MAX}
                         className="h-12 rounded-xl text-base"
                         {...field}
                         value={field.value || ''}

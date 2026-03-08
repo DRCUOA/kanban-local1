@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { Task } from '@shared/schema';
+import { TASK_STATUS, TASK_PRIORITY, getStatusFromStageName } from '@shared/constants';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Clock } from 'lucide-react';
 import { isPast, isToday, differenceInDays } from 'date-fns';
@@ -18,19 +19,15 @@ export function TaskWarnings({ tasks }: TaskWarningsProps) {
   const getTaskStatus = (t: Task): string => {
     if (t.status) return t.status;
     const stage = stages.find((s: any) => s.id === t.stageId);
-    if (stage) {
-      const name = stage.name.toLowerCase();
-      if (name.includes('progress') || name.includes('doing') || name.includes('active'))
-        return 'in_progress';
-      if (name.includes('done') || name.includes('complete') || name.includes('finished'))
-        return 'done';
-    }
-    return 'backlog';
+    if (stage) return getStatusFromStageName(stage.name);
+    return TASK_STATUS.BACKLOG;
   };
 
-  const inProgressTasks = activeTasks.filter((t) => getTaskStatus(t) === 'in_progress');
+  const inProgressTasks = activeTasks.filter((t) => getTaskStatus(t) === TASK_STATUS.IN_PROGRESS);
   const highPriorityBacklog = activeTasks.filter(
-    (t) => getTaskStatus(t) === 'backlog' && (t.priority === 'high' || t.priority === 'critical'),
+    (t) =>
+      getTaskStatus(t) === TASK_STATUS.BACKLOG &&
+      (t.priority === TASK_PRIORITY.HIGH || t.priority === TASK_PRIORITY.CRITICAL),
   );
 
   const overdueTasks = activeTasks.filter((t) => {

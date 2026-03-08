@@ -2,6 +2,7 @@
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Task } from '@shared/schema';
+import { isInProgressStageName } from '@shared/constants';
 import { TaskCard } from './TaskCard';
 import { TaskCardSummary } from './TaskCardSummary';
 import { Badge } from '@/components/ui/badge';
@@ -42,11 +43,7 @@ export function DayPlanSubStage({
   });
 
   const displayStageColor = stageColor || '#3B82F6';
-  const isInProgressStage = (name: string) => {
-    const n = name.toLowerCase();
-    return n.includes('progress') || n.includes('doing') || n.includes('active');
-  };
-  const isInProgress = isInProgressStage(stageName);
+  const isInProgress = isInProgressStageName(stageName);
 
   return (
     <div

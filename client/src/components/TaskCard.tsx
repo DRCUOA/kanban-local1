@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { Task } from '@shared/schema';
+import { TASK_PRIORITY, EFFORT_MAX } from '@shared/constants';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,13 +33,13 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
 
   // Priority styling
   const priorityStyles = {
-    low: { borderWidth: '1px', dotOpacity: 0.3 },
-    normal: { borderWidth: '2px', dotOpacity: 0.5 },
-    high: { borderWidth: '3px', dotOpacity: 0.7 },
-    critical: { borderWidth: '4px', dotOpacity: 1 },
+    [TASK_PRIORITY.LOW]: { borderWidth: '1px', dotOpacity: 0.3 },
+    [TASK_PRIORITY.NORMAL]: { borderWidth: '2px', dotOpacity: 0.5 },
+    [TASK_PRIORITY.HIGH]: { borderWidth: '3px', dotOpacity: 0.7 },
+    [TASK_PRIORITY.CRITICAL]: { borderWidth: '4px', dotOpacity: 1 },
   };
-  const priority = (task.priority as keyof typeof priorityStyles) || 'normal';
-  const priorityStyle = priorityStyles[priority] || priorityStyles.normal;
+  const priority = (task.priority as keyof typeof priorityStyles) || TASK_PRIORITY.NORMAL;
+  const priorityStyle = priorityStyles[priority] || priorityStyles[TASK_PRIORITY.NORMAL];
 
   // Overdue check
   const dueDate = task.dueDate ? new Date(task.dueDate) : null;
@@ -58,15 +59,14 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
   return (
     <div ref={setNodeRef} style={style}>
       <Card
-        tabIndex={0}
         onClick={(e) => {
           if ((e.target as HTMLElement).closest('.inline-editor')) return;
           if ((e.target as HTMLElement).closest('.drag-handle')) return;
-          // Haptic feedback on tap
           if ('vibrate' in navigator) navigator.vibrate(5);
           onClick(task);
         }}
         {...attributes}
+        tabIndex={0}
         className={cn(
           'group relative cursor-pointer transition-transform duration-200 ease-out active:scale-[0.97] focus-visible:scale-[1.03] task-card-magnify',
           stageColor && 'border-2',
@@ -110,7 +110,7 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
 
           {/* Priority and Effort - compact row */}
           <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-            {task.priority && task.priority !== 'normal' && (
+            {task.priority && task.priority !== TASK_PRIORITY.NORMAL && (
               <Badge
                 variant="outline"
                 className={cn(
@@ -127,7 +127,7 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
                 variant="secondary"
                 className="text-xs font-normal px-1.5 py-0 touch-target-sm min-h-0 min-w-0 h-5"
               >
-                {task.effort}/5
+                {task.effort}/{EFFORT_MAX}
               </Badge>
             )}
           </div>

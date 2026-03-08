@@ -1,10 +1,11 @@
 import { useEffect, useCallback } from 'react';
+import { KEYBOARD_STATUS_MAP, type TaskStatusValue } from '@shared/constants';
 
 export interface KeyboardShortcuts {
   onNewTask?: () => void;
   onSave?: () => void;
   onCancel?: () => void;
-  onMoveToStatus?: (status: 'backlog' | 'in_progress' | 'done' | 'abandoned') => void;
+  onMoveToStatus?: (status: TaskStatusValue) => void;
   onPriorityChange?: (direction: 'up' | 'down') => void;
 }
 
@@ -50,15 +51,10 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts) {
       }
 
       // 1-4 = Move to status
-      if (event.key >= '1' && event.key <= '4' && shortcuts.onMoveToStatus) {
+      const mappedStatus = KEYBOARD_STATUS_MAP[event.key];
+      if (mappedStatus && shortcuts.onMoveToStatus) {
         event.preventDefault();
-        const statusMap: Record<string, 'backlog' | 'in_progress' | 'done' | 'abandoned'> = {
-          '1': 'backlog',
-          '2': 'in_progress',
-          '3': 'done',
-          '4': 'abandoned',
-        };
-        shortcuts.onMoveToStatus(statusMap[event.key]);
+        shortcuts.onMoveToStatus(mappedStatus);
         return;
       }
 

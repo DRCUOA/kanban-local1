@@ -5,9 +5,12 @@ import { apiGet, ApiError } from './api';
 export { apiRequest, apiGet, apiPost, apiPatch, apiDelete, ApiError } from './api';
 
 type UnauthorizedBehavior = 'returnNull' | 'throw';
-export const getQueryFn: <T>(options: { on401: UnauthorizedBehavior }) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
+export function getQueryFn<T>({
+  on401: unauthorizedBehavior,
+}: {
+  on401: UnauthorizedBehavior;
+}): QueryFunction<T> {
+  return async ({ queryKey }) => {
     try {
       return await apiGet<T>(queryKey.join('/'));
     } catch (error) {
@@ -21,6 +24,7 @@ export const getQueryFn: <T>(options: { on401: UnauthorizedBehavior }) => QueryF
       throw error;
     }
   };
+}
 
 export const queryClient = new QueryClient({
   defaultOptions: {

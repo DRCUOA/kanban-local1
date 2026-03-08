@@ -12,6 +12,12 @@ import {
   type TaskHistoryEntry,
   type TaskStatus,
 } from '@shared/schema';
+import {
+  TASK_STATUS,
+  TASK_PRIORITY,
+  TASK_RECURRENCE,
+  getStatusFromStageName,
+} from '@shared/constants';
 import { db } from './db';
 import { eq, and } from 'drizzle-orm';
 
@@ -64,7 +70,7 @@ export class DatabaseStorage implements IStorage {
     // Add archive entry to history
     const history = currentTask.history || [];
     const historyEntry: TaskHistoryEntry = {
-      status: (currentTask.status as TaskStatus) || 'backlog',
+      status: (currentTask.status as TaskStatus) || TASK_STATUS.BACKLOG,
       timestamp: new Date().toISOString(),
       note: 'Archived',
     };
@@ -96,30 +102,18 @@ export class DatabaseStorage implements IStorage {
   async createTask(insertTask: InsertTask): Promise<Task> {
     // Initialize history with initial status
     // If status not provided, infer from stage name
-    let initialStatus = insertTask.status || 'backlog';
+    let initialStatus = insertTask.status || TASK_STATUS.BACKLOG;
 
-    // If no status provided, try to infer from stage
     if (!insertTask.status && insertTask.stageId) {
       const [stage] = await db.select().from(stages).where(eq(stages.id, insertTask.stageId));
       if (stage) {
-        const name = stage.name.toLowerCase();
-        if (name.includes('progress') || name.includes('doing') || name.includes('active')) {
-          initialStatus = 'in_progress';
-        } else if (
-          name.includes('done') ||
-          name.includes('complete') ||
-          name.includes('finished')
-        ) {
-          initialStatus = 'done';
-        } else if (name.includes('abandon') || name.includes('cancel')) {
-          initialStatus = 'abandoned';
-        }
+        initialStatus = getStatusFromStageName(stage.name);
       }
     }
 
     const history: TaskHistoryEntry[] = [
       {
-        status: initialStatus as TaskStatus,
+        status: initialStatus,
         timestamp: new Date().toISOString(),
       },
     ];
@@ -127,8 +121,8 @@ export class DatabaseStorage implements IStorage {
     const taskData = {
       ...insertTask,
       status: initialStatus,
-      priority: insertTask.priority || 'normal',
-      recurrence: insertTask.recurrence || 'none',
+      priority: insertTask.priority || TASK_PRIORITY.NORMAL,
+      recurrence: insertTask.recurrence || TASK_RECURRENCE.NONE,
       history,
       updatedAt: new Date(),
     };
@@ -148,7 +142,7 @@ export class DatabaseStorage implements IStorage {
 
     if (statusChanged && updates.status) {
       const historyEntry: TaskHistoryEntry = {
-        status: updates.status as TaskStatus,
+        status: updates.status,
         timestamp: new Date().toISOString(),
       };
       history = [...history, historyEntry];
@@ -191,7 +185,7 @@ export class DatabaseStorage implements IStorage {
 
     console.log('[DAO] [CREATE_STAGE] Database insert successful');
     console.log('[DAO] [CREATE_STAGE] Created stage:', JSON.stringify(stage));
-    console.log('[DAO] [CREATE_STAGE] Created stage color:', stage.color);
+    console.log('[DAO] [CREATE_STAGE] Created stage color:', stage?.color);
 
     return stage!;
   }

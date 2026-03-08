@@ -3,6 +3,7 @@ import type { Express, Request, Response } from 'express';
 import type { Server } from 'http';
 import { storage } from './storage';
 import { api } from '@shared/routes';
+import { SEED_STAGE_NAMES } from '@shared/constants';
 import { z } from 'zod';
 import type {
   Task,
@@ -20,15 +21,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   const existingStages = await storage.getStages();
   if (existingStages.length === 0) {
     const backlogStage = await storage.createStage({
-      name: 'Backlog',
+      name: SEED_STAGE_NAMES.BACKLOG,
       order: 1,
     });
     const inProgressStage = await storage.createStage({
-      name: 'In Progress',
+      name: SEED_STAGE_NAMES.IN_PROGRESS,
       order: 2,
     });
     const doneStage = await storage.createStage({
-      name: 'Done',
+      name: SEED_STAGE_NAMES.DONE,
       order: 3,
     });
 

@@ -1,7 +1,25 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { insertTaskSchema, type InsertTask, type Task } from '@shared/schema';
+import {
+  insertTaskSchema,
+  type InsertTask,
+  type Task,
+  type TaskStatus,
+  type TaskPriority,
+  type TaskRecurrence,
+} from '@shared/schema';
+import {
+  TASK_STATUS,
+  TASK_STATUS_LABEL,
+  TASK_PRIORITY,
+  TASK_PRIORITY_LABEL,
+  TASK_RECURRENCE,
+  EFFORT_MIN,
+  EFFORT_MAX,
+  type TaskStatusValue,
+  type TaskPriorityValue,
+} from '@shared/constants';
 import { useUpdateTask, useDeleteTask } from '@/hooks/use-tasks';
 import { useToast } from '@/hooks/use-toast';
 import { useStages } from '@/hooks/use-stages';
@@ -88,12 +106,12 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
           title: task.title,
           description: task.description || '',
           stageId: task.stageId,
-          status: task.status || 'backlog',
-          priority: task.priority || 'normal',
+          status: (task.status as TaskStatus) || TASK_STATUS.BACKLOG,
+          priority: (task.priority as TaskPriority) || TASK_PRIORITY.NORMAL,
           effort: task.effort || undefined,
           dueDate: parsedDueDate,
           tags: Array.isArray(task.tags) ? task.tags : [],
-          recurrence: task.recurrence || 'none',
+          recurrence: (task.recurrence as TaskRecurrence) || TASK_RECURRENCE.NONE,
         });
       } catch (error) {
         console.error('Error resetting form:', error);
@@ -101,12 +119,12 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
           title: task.title || '',
           description: task.description || '',
           stageId: task.stageId || 1,
-          status: task.status || 'backlog',
-          priority: task.priority || 'normal',
+          status: (task.status as TaskStatus) || TASK_STATUS.BACKLOG,
+          priority: (task.priority as TaskPriority) || TASK_PRIORITY.NORMAL,
           effort: task.effort || undefined,
           dueDate: undefined,
           tags: [],
-          recurrence: task.recurrence || 'none',
+          recurrence: (task.recurrence as TaskRecurrence) || TASK_RECURRENCE.NONE,
         });
       }
     }
@@ -226,25 +244,21 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-xs">Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || 'backlog'}>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || TASK_STATUS.BACKLOG}
+                    >
                       <FormControl>
                         <SelectTrigger className="h-12 rounded-xl">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="backlog" className="py-3">
-                          Backlog
-                        </SelectItem>
-                        <SelectItem value="in_progress" className="py-3">
-                          In Progress
-                        </SelectItem>
-                        <SelectItem value="done" className="py-3">
-                          Done
-                        </SelectItem>
-                        <SelectItem value="abandoned" className="py-3">
-                          Abandoned
-                        </SelectItem>
+                        {(Object.values(TASK_STATUS) as TaskStatusValue[]).map((status) => (
+                          <SelectItem key={status} value={status} className="py-3">
+                            {TASK_STATUS_LABEL[status]}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -258,25 +272,21 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-xs">Priority</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || 'normal'}>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || TASK_PRIORITY.NORMAL}
+                    >
                       <FormControl>
                         <SelectTrigger className="h-12 rounded-xl">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="low" className="py-3">
-                          Low
-                        </SelectItem>
-                        <SelectItem value="normal" className="py-3">
-                          Normal
-                        </SelectItem>
-                        <SelectItem value="high" className="py-3">
-                          High
-                        </SelectItem>
-                        <SelectItem value="critical" className="py-3">
-                          Critical
-                        </SelectItem>
+                        {(Object.values(TASK_PRIORITY) as TaskPriorityValue[]).map((priority) => (
+                          <SelectItem key={priority} value={priority} className="py-3">
+                            {TASK_PRIORITY_LABEL[priority]}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -291,12 +301,14 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
                 name="effort"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs">Effort (1-5)</FormLabel>
+                    <FormLabel className="text-xs">
+                      Effort ({EFFORT_MIN}-{EFFORT_MAX})
+                    </FormLabel>
                     <FormControl>
                       <Input
                         type="number"
-                        min="1"
-                        max="5"
+                        min={EFFORT_MIN}
+                        max={EFFORT_MAX}
                         className="h-12 rounded-xl text-base"
                         {...field}
                         value={field.value || ''}
@@ -336,8 +348,8 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
                         <Calendar
-                          selected={field.value}
-                          onSelect={(date) => {
+                          selected={field.value ?? undefined}
+                          onSelect={(date: Date | undefined) => {
                             field.onChange(date || undefined);
                           }}
                           initialFocus
