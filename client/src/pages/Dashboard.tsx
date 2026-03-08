@@ -25,9 +25,9 @@ import {
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useQuery } from '@tanstack/react-query';
 import { api } from '@shared/routes';
 import { useToast } from '@/hooks/use-toast';
+import { useStages } from '@/hooks/use-stages';
 import { cn } from '@/lib/utils';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- page component; props will grow during Phase 5 decomposition
@@ -46,28 +46,7 @@ export default function Dashboard(_props: DashboardProps) {
   const [focusMode, setFocusMode] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
-  const { data: stages = [] } = useQuery({
-    queryKey: [api.stages.list.path],
-    queryFn: async () => {
-      try {
-        const res = await fetch(api.stages.list.path);
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(
-            `Failed to fetch stages: ${res.status} ${res.statusText}${errorText ? ` - ${errorText}` : ''}`,
-          );
-        }
-        return res.json();
-      } catch (error) {
-        if (error instanceof TypeError && error.message.includes('fetch')) {
-          throw new Error(
-            'Network error: Unable to connect to server. Please check if the server is running.',
-          );
-        }
-        throw error;
-      }
-    },
-  });
+  const { data: stages = [] } = useStages();
 
   // Keyboard shortcuts
   useKeyboardShortcuts({

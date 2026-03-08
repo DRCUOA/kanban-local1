@@ -4,8 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { insertTaskSchema, type InsertTask, type Task } from '@shared/schema';
 import { useUpdateTask, useDeleteTask } from '@/hooks/use-tasks';
 import { useToast } from '@/hooks/use-toast';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@shared/routes';
+import { useStages } from '@/hooks/use-stages';
 import {
   Dialog,
   DialogContent,
@@ -62,28 +61,7 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
 
-  const { data: stages = [] } = useQuery({
-    queryKey: [api.stages.list.path],
-    queryFn: async () => {
-      try {
-        const res = await fetch(api.stages.list.path);
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(
-            `Failed to fetch stages: ${res.status} ${res.statusText}${errorText ? ` - ${errorText}` : ''}`,
-          );
-        }
-        return res.json();
-      } catch (error) {
-        if (error instanceof TypeError && error.message.includes('fetch')) {
-          throw new Error(
-            'Network error: Unable to connect to server. Please check if the server is running.',
-          );
-        }
-        throw error;
-      }
-    },
-  });
+  const { data: stages = [] } = useStages();
 
   const form = useForm<InsertTask>({
     resolver: zodResolver(insertTaskSchema),
