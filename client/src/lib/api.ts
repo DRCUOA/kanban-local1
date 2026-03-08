@@ -54,7 +54,7 @@ export async function apiRequest<T = void>(
     let errorBody: string;
     try {
       const json = (await res.json()) as ApiErrorResponse;
-      errorBody = json.message || JSON.stringify(json);
+      errorBody = json.error || JSON.stringify(json);
     } catch {
       errorBody = (await res.text()) || res.statusText;
     }

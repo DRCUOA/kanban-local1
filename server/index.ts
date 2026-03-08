@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import 'dotenv/config';
-import express, { type Request, Response, NextFunction } from 'express';
+import express from 'express';
 import { registerRoutes } from './routes';
 import { seedDatabase } from './seed';
 import { storage } from './storage';
 import { serveStatic } from './static';
+import { errorHandler } from './errors';
 import { createServer } from 'http';
 
 const app = express();
@@ -67,15 +68,7 @@ app.use((req, res, next) => {
   await seedDatabase(storage);
   await registerRoutes(httpServer, app);
 
-  app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-    const errObj = typeof err === 'object' && err !== null ? (err as Record<string, unknown>) : {};
-    const rawStatus = errObj.status || errObj.statusCode || 500;
-    const status = typeof rawStatus === 'number' ? rawStatus : 500;
-    const message = err instanceof Error ? err.message : 'Internal Server Error';
-
-    res.status(status).json({ message });
-    throw err;
-  });
+  app.use(errorHandler);
 
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
