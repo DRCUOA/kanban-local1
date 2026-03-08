@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/no-redundant-type-constituents -- Drizzle ORM column/result inference triggers strict rules; types are validated via schema */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-non-null-assertion -- Drizzle ORM column/result inference triggers strict rules; types are validated via schema */
 import {
   tasks,
   stages,
@@ -134,7 +134,7 @@ export class DatabaseStorage implements IStorage {
     };
 
     const [task] = await db.insert(tasks).values(taskData).returning();
-    return task;
+    return task!;
   }
 
   async updateTask(id: number, updates: Partial<InsertTask>): Promise<Task | undefined> {
@@ -193,7 +193,7 @@ export class DatabaseStorage implements IStorage {
     console.log('[DAO] [CREATE_STAGE] Created stage:', JSON.stringify(stage));
     console.log('[DAO] [CREATE_STAGE] Created stage color:', stage.color);
 
-    return stage;
+    return stage!;
   }
 
   async updateStage(id: number, updates: Partial<InsertStage>): Promise<Stage | undefined> {
@@ -250,7 +250,7 @@ export class DatabaseStorage implements IStorage {
 
   async createSubStage(insertSubStage: InsertSubStage): Promise<SubStage> {
     const [subStage] = await db.insert(subStages).values(insertSubStage).returning();
-    return subStage;
+    return subStage!;
   }
 
   async updateSubStage(

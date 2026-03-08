@@ -3,9 +3,10 @@ import {
   insertTaskSchema,
   insertStageSchema,
   insertSubStageSchema,
-  tasks,
-  stages,
-  subStages,
+  type Task,
+  type Stage,
+  type SubStage,
+  type TaskHistoryEntry,
 } from './schema';
 
 export const api = {
@@ -14,7 +15,7 @@ export const api = {
       method: 'GET' as const,
       path: '/api/tasks',
       responses: {
-        200: z.array(z.custom<typeof tasks.$inferSelect>()),
+        200: z.array(z.custom<Task>()),
       },
     },
     create: {
@@ -22,7 +23,7 @@ export const api = {
       path: '/api/tasks',
       input: insertTaskSchema,
       responses: {
-        201: z.custom<typeof tasks.$inferSelect>(),
+        201: z.custom<Task>(),
         400: z.object({ message: z.string() }),
       },
     },
@@ -31,7 +32,7 @@ export const api = {
       path: '/api/tasks/:id',
       input: insertTaskSchema.partial(),
       responses: {
-        200: z.custom<typeof tasks.$inferSelect>(),
+        200: z.custom<Task>(),
         404: z.object({ message: z.string() }),
       },
     },
@@ -47,14 +48,14 @@ export const api = {
       method: 'GET' as const,
       path: '/api/tasks/archived',
       responses: {
-        200: z.array(z.custom<typeof tasks.$inferSelect>()),
+        200: z.array(z.custom<Task>()),
       },
     },
     archive: {
       method: 'POST' as const,
       path: '/api/tasks/:id/archive',
       responses: {
-        200: z.custom<typeof tasks.$inferSelect>(),
+        200: z.custom<Task>(),
         404: z.object({ message: z.string() }),
       },
     },
@@ -62,7 +63,7 @@ export const api = {
       method: 'POST' as const,
       path: '/api/tasks/:id/unarchive',
       responses: {
-        200: z.custom<typeof tasks.$inferSelect>(),
+        200: z.custom<Task>(),
         404: z.object({ message: z.string() }),
       },
     },
@@ -70,13 +71,7 @@ export const api = {
       method: 'GET' as const,
       path: '/api/tasks/:id/history',
       responses: {
-        200: z.array(
-          z.object({
-            status: z.string(),
-            timestamp: z.string(),
-            note: z.string().optional(),
-          }),
-        ),
+        200: z.array(z.custom<TaskHistoryEntry>()),
         404: z.object({ message: z.string() }),
       },
     },
@@ -86,7 +81,7 @@ export const api = {
       method: 'GET' as const,
       path: '/api/stages',
       responses: {
-        200: z.array(z.custom<typeof stages.$inferSelect>()),
+        200: z.array(z.custom<Stage>()),
       },
     },
     create: {
@@ -94,7 +89,7 @@ export const api = {
       path: '/api/stages',
       input: insertStageSchema,
       responses: {
-        201: z.custom<typeof stages.$inferSelect>(),
+        201: z.custom<Stage>(),
         400: z.object({ message: z.string() }),
       },
     },
@@ -103,7 +98,7 @@ export const api = {
       path: '/api/stages/:id',
       input: insertStageSchema.partial(),
       responses: {
-        200: z.custom<typeof stages.$inferSelect>(),
+        200: z.custom<Stage>(),
         404: z.object({ message: z.string() }),
       },
     },
@@ -121,14 +116,14 @@ export const api = {
       method: 'GET' as const,
       path: '/api/sub-stages',
       responses: {
-        200: z.array(z.custom<typeof subStages.$inferSelect>()),
+        200: z.array(z.custom<SubStage>()),
       },
     },
     listByStage: {
       method: 'GET' as const,
       path: '/api/stages/:stageId/sub-stages',
       responses: {
-        200: z.array(z.custom<typeof subStages.$inferSelect>()),
+        200: z.array(z.custom<SubStage>()),
       },
     },
     create: {
@@ -136,7 +131,7 @@ export const api = {
       path: '/api/sub-stages',
       input: insertSubStageSchema,
       responses: {
-        201: z.custom<typeof subStages.$inferSelect>(),
+        201: z.custom<SubStage>(),
         400: z.object({ message: z.string() }),
       },
     },
@@ -145,7 +140,7 @@ export const api = {
       path: '/api/sub-stages/:id',
       input: insertSubStageSchema.partial(),
       responses: {
-        200: z.custom<typeof subStages.$inferSelect>(),
+        200: z.custom<SubStage>(),
         404: z.object({ message: z.string() }),
       },
     },
