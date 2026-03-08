@@ -2,53 +2,18 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@shared/routes';
 import type { Stage, SubStage } from '@shared/schema';
+import { apiGet } from '@/lib/api';
 
 export function useStages() {
   return useQuery<Stage[]>({
     queryKey: [api.stages.list.path],
-    queryFn: async () => {
-      try {
-        const res = await fetch(api.stages.list.path);
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(
-            `Failed to fetch stages: ${res.status} ${res.statusText}${errorText ? ` - ${errorText}` : ''}`,
-          );
-        }
-        return res.json();
-      } catch (error) {
-        if (error instanceof TypeError && error.message.includes('fetch')) {
-          throw new Error(
-            'Network error: Unable to connect to server. Please check if the server is running.',
-          );
-        }
-        throw error;
-      }
-    },
+    queryFn: () => apiGet<Stage[]>(api.stages.list.path),
   });
 }
 
 export function useSubStages() {
   return useQuery<SubStage[]>({
     queryKey: [api.subStages.list.path],
-    queryFn: async () => {
-      try {
-        const res = await fetch(api.subStages.list.path);
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(
-            `Failed to fetch sub-stages: ${res.status} ${res.statusText}${errorText ? ` - ${errorText}` : ''}`,
-          );
-        }
-        return res.json();
-      } catch (error) {
-        if (error instanceof TypeError && error.message.includes('fetch')) {
-          throw new Error(
-            'Network error: Unable to connect to server. Please check if the server is running.',
-          );
-        }
-        throw error;
-      }
-    },
+    queryFn: () => apiGet<SubStage[]>(api.subStages.list.path),
   });
 }
