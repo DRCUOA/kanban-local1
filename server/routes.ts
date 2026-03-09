@@ -15,6 +15,7 @@ import type {
   TaskHistoryEntry,
 } from '@shared/schema';
 import type { ApiErrorResponse, IdParams, StageIdParams } from '@shared/api-types';
+import { logger } from '@shared/logger';
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   // Task endpoints
@@ -34,6 +35,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const task = await storage.createTask(taskData);
         res.status(201).json(task);
       } catch (error) {
+        if (res.headersSent) {
+          logger.error('Error after response already sent (task create):', error);
+          return;
+        }
         if (error instanceof z.ZodError) {
           res
             .status(400)
@@ -61,6 +66,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         }
         res.json(updatedTask);
       } catch (error) {
+        if (res.headersSent) {
+          logger.error('Error after response already sent (task update):', error);
+          return;
+        }
         if (error instanceof z.ZodError) {
           res
             .status(400)
@@ -130,6 +139,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const stage = await storage.createStage(stageData);
         res.status(201).json(stage);
       } catch (error) {
+        if (res.headersSent) {
+          logger.error('Error after response already sent (stage create):', error);
+          return;
+        }
         if (error instanceof z.ZodError) {
           res
             .status(400)
@@ -157,6 +170,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         }
         res.json(updatedStage);
       } catch (error) {
+        if (res.headersSent) {
+          logger.error('Error after response already sent (stage update):', error);
+          return;
+        }
         if (error instanceof z.ZodError) {
           res
             .status(400)
@@ -219,6 +236,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const subStage = await storage.createSubStage(validated);
         res.status(201).json(subStage);
       } catch (error) {
+        if (res.headersSent) {
+          logger.error('Error after response already sent (sub-stage create):', error);
+          return;
+        }
         if (error instanceof z.ZodError) {
           res
             .status(400)
@@ -246,6 +267,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         }
         res.json(subStage);
       } catch (error) {
+        if (res.headersSent) {
+          logger.error('Error after response already sent (sub-stage update):', error);
+          return;
+        }
         if (error instanceof z.ZodError) {
           res
             .status(400)
