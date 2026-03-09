@@ -3,6 +3,7 @@ import { type Task, type InsertTask, type Stage } from '@shared/schema';
 import { TASK_STATUS, TASK_PRIORITY, TASK_RECURRENCE } from '@shared/constants';
 import { apiGet } from '@/lib/api';
 import { api } from '@shared/routes';
+import { logger } from '@shared/logger';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateTask } from '@/hooks/use-tasks';
 
@@ -57,7 +58,7 @@ export function useTaskImportExport({ tasks, stages }: UseTaskImportExportOption
             if (Array.isArray(fetchedStages) && fetchedStages.length > 0)
               stagesData = fetchedStages;
           } catch (error: unknown) {
-            console.error('Error fetching stages:', error);
+            logger.error('Error fetching stages:', error);
             if (!stagesData || stagesData.length === 0) {
               toast({
                 title: 'Error fetching stages',
@@ -121,7 +122,7 @@ export function useTaskImportExport({ tasks, stages }: UseTaskImportExportOption
               description: `Failed to import ${errorCount} task${errorCount > 1 ? 's' : ''}.`,
               variant: 'destructive',
             });
-            console.error('Import errors:', errors);
+            logger.error('Import errors:', errors);
           }
         } catch (error: any) {
           toast({

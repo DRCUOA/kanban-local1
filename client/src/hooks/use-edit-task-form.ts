@@ -13,6 +13,7 @@ import {
 import { TASK_STATUS, TASK_PRIORITY, TASK_RECURRENCE } from '@shared/constants';
 import { useUpdateTask, useDeleteTask } from '@/hooks/use-tasks';
 import { useToast } from '@/hooks/use-toast';
+import { logger } from '@shared/logger';
 
 export interface UseEditTaskFormOptions {
   task: Task | null;
@@ -58,7 +59,7 @@ export function useEditTaskForm({ task, open, onOpenChange }: UseEditTaskFormOpt
           recurrence: (task.recurrence as TaskRecurrence) || TASK_RECURRENCE.NONE,
         });
       } catch (error) {
-        console.error('Error resetting form:', error);
+        logger.error('Error resetting form:', error);
         form.reset({
           title: task.title || '',
           description: task.description || '',

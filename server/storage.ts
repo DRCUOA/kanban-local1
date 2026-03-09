@@ -20,6 +20,7 @@ import {
 } from '@shared/constants';
 import { db } from './db';
 import { eq, and } from 'drizzle-orm';
+import { logger } from '@shared/logger';
 
 export interface IStorage {
   getTasks(): Promise<Task[]>;
@@ -168,66 +169,64 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createStage(insertStage: InsertStage): Promise<Stage> {
-    console.log('[DAO] [CREATE_STAGE] createStage called with data:', JSON.stringify(insertStage));
-    console.log('[DAO] [CREATE_STAGE] Color value:', insertStage.color);
-    console.log('[DAO] [CREATE_STAGE] Color type:', typeof insertStage.color);
+    logger.debug('[DAO] [CREATE_STAGE] createStage called with data:', JSON.stringify(insertStage));
+    logger.debug('[DAO] [CREATE_STAGE] Color value:', insertStage.color);
+    logger.debug('[DAO] [CREATE_STAGE] Color type:', typeof insertStage.color);
 
-    // Ensure color is included even if undefined (Drizzle will handle null)
     const stageData = {
       name: insertStage.name,
       order: insertStage.order,
       color: insertStage.color || null,
     };
 
-    console.log('[DAO] [CREATE_STAGE] Stage data to insert:', JSON.stringify(stageData));
-    console.log('[DAO] [CREATE_STAGE] Preparing database insert');
+    logger.debug('[DAO] [CREATE_STAGE] Stage data to insert:', JSON.stringify(stageData));
+    logger.debug('[DAO] [CREATE_STAGE] Preparing database insert');
     const [stage] = await db.insert(stages).values(stageData).returning();
 
-    console.log('[DAO] [CREATE_STAGE] Database insert successful');
-    console.log('[DAO] [CREATE_STAGE] Created stage:', JSON.stringify(stage));
-    console.log('[DAO] [CREATE_STAGE] Created stage color:', stage?.color);
+    logger.debug('[DAO] [CREATE_STAGE] Database insert successful');
+    logger.debug('[DAO] [CREATE_STAGE] Created stage:', JSON.stringify(stage));
+    logger.debug('[DAO] [CREATE_STAGE] Created stage color:', stage?.color);
 
     return stage!;
   }
 
   async updateStage(id: number, updates: Partial<InsertStage>): Promise<Stage | undefined> {
-    console.log(
+    logger.debug(
       '[DAO] [UPDATE_STAGE] updateStage called with id:',
       id,
       'updates:',
       JSON.stringify(updates),
     );
-    console.log('[DAO] [UPDATE_STAGE] Color in updates:', updates.color);
-    console.log('[DAO] [UPDATE_STAGE] Color type:', typeof updates.color);
+    logger.debug('[DAO] [UPDATE_STAGE] Color in updates:', updates.color);
+    logger.debug('[DAO] [UPDATE_STAGE] Color type:', typeof updates.color);
 
-    // Ensure color is explicitly set (even if null) if it's in the updates
     const updateData: Partial<InsertStage> = { ...updates };
     if ('color' in updates) {
       updateData.color = updates.color ?? null;
     }
 
-    console.log('[DAO] [UPDATE_STAGE] Update data to apply:', JSON.stringify(updateData));
-    console.log('[DAO] [UPDATE_STAGE] Preparing database update');
+    logger.debug('[DAO] [UPDATE_STAGE] Update data to apply:', JSON.stringify(updateData));
+    logger.debug('[DAO] [UPDATE_STAGE] Preparing database update');
     const [updated] = await db.update(stages).set(updateData).where(eq(stages.id, id)).returning();
 
     if (updated) {
-      console.log('[DAO] [UPDATE_STAGE] Database update successful');
-      console.log('[DAO] [UPDATE_STAGE] Updated stage:', JSON.stringify(updated));
-      console.log('[DAO] [UPDATE_STAGE] Updated stage color:', updated.color);
+      logger.debug('[DAO] [UPDATE_STAGE] Database update successful');
+      logger.debug('[DAO] [UPDATE_STAGE] Updated stage:', JSON.stringify(updated));
+      logger.debug('[DAO] [UPDATE_STAGE] Updated stage color:', updated.color);
     } else {
-      console.log('[DAO] [UPDATE_STAGE] No stage found with id:', id);
+      logger.debug('[DAO] [UPDATE_STAGE] No stage found with id:', id);
     }
 
     return updated;
   }
 
   async deleteStage(id: number): Promise<void> {
-    console.log('[DAO] [DELETE_STAGE] deleteStage called with id:', id);
+    logger.debug('[DAO] [DELETE_STAGE] deleteStage called with id:', id);
 
-    console.log('[DAO] [DELETE_STAGE] Preparing database delete');
+    logger.debug('[DAO] [DELETE_STAGE] Preparing database delete');
     await db.delete(stages).where(eq(stages.id, id));
 
-    console.log('[DAO] [DELETE_STAGE] Database delete completed');
+    logger.debug('[DAO] [DELETE_STAGE] Database delete completed');
   }
 
   async getSubStages(): Promise<SubStage[]> {

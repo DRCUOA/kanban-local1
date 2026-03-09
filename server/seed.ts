@@ -1,4 +1,5 @@
 import { SEED_STAGE_NAMES } from '@shared/constants';
+import { logger } from '@shared/logger';
 import type { IStorage } from './storage';
 
 export async function seedDatabase(storage: IStorage): Promise<void> {
@@ -32,6 +33,6 @@ export async function seedDatabase(storage: IStorage): Promise<void> {
       description: 'Brainstorm core features',
       stageId: doneStage.id,
     });
-    console.log('Seeded database with initial stages and tasks');
+    logger.info('Seeded database with initial stages and tasks');
   }
 }

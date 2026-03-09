@@ -7,6 +7,7 @@ import { storage } from './storage';
 import { serveStatic } from './static';
 import { errorHandler } from './errors';
 import { createServer } from 'http';
+import { logger } from '@shared/logger';
 
 const app = express();
 const httpServer = createServer(app);
@@ -35,7 +36,7 @@ export function log(message: string, source = 'express') {
     hour12: true,
   });
 
-  console.log(`${formattedTime} [${source}] ${message}`);
+  logger.info(`${formattedTime} [${source}] ${message}`);
 }
 
 app.use((req, res, next) => {
