@@ -74,97 +74,9 @@ The app serves both API and client on **port 5000** (`http://localhost:5000`).
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  Browser (port 5000)                                    │
-│  ┌──────────────┐  ┌─────────────┐  ┌───────────────┐  │
-│  │  Dashboard    │  │  Admin      │  │  Archive      │  │
-│  │  (KanbanBoard)│  │  (Stages/   │  │  (Archived    │  │
-│  │              │  │   SubStages) │  │   Tasks)      │  │
-│  └──────┬───────┘  └──────┬──────┘  └──────┬────────┘  │
-│         └──────────────────┼───────────────┘            │
-│                    React Query                          │
-│                    fetch → /api/*                       │
-└────────────────────────────┬────────────────────────────┘
-                             │ HTTP
-┌────────────────────────────┴────────────────────────────┐
-│  Express (server/index.ts)                              │
-│  ├── JSON body parser                                   │
-│  ├── Request logger middleware                          │
-│  ├── API routes (server/routes.ts)                      │
-│  │   └── Zod validation via shared/routes.ts contracts  │
-│  ├── DatabaseStorage (server/storage.ts)                │
-│  │   └── IStorage interface                             │
-│  └── Vite middleware (dev) or static serve (prod)       │
-└────────────────────────────┬────────────────────────────┘
-                             │ pg
-┌────────────────────────────┴────────────────────────────┐
-│  PostgreSQL                                             │
-│  Tables: stages, sub_stages, tasks                      │
-│  Schema: shared/schema.ts (Drizzle)                     │
-└─────────────────────────────────────────────────────────┘
-```
+Three source directories — `client/src/`, `server/`, and `shared/` — with path aliases `@/*` and `@shared/*`. The shared module owns all types, constants, API contracts, and the structured logger. The client uses `apiRequest<T>` for all API calls and React Query for caching. The server uses centralised error handling (`AppError` + `errorHandler` middleware) and `parseIdParam` for route validation.
 
-### Request lifecycle
-
-1. Client hook (e.g. `useTasks()`) calls `fetch("/api/tasks")`.
-2. Express route handler receives the request in `server/routes.ts`.
-3. Request body (if any) is validated against Zod schemas defined in `shared/routes.ts`.
-4. `DatabaseStorage` method executes the Drizzle query against PostgreSQL.
-5. Response is returned as JSON; React Query caches and re-renders.
-
-### Path aliases (tsconfig + Vite)
-
-| Alias | Resolves to |
-|---|---|
-| `@/*` | `client/src/*` |
-| `@shared/*` | `shared/*` |
-
----
-
-## Database Schema
-
-Three tables defined in `shared/schema.ts`:
-
-### stages
-| Column | Type | Notes |
-|---|---|---|
-| id | serial PK | |
-| name | text | Not null |
-| order | integer | Display order |
-| color | text | Hex color, nullable |
-| created_at | timestamp | Default now |
-
-### sub_stages
-| Column | Type | Notes |
-|---|---|---|
-| id | serial PK | |
-| stage_id | integer FK → stages | Cascade delete |
-| name | text | |
-| tag | text | Unique identifier, e.g. `"day-plan-am"` |
-| bg_class | text | Tailwind class |
-| opacity | integer | 0–100 |
-| order | integer | Display order |
-| created_at | timestamp | |
-
-### tasks
-| Column | Type | Notes |
-|---|---|---|
-| id | serial PK | |
-| title | text | Not null |
-| description | text | Nullable |
-| stage_id | integer FK → stages | |
-| archived | boolean | Default false |
-| status | text | `backlog` / `in_progress` / `done` / `abandoned` |
-| priority | text | `low` / `normal` / `high` / `critical` |
-| effort | integer | 1–5, nullable |
-| due_date | timestamp | Nullable |
-| tags | jsonb | `string[]` |
-| parent_task_id | integer FK → tasks | Self-referential (subtasks) |
-| recurrence | text | `none` / `daily` / `weekly` / `monthly` |
-| history | jsonb | `TaskHistoryEntry[]` (status change log) |
-| updated_at | timestamp | |
-| created_at | timestamp | |
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full system diagram, request lifecycle, module tables, database schema, error handling flow, and directory tree.
 
 ---
 
@@ -205,112 +117,9 @@ All routes are defined declaratively in `shared/routes.ts` and registered in `se
 
 ## Client Pages & Components
 
-### Pages (client/src/pages/)
-| Page | Route | Description |
-|---|---|---|
-| `Dashboard` | `/` | Main Kanban board view with drag-and-drop |
-| `Admin` | `/admin` | Manage stages, sub-stages, colours |
-| `Archive` | `/archive` | View and restore archived tasks |
-| `not-found` | fallback | 404 page |
+Four routes: Dashboard (`/`), Admin (`/admin`), Archive (`/archive`), and a 404 fallback. Dashboard and Admin are decomposed into co-located subcomponents (e.g. `DashboardHeader`, `StageSection`). 19 feature components in `components/`, 7 shared hooks in `hooks/`, and 3 API layer modules in `lib/`.
 
-### Key Components (client/src/components/)
-| Component | LOC | Responsibility |
-|---|---|---|
-| `KanbanBoard` | 394 | Board layout, drag-and-drop orchestration, column rendering |
-| `EditTaskDialog` | 387 | Full task editing form in a dialog |
-| `CreateTaskDialog` | 267 | New task creation form |
-| `TaskCard` | 183 | Individual task card with status, priority, actions |
-| `TaskCardSummary` | 179 | Compact task card variant |
-| `ColorPicker` | 180 | Stage colour selection |
-| `InlineTaskEditor` | 132 | Quick inline task editing |
-| `TaskWarnings` | 129 | Due date and status warnings |
-| `TaskHistoryModal` | 122 | Status change history viewer |
-| `DayPlanSubStage` | 116 | Sub-stage rendering within columns |
-| `StageHeaders` | 83 | Column headers for the board |
-| `TaskColumn` | 71 | Single column container |
-| `ArchiveZone` | 41 | Drag target for archiving |
-| `FocusModeToggle` | 23 | Toggle for focus/distraction-free mode |
-
-### Hooks (client/src/hooks/)
-| Hook | Purpose |
-|---|---|
-| `use-tasks.ts` | All task CRUD mutations + queries (7 exported hooks) |
-| `use-keyboard-shortcuts.ts` | Global keyboard shortcut bindings |
-| `use-mobile.tsx` | Mobile viewport detection |
-| `use-toast.ts` | Toast notification state |
-
-### UI Primitives (client/src/components/ui/)
-45 shadcn/ui components — these are vendored Radix wrappers and are **out of scope** for refactoring (treat as a library).
-
----
-
-## Directory Structure
-
-```
-kanban-local1/
-├── .devlaunch                    # Dev launcher config
-├── .env                          # Environment variables (not committed)
-├── components.json               # shadcn/ui configuration
-├── docker-compose.yml            # PostgreSQL 16 service
-├── drizzle.config.ts             # Drizzle Kit config
-├── package.json                  # Dependencies & scripts
-├── postcss.config.js             # PostCSS config
-├── tailwind.config.ts            # Tailwind config
-├── tsconfig.json                 # TypeScript config (strict, bundler resolution)
-├── vite.config.ts                # Vite config (React, path aliases, Replit plugins)
-│
-├── client/                       # React frontend
-│   ├── index.html                # HTML entry point
-│   └── src/
-│       ├── App.tsx               # Root: QueryClientProvider + Router
-│       ├── main.tsx              # ReactDOM render entry
-│       ├── index.css             # Global styles + Tailwind directives
-│       ├── components/           # Feature components (see table above)
-│       │   └── ui/               # shadcn/ui primitives (45 files, treat as library)
-│       ├── hooks/                # Custom React hooks
-│       ├── lib/                  # queryClient config, cn() utility
-│       └── pages/                # Route-level page components
-│
-├── server/                       # Express backend
-│   ├── index.ts                  # App bootstrap, middleware, error handler, listen
-│   ├── routes.ts                 # API route registration + seed data
-│   ├── storage.ts                # IStorage interface + DatabaseStorage class
-│   ├── db.ts                     # pg Pool + Drizzle instance
-│   ├── vite.ts                   # Vite dev middleware setup
-│   └── static.ts                 # Production static file serving
-│
-├── shared/                       # Code shared between client and server
-│   ├── schema.ts                 # Drizzle table definitions, Zod schemas, TS types
-│   └── routes.ts                 # Declarative API route contracts (paths, methods, schemas)
-│
-├── migrations/                   # Drizzle SQL migrations
-│   ├── 0000_hot_firebrand.sql
-│   ├── 0001_add_color_to_stages.sql
-│   └── meta/
-│
-├── scripts/                      # One-off migration & debug scripts
-│   ├── add-color-column.ts
-│   ├── add-enhanced-task-fields.ts
-│   ├── add-sub-stages-table.ts
-│   └── reproduce-task-update-crash.ts
-│
-├── script/
-│   └── build.ts                  # Production build script (esbuild + Vite)
-│
-├── development/                  # Planning & task tracking
-│   ├── 00-UIX/                   # UI/UX epics & atomics (empty — future)
-│   ├── 01-R2-REFACTOR/           # R2 refactor epics & atomics
-│   │   ├── CNE (EPICS)/
-│   │   │   └── r2-codebase-refactor.json   ← THE ACTIVE EPIC
-│   │   └── CNI (ATOMICS)/
-│   └── templates/                # JSON templates for CNE/CNI work items
-│
-├── bugs/                         # Bug reports (JSON)
-│   └── archive-drag-drop-not-working.json
-│
-└── documentation/
-    └── version01-notes/          # V1 reference documentation
-```
+See [COMPONENT_INDEX.md](COMPONENT_INDEX.md) for the full breakdown of every component, hook, utility, shared module, and server module with exports and responsibilities.
 
 ---
 
@@ -363,15 +172,11 @@ The V1 codebase was built incrementally by humans and AI assistants during MVP d
 
 ### Known Bugs & Gotchas
 
-| Issue | Location | Detail |
+| Issue | Location | Status |
 |---|---|---|
-| Rethrow after response | `server/index.ts:71` | `throw err` after `res.status().json()` crashes the process |
-| Debug logging in prod | `server/storage.ts` | 15+ `console.log` with `[DAO]` prefix left from debugging |
-| `any` in updateStage | `server/storage.ts:187` | `const updateData: any = { ...updates }` |
-| Request logger leaks body | `server/index.ts:45` | Full JSON response bodies logged on every API call |
-| Seed data in routes | `server/routes.ts:12-43` | Database seeding mixed into route registration |
-| Replit plugins in prod | `vite.config.ts:10-19` | `@replit/vite-plugin-runtime-error-modal` loaded unconditionally |
-| Archive DnD bug | `bugs/archive-drag-drop-not-working.json` | Tracked bug with drag-to-archive |
+| Archive DnD bug | `bugs/archive-drag-drop-not-working.json` | Open — tracked bug with drag-to-archive |
+
+Previous V1 issues (rethrow after response, debug logging in prod, `any` types, request logger leaking bodies, seed data in routes, unconditional Replit plugins) have been resolved by R2.
 
 ### Agent Guidelines
 
