@@ -1,0 +1,38 @@
+{
+  "meta": {
+    "cohort": "c26",
+    "repo": "kanban-local1"
+  },
+  "summary": "Remove confirmed-unused dependencies from the project",
+  "problem_statement": "The project's dependency tree includes packages that were added during MVP development but are no longer referenced in the codebase. Unused dependencies increase install times, enlarge the attack surface, and create false signals during security audits. Removing them reduces maintenance burden and clarifies the project's actual dependency footprint.",
+  "in_scope": [
+    "Audit package.json dependencies and devDependencies against actual imports in the codebase",
+    "Remove dependencies confirmed to have zero references in application or configuration code",
+    "Verify the application builds and runs correctly after removal",
+    "Run npm run check, npm run lint, and npm run test to confirm no regressions"
+  ],
+  "out_of_scope": [
+    "Upgrading dependency versions — version management is a separate concern",
+    "Removing dependencies that are only referenced indirectly (peer dependencies, plugin dependencies)",
+    "Adding new dependencies",
+    "Removing dependencies not confirmed unused — err on the side of keeping uncertain ones"
+  ],
+  "requirements": [
+    "Only dependencies confirmed to have zero references in the codebase are removed",
+    "The application builds, starts, and passes all quality checks after removal",
+    "Removed dependencies are documented in the commit message"
+  ],
+  "acceptance_criteria": [
+    "Confirmed-unused dependencies are removed from package.json",
+    "npm run check, npm run lint, npm run format:check, and npm run test all pass after removal",
+    "The application starts and functions correctly",
+    "No dependencies with uncertain usage are removed"
+  ],
+  "dependencies": [
+    "All prior phases — unused dependencies should be assessed after all refactoring is complete to avoid premature removal"
+  ],
+  "risks": [
+    "Some dependencies may be used only in configuration files (e.g. Vite plugins, Drizzle config) that are easy to miss during a grep-based audit"
+  ],
+  "implementation_notes": "Use npx depcheck or a manual grep-based audit to identify candidates. Cross-reference with config files (vite.config.ts, drizzle.config.ts, tailwind.config.ts, etc.) before removing. Remove one dependency at a time and test, or batch removals with careful verification."
+}
