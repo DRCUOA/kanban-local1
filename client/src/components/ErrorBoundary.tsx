@@ -1,5 +1,6 @@
 import { Component } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
+import { logger } from '@shared/logger';
 
 interface Props {
   children: ReactNode;
@@ -21,8 +22,8 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.error('[ErrorBoundary] Uncaught error:', error);
-    console.error('[ErrorBoundary] Component stack:', info.componentStack);
+    logger.error('[ErrorBoundary] Uncaught error:', error);
+    logger.error('[ErrorBoundary] Component stack:', info.componentStack);
   }
 
   private handleReload = (): void => {
