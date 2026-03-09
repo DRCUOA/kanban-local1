@@ -4,7 +4,7 @@ import eslintConfigPrettier from 'eslint-config-prettier';
 
 export default tseslint.config(
   {
-    ignores: ['eslint.config.js'],
+    ignores: ['*.config.*'],
   },
   eslint.configs.recommended,
   tseslint.configs.strictTypeChecked,
@@ -14,7 +14,7 @@ export default tseslint.config(
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['*.config.ts', 'tests/*.ts'],
+          allowDefaultProject: ['tests/*.ts'],
         },
       },
     },
