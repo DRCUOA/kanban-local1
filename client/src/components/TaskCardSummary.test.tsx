@@ -20,6 +20,10 @@ vi.mock('@dnd-kit/utilities', () => ({
   CSS: { Transform: { toString: () => undefined } },
 }));
 
+vi.mock('@/hooks/use-stages', () => ({
+  useStages: () => ({ data: [] }),
+}));
+
 vi.mock('@/components/ui/hover-card', () => ({
   HoverCard: ({ children }: { children: React.ReactNode }) =>
     React.createElement('div', null, children),

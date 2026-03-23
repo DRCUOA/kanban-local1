@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { Task } from '@shared/schema';
 import { TASK_PRIORITY, EFFORT_MAX } from '@shared/constants';
+import { getTaskWarningHighlight } from '@shared/task-warning-highlight';
+import { TASK_WARNING_BORDER_COLOR } from '@/lib/task-warning-border';
+import { useStages } from '@/hooks/use-stages';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +21,12 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardProps) {
+  const { data: stages = [] } = useStages();
+  const warningHighlight = getTaskWarningHighlight(task, stages);
+  const borderColor =
+    warningHighlight != null ? TASK_WARNING_BORDER_COLOR[warningHighlight] : stageColor;
+  const showStageOrWarningBorder = Boolean(warningHighlight != null || stageColor);
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: {
@@ -69,14 +78,14 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
         tabIndex={0}
         className={cn(
           'group relative cursor-pointer transition-transform duration-200 ease-out active:scale-[0.97] focus-visible:scale-[1.03] task-card-magnify',
-          stageColor && 'border-2',
+          showStageOrWarningBorder && 'border-2',
           isOverdue && 'opacity-90 saturate-75',
           isDueToday && 'ring-2 ring-yellow-500/30',
         )}
         style={
-          stageColor
+          showStageOrWarningBorder && borderColor
             ? {
-                borderColor: stageColor,
+                borderColor,
                 borderWidth: priorityStyle.borderWidth,
               }
             : {

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { Task } from '@shared/schema';
-import { TASK_STATUS, TASK_PRIORITY, getStatusFromStageName } from '@shared/constants';
+import { TASK_STATUS, TASK_PRIORITY } from '@shared/constants';
+import { resolveTaskStatusForWarnings } from '@shared/task-warning-highlight';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Clock } from 'lucide-react';
 import { isPast, isToday, differenceInDays } from 'date-fns';
@@ -16,17 +17,12 @@ export function TaskWarnings({ tasks }: TaskWarningsProps) {
 
   const activeTasks = tasks.filter((t) => !t.archived);
 
-  const getTaskStatus = (t: Task): string => {
-    if (t.status) return t.status;
-    const stage = stages.find((s: any) => s.id === t.stageId);
-    if (stage) return getStatusFromStageName(stage.name);
-    return TASK_STATUS.BACKLOG;
-  };
-
-  const inProgressTasks = activeTasks.filter((t) => getTaskStatus(t) === TASK_STATUS.IN_PROGRESS);
+  const inProgressTasks = activeTasks.filter(
+    (t) => resolveTaskStatusForWarnings(t, stages) === TASK_STATUS.IN_PROGRESS,
+  );
   const highPriorityBacklog = activeTasks.filter(
     (t) =>
-      getTaskStatus(t) === TASK_STATUS.BACKLOG &&
+      resolveTaskStatusForWarnings(t, stages) === TASK_STATUS.BACKLOG &&
       (t.priority === TASK_PRIORITY.HIGH || t.priority === TASK_PRIORITY.CRITICAL),
   );
 
@@ -91,10 +87,12 @@ export function TaskWarnings({ tasks }: TaskWarningsProps) {
             key={idx}
             className={cn(
               'border-l-4 py-2 px-3 rounded-lg',
-              warning.type === 'destructive' && 'border-l-red-500 bg-red-50 dark:bg-red-950/20',
+              warning.type === 'destructive' &&
+                'border-l-[hsl(var(--toast-overdue-accent))] bg-red-50 dark:bg-red-950/20',
               warning.type === 'warning' &&
-                'border-l-yellow-500 bg-yellow-50 dark:bg-yellow-950/20',
-              warning.type === 'info' && 'border-l-blue-500 bg-blue-50 dark:bg-blue-950/20',
+                'border-l-[hsl(var(--warning-accent))] bg-yellow-50 dark:bg-yellow-950/20',
+              warning.type === 'info' &&
+                'border-l-[hsl(var(--toast-info-accent))] bg-blue-50 dark:bg-blue-950/20',
             )}
           >
             <div className="flex items-center gap-2">
