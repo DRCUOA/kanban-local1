@@ -25,45 +25,54 @@ export function DashboardBottomNav({
   onExport,
   onImport,
 }: DashboardBottomNavProps) {
+  const toggleNavBtn = (active: boolean) =>
+    cn(
+      'flex flex-col items-center gap-1 py-2 px-3 min-w-[4.25rem] rounded-xl transition-[color,box-shadow,background-color,transform] duration-200 active:scale-90',
+      active
+        ? cn(
+            'text-muted-foreground bg-black/[0.04] dark:bg-white/[0.06]',
+            'shadow-[2px_2px_6px_rgba(0,0,0,0.12),-1px_-1px_4px_rgba(255,255,255,0.28)]',
+            'dark:shadow-[2px_2px_10px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.05)]',
+          )
+        : 'text-foreground/80 hover:text-foreground',
+    );
+
   return (
     <nav className="mobile-bottom-nav">
       <div className="flex items-center justify-around px-2 py-2">
         <button
-          className={cn(
-            'flex flex-col items-center gap-1 py-2 px-3 rounded-xl transition-all active:scale-90',
-            viewMode === 'detail' && 'text-primary',
-          )}
+          type="button"
+          className={toggleNavBtn(viewMode === 'detail')}
+          aria-pressed={viewMode === 'detail'}
           onClick={() => {
             onSetViewMode('detail');
           }}
         >
-          <List className="h-5 w-5" />
+          <List className="h-5 w-5 shrink-0" aria-hidden />
           <span className="text-[10px] font-medium">Detail</span>
         </button>
 
         <button
-          className={cn(
-            'flex flex-col items-center gap-1 py-2 px-3 rounded-xl transition-all active:scale-90',
-            viewMode === 'summary' && 'text-primary',
-          )}
+          type="button"
+          className={toggleNavBtn(viewMode === 'summary')}
+          aria-pressed={viewMode === 'summary'}
           onClick={() => {
             onSetViewMode('summary');
           }}
         >
-          <CircleDot className="h-5 w-5" />
+          <CircleDot className="h-5 w-5 shrink-0" aria-hidden />
           <span className="text-[10px] font-medium">Summary</span>
         </button>
 
         <CreateTaskDialog iconOnly />
 
         <button
-          className={cn(
-            'flex flex-col items-center gap-1 py-2 px-3 rounded-xl transition-all active:scale-90',
-            focusMode && 'text-primary',
-          )}
+          type="button"
+          className={toggleNavBtn(focusMode)}
+          aria-pressed={focusMode}
           onClick={onToggleFocusMode}
         >
-          <Focus className="h-5 w-5" />
+          <Focus className="h-5 w-5 shrink-0" aria-hidden />
           <span className="text-[10px] font-medium">Focus</span>
         </button>
 

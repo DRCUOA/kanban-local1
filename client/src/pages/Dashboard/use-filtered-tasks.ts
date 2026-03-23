@@ -13,13 +13,23 @@ export interface UseFilteredTasksOptions {
   tasks: Task[] | undefined;
   searchQuery: string;
   focusMode: boolean;
+  /** In focus mode, detail view shows only high/critical incomplete tasks; summary keeps the in-progress + next-backlog slice. */
+  viewMode: 'detail' | 'summary';
   stages: Stage[];
+}
+
+function getTaskStatusFromStages(t: Task, stages: Stage[]): string {
+  if (t.status) return t.status;
+  const stage = stages.find((s: any) => s.id === t.stageId);
+  if (stage) return getStatusFromStageName(stage.name);
+  return TASK_STATUS.BACKLOG;
 }
 
 export function useFilteredTasks({
   tasks,
   searchQuery,
   focusMode,
+  viewMode,
   stages,
 }: UseFilteredTasksOptions): Task[] {
   return useMemo(() => {
@@ -31,27 +41,31 @@ export function useFilteredTasks({
       ) || [];
 
     if (focusMode) {
-      const getTaskStatus = (t: Task): string => {
-        if (t.status) return t.status;
-        const stage = stages.find((s: any) => s.id === t.stageId);
-        if (stage) return getStatusFromStageName(stage.name);
-        return TASK_STATUS.BACKLOG;
-      };
+      const getTaskStatus = (t: Task) => getTaskStatusFromStages(t, stages);
 
-      const inProgress = filtered.filter((t) => getTaskStatus(t) === TASK_STATUS.IN_PROGRESS);
-      const backlog = filtered.filter((t) => getTaskStatus(t) === TASK_STATUS.BACKLOG);
-      const nextTask = backlog.sort((a, b) => {
-        const aPriority =
-          PRIORITY_SORT_ORDER[(a.priority as TaskPriorityValue) || TASK_PRIORITY.NORMAL];
-        const bPriority =
-          PRIORITY_SORT_ORDER[(b.priority as TaskPriorityValue) || TASK_PRIORITY.NORMAL];
-        return bPriority - aPriority;
-      })[0];
+      if (viewMode === 'detail') {
+        filtered = filtered.filter((t) => {
+          const p = (t.priority as TaskPriorityValue) || TASK_PRIORITY.NORMAL;
+          if (p !== TASK_PRIORITY.HIGH && p !== TASK_PRIORITY.CRITICAL) return false;
+          const status = getTaskStatus(t);
+          return status !== TASK_STATUS.DONE && status !== TASK_STATUS.ABANDONED;
+        });
+      } else {
+        const inProgress = filtered.filter((t) => getTaskStatus(t) === TASK_STATUS.IN_PROGRESS);
+        const backlog = filtered.filter((t) => getTaskStatus(t) === TASK_STATUS.BACKLOG);
+        const nextTask = backlog.sort((a, b) => {
+          const aPriority =
+            PRIORITY_SORT_ORDER[(a.priority as TaskPriorityValue) || TASK_PRIORITY.NORMAL];
+          const bPriority =
+            PRIORITY_SORT_ORDER[(b.priority as TaskPriorityValue) || TASK_PRIORITY.NORMAL];
+          return bPriority - aPriority;
+        })[0];
 
-      filtered = [...inProgress];
-      if (nextTask) filtered.push(nextTask);
+        filtered = [...inProgress];
+        if (nextTask) filtered.push(nextTask);
+      }
     }
 
     return filtered;
-  }, [tasks, searchQuery, focusMode, stages]);
+  }, [tasks, searchQuery, focusMode, viewMode, stages]);
 }
