@@ -2,7 +2,7 @@
 
 A local-first Kanban board application for task management with drag-and-drop, stage/sub-stage organisation, archiving, task history, and an admin panel. Built as a single-process Express + Vite + React monolith backed by PostgreSQL.
 
-**Current version:** 1.2.0  
+**Current version:** 1.2.1  
 **Target version:** 2.0.0 (R2 Refactor — see [Refactor Context](#r2-refactor-context) below)
 
 ---

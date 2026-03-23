@@ -27,6 +27,10 @@
     --input: 0 0% 60%;
     --ring: 220 20% 40%;
     --radius: 1rem;
+    /* TaskWarnings + matching task borders (Tailwind yellow-500 / red-500 / blue-500) */
+    --warning-accent: 47.9 95.8% 53.1%;
+    --toast-overdue-accent: 0 84.2% 60.2%;
+    --toast-info-accent: 217.2 91.2% 59.8%;
 
     --font-sans: 'Inter', sans-serif;
     --font-display: 'Space Grotesk', sans-serif;
@@ -52,6 +56,9 @@
     --border: 220 10% 28%;
     --input: 220 10% 28%;
     --ring: 220 25% 60%;
+    --warning-accent: 47.9 95.8% 53.1%;
+    --toast-overdue-accent: 0 84.2% 60.2%;
+    --toast-info-accent: 217.2 91.2% 59.8%;
   }
 }
 
@@ -195,7 +202,7 @@
     transform: scale(0.95);
   }
 
-  /* Beveled circle colored - mobile touch */
+  /* Beveled circle colored - mobile touch (border from inline style: stage or warning highlight) */
   .neo-beveled-circle-colored {
     transition: box-shadow 0.15s ease, transform 0.15s ease;
   }

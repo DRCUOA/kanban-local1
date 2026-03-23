@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { Task } from '@shared/schema';
 import { EFFORT_MAX } from '@shared/constants';
+import { getTaskWarningHighlight } from '@shared/task-warning-highlight';
+import { TASK_WARNING_BORDER_COLOR } from '@/lib/task-warning-border';
+import { useStages } from '@/hooks/use-stages';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
@@ -20,6 +23,13 @@ export function TaskCardSummary({
   stageColor,
   isInProgress = false,
 }: TaskCardSummaryProps) {
+  const { data: stages = [] } = useStages();
+  const warningHighlight = getTaskWarningHighlight(task, stages);
+  const panelBorderColor =
+    warningHighlight != null
+      ? TASK_WARNING_BORDER_COLOR[warningHighlight]
+      : stageColor || undefined;
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: {
@@ -50,9 +60,6 @@ export function TaskCardSummary({
 
     return {
       background: `radial-gradient(circle, ${hexToRgba(color, 0.7)} 0%, ${hexToRgba(color, 0.65)} 8%, ${hexToRgba(color, 0.5)} 20%, ${hexToRgba(color, 0.3)} 45%, ${hexToRgba(color, 0.15)} 75%, ${hexToRgba(color, 0.05)} 100%)`,
-      borderColor: color,
-      borderWidth: '2px',
-      borderStyle: 'solid',
       boxShadow: `
         0 3px 6px rgba(0, 0, 0, 0.15),
         0 -2px 4px rgba(255, 255, 255, 0.2),
@@ -77,25 +84,32 @@ export function TaskCardSummary({
   const circleFontSize = effort <= 2 ? 'text-sm' : effort <= 4 ? 'text-base' : 'text-lg';
 
   if (isDragging) {
-    const dragStyle = stageColor ? getGradientStyle(stageColor) : {};
+    const dragStyle =
+      stageColor?.startsWith('#') && !isInProgress ? getGradientStyle(stageColor) : {};
     return (
       <div
         ref={setNodeRef}
         style={{
           ...style,
           ...(isInProgress ? {} : { ...dragStyle, width: circleSizePx, height: circleSizePx }),
+          ...(panelBorderColor
+            ? { borderColor: panelBorderColor, borderWidth: '2px', borderStyle: 'dashed' }
+            : {}),
           opacity: 0.5,
         }}
         className={cn(
           'border-2 border-dashed',
+          !panelBorderColor && 'border-muted-foreground/35',
           isInProgress ? 'w-full min-h-[72px] rounded-xl' : 'rounded-full',
         )}
       />
     );
   }
 
-  const containerStyle =
-    stageColor && !isInProgress ? { ...style, ...getGradientStyle(stageColor) } : style;
+  const hasHexStageGradient = Boolean(stageColor?.startsWith('#') && !isInProgress);
+  const containerStyle = hasHexStageGradient
+    ? { ...style, ...getGradientStyle(stageColor!) }
+    : style;
 
   const triggerContent = isInProgress ? (
     <div
@@ -103,7 +117,7 @@ export function TaskCardSummary({
       style={{
         ...style,
         touchAction: 'none',
-        ...(stageColor ? { borderColor: stageColor, borderWidth: '2px' } : {}),
+        ...(panelBorderColor ? { borderColor: panelBorderColor, borderWidth: '2px' } : {}),
       }}
       {...attributes}
       role="button"
@@ -136,7 +150,15 @@ export function TaskCardSummary({
   ) : (
     <div
       ref={setNodeRef}
-      style={{ ...containerStyle, touchAction: 'none', width: circleSizePx, height: circleSizePx }}
+      style={{
+        ...containerStyle,
+        touchAction: 'none',
+        width: circleSizePx,
+        height: circleSizePx,
+        ...(panelBorderColor
+          ? { borderColor: panelBorderColor, borderWidth: '2px', borderStyle: 'solid' }
+          : {}),
+      }}
       {...attributes}
       {...listeners}
       role="button"
