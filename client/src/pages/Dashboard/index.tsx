@@ -31,7 +31,7 @@ export default function Dashboard(_props: DashboardProps) {
 
   const { data: stages = [] } = useStages();
 
-  const filteredTasks = useFilteredTasks({ tasks, searchQuery, focusMode, stages });
+  const filteredTasks = useFilteredTasks({ tasks, searchQuery, focusMode, viewMode, stages });
   const { handleExport, handleImport } = useTaskImportExport({ tasks, stages });
 
   useKeyboardShortcuts({
