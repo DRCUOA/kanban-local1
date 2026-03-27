@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import 'dotenv/config';
 import express from 'express';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { registerRoutes } from './routes';
 import { seedDatabase } from './seed';
 import { storage } from './storage';
@@ -20,7 +22,24 @@ declare module 'http' {
 }
 
 app.use(
+  helmet({
+    contentSecurityPolicy: process.env.NODE_ENV === 'production',
+  }),
+);
+
+app.use(
+  '/api/',
+  rateLimit({
+    windowMs: 60_000,
+    limit: 100,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+  }),
+);
+
+app.use(
   express.json({
+    limit: '1mb',
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
@@ -43,28 +62,11 @@ export function log(message: string, source = 'express') {
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedBodySize: number | undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    const serialized = JSON.stringify(bodyJson);
-    capturedBodySize = serialized ? serialized.length : 0;
-    logger.debug(
-      `${req.method} ${path} response body (${capturedBodySize} bytes):`,
-      serialized.slice(0, 200),
-    );
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
 
   res.on('finish', () => {
     const duration = Date.now() - start;
     if (path.startsWith('/api')) {
-      const logLine =
-        capturedBodySize !== undefined
-          ? `${req.method} ${path} ${res.statusCode} in ${duration}ms (${capturedBodySize}b)`
-          : `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-
-      log(logLine);
+      log(`${req.method} ${path} ${res.statusCode} in ${duration}ms`);
     }
   });
 

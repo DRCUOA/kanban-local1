@@ -8,6 +8,9 @@ export async function verifyPubSubPushJwt(
   audience: string,
 ): Promise<void> {
   if (process.env.GMAIL_PUBSUB_SKIP_VERIFY === 'true') {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('GMAIL_PUBSUB_SKIP_VERIFY cannot be used in production');
+    }
     logger.warn('GMAIL_PUBSUB_SKIP_VERIFY: skipping Pub/Sub OIDC verification');
     return;
   }

@@ -2,8 +2,6 @@
 
 Step-by-step checklist for: GCP Pub/Sub + OIDC (`GMAIL_PUBSUB_AUDIENCE`), Gmail label `kanbando-trigger` + filter, `users.watch` + renewal, OAuth refresh token with Gmail scopes, and `GMAIL_LABEL_ID`.
 
-See also: [`development/gmail-inbound-env.md`](development/gmail-inbound-env.md) for environment variable names.
-
 ---
 
 ## 0. Prerequisites
@@ -170,7 +168,7 @@ If watch lapses, re-register with step 8.
 | `GMAIL_PUBSUB_AUDIENCE` | Exact webhook URL (OIDC `aud`) |
 | `OPENAI_API_KEY` | LLM for task extraction |
 
-Optional: `GMAIL_TRIGGER_RECIPIENT`, `GMAIL_INBOUND_WORKER_DISABLED`, `GMAIL_INBOUND_POLL_MS`, `GMAIL_PUBSUB_SKIP_VERIFY` — see [`development/gmail-inbound-env.md`](development/gmail-inbound-env.md).
+Optional: `GMAIL_TRIGGER_RECIPIENT`, `GMAIL_INBOUND_WORKER_DISABLED`, `GMAIL_INBOUND_POLL_MS`, `GMAIL_PUBSUB_SKIP_VERIFY` (dev only — blocked in production).
 
 Apply DB migrations / `db:push` so `gmail_watch_cursor` and `inbound_email_processing` exist before relying on the pipeline.
 
