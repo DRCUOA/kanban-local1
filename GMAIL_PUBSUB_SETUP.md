@@ -4,6 +4,45 @@ Step-by-step checklist for: GCP Pub/Sub + OIDC (`GMAIL_PUBSUB_AUDIENCE`), Gmail 
 
 See also: [`development/gmail-inbound-env.md`](development/gmail-inbound-env.md) for environment variable names.
 
+### Google Cloud Assist (shortest prompt)
+
+Paste into **Google Cloud Assist**:
+
+> **Gmail API push to Pub/Sub: enable APIs, create topic, add `gmail-api-push@system.gserviceaccount.com` as Pub/Sub Publisher, push subscription to my HTTPS URL with OIDC audience = that URL, then `users.watch` with label id + topic + renewal (~7d). Step-by-step in this project.**
+
+---
+
+## Assist-generated setup — status (your Google Cloud project)
+
+If **Google Cloud Assist** already created resources for you, treat the checklist below as **done** vs **still required**.
+
+### Done (typical Assist output)
+
+| Item | Your resources (example) |
+|------|---------------------------|
+| Pub/Sub topic | **`gmail-events-topic`** |
+| Push target | **Cloud Run** service **`gmail-event-handler`** (`us-central1`) |
+| Push subscription | Points at that Cloud Run URL; Pub/Sub ↔ Cloud Run invoke permissions are wired |
+
+### Still required manually (Assist limitation)
+
+| Item | Action |
+|------|--------|
+| **Gmail → Pub/Sub** | On topic **`gmail-events-topic`**, grant **`gmail-api-push@system.gserviceaccount.com`** the role **`roles/pubsub.publisher`**. Without this, **Gmail `users.watch` notifications never reach the topic**. Console: **Pub/Sub → Topics → gmail-events-topic → Permissions → Grant access**. |
+
+### Align this repo with Cloud Run (important)
+
+This application handles Gmail push at **`POST /api/webhooks/gmail-pubsub`** (see [`server/webhooks/gmail-pubsub.ts`](server/webhooks/gmail-pubsub.ts)) and verifies OIDC using **`GMAIL_PUBSUB_AUDIENCE`**.
+
+- **If Cloud Run is only a placeholder** and your real kanban server runs elsewhere (VM, other host): **change the push subscription** so the **push endpoint URL** is your kanban server’s HTTPS URL **including path**, e.g. `https://your-domain.com/api/webhooks/gmail-pubsub`. Set **`GMAIL_PUBSUB_AUDIENCE`** to that **exact** string.
+- **If you keep push going to Cloud Run `gmail-event-handler`:** that service must either **run this same app** (so the route exists) or **proxy/forward** the Pub/Sub POST body to your kanban **`/api/webhooks/gmail-pubsub`** URL. **`GMAIL_PUBSUB_AUDIENCE`** must match the URL Pub/Sub actually calls (usually the **Cloud Run URL + path** that receives the push, e.g. `https://gmail-event-handler-….run.app/...`).
+
+**`users.watch`** must use the topic resource name for your topic, e.g.  
+`projects/YOUR_PROJECT_ID/topics/gmail-events-topic`  
+(not the old example name `gmail-notifications` in §2/§8 unless you rename or use two topics).
+
+Sections **§5–§9** below (OAuth, Gmail label, `GMAIL_LABEL_ID`, `users.watch`, renewal) are **not** created by Assist — do them in order.
+
 ---
 
 ## 0. Prerequisites
@@ -26,10 +65,10 @@ See also: [`development/gmail-inbound-env.md`](development/gmail-inbound-env.md)
 
 ## 2. Create a Pub/Sub topic
 
-1. **Pub/Sub → Topics → Create topic**.
-2. Example topic ID: `gmail-notifications`.
+1. **Pub/Sub → Topics → Create topic** (skip if you already have **`gmail-events-topic`** from Assist).
+2. Example topic IDs: `gmail-events-topic` (Assist) or `gmail-notifications` (manual doc example).
 3. Copy the **full topic resource name**, e.g.  
-   `projects/YOUR_PROJECT_ID/topics/gmail-notifications`  
+   `projects/YOUR_PROJECT_ID/topics/gmail-events-topic`  
    (needed for `users.watch`).
 
 ---
@@ -38,7 +77,7 @@ See also: [`development/gmail-inbound-env.md`](development/gmail-inbound-env.md)
 
 Gmail push uses Google’s Gmail API service account as the publisher.
 
-1. Open **Pub/Sub → Topics** → your topic → **Permissions** (or IAM on that topic).
+1. Open **Pub/Sub → Topics** → your topic (e.g. **`gmail-events-topic`**) → **Permissions** (or IAM on that topic).
 2. **Grant access**:
    - **Principal:** `gmail-api-push@system.gserviceaccount.com`
    - **Role:** **Pub/Sub Publisher** (`roles/pubsub.publisher`)
@@ -137,7 +176,7 @@ Call Gmail API **`users.watch`** once to start push notifications:
 
 - `userId`: `me`
 - `topicName`: full Pub/Sub topic from step 2, e.g.  
-  `projects/YOUR_PROJECT_ID/topics/gmail-notifications`
+  `projects/YOUR_PROJECT_ID/topics/gmail-events-topic`
 - `labelIds`: `[GMAIL_LABEL_ID]` only (label-scoped watch)
 
 Use `curl` with a short-lived access token from the refresh token, or a tiny script with `googleapis`.

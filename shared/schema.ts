@@ -80,6 +80,8 @@ export const tasks = pgTable('tasks', {
   status: text('status').default(TASK_STATUS.BACKLOG),
   priority: text('priority').default(TASK_PRIORITY.NORMAL),
   effort: integer('effort'), // EFFORT_MIN–EFFORT_MAX
+  /** Legacy column present in some DBs; kept in schema so drizzle-kit push does not drop it. */
+  requiredEnergy: integer('required_energy'),
   dueDate: timestamp('due_date'), // Optional due date
   updatedAt: timestamp('updated_at').defaultNow(),
   createdAt: timestamp('created_at').defaultNow(),
@@ -199,6 +201,7 @@ export const insertTaskSchema = createInsertSchema(tasks)
     status: taskStatusEnum.optional(),
     priority: taskPriorityEnum.optional(),
     effort: z.number().min(EFFORT_MIN).max(EFFORT_MAX).optional().nullable(),
+    requiredEnergy: z.number().optional().nullable(),
     dueDate: z.coerce.date().optional().nullable(),
     tags: z.array(z.string()).optional().nullable(),
     parentTaskId: z.number().optional().nullable(),
