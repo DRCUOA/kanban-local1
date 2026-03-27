@@ -3,4 +3,4 @@ name = kanban-local
 
 [server]
 cmd  = npm run dev
-port = 4000
+port = 5000

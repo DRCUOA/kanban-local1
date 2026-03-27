@@ -14,7 +14,7 @@ export default tseslint.config(
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['tests/*.ts'],
+          allowDefaultProject: ['tests/*.ts', 'script/*.ts'],
         },
       },
     },

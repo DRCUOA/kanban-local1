@@ -1,4 +1,13 @@
-import { pgTable, text, serial, timestamp, integer, boolean, jsonb } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  text,
+  serial,
+  timestamp,
+  integer,
+  boolean,
+  jsonb,
+  unique,
+} from 'drizzle-orm/pg-core';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
 import { relations } from 'drizzle-orm';
@@ -79,6 +88,50 @@ export const tasks = pgTable('tasks', {
   recurrence: text('recurrence').default(TASK_RECURRENCE.NONE),
   history: jsonb('history').$type<TaskHistoryEntry[]>(), // Status change history
 });
+
+/** Gmail watch cursor: one row per monitored mailbox. */
+export const gmailWatchCursor = pgTable('gmail_watch_cursor', {
+  mailbox: text('mailbox').primaryKey(),
+  historyId: text('history_id').notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const INBOUND_PROCESSING_STATUS = {
+  PENDING: 'pending',
+  PROCESSING: 'processing',
+  COMPLETED: 'completed',
+  FAILED: 'failed',
+} as const;
+export type InboundProcessingStatus =
+  (typeof INBOUND_PROCESSING_STATUS)[keyof typeof INBOUND_PROCESSING_STATUS];
+
+/** Inbound email → task pipeline state (provider + gmail_message_id is unique). */
+export const inboundEmailProcessing = pgTable(
+  'inbound_email_processing',
+  {
+    id: serial('id').primaryKey(),
+    provider: text('provider').notNull().default('gmail'),
+    gmailMessageId: text('gmail_message_id').notNull(),
+    rfcMessageId: text('rfc_message_id'),
+    historyIdSeen: text('history_id_seen'),
+    recipient: text('recipient'),
+    normalizedSubject: text('normalized_subject'),
+    normalizedBodyHash: text('normalized_body_hash'),
+    processingStatus: text('processing_status').notNull(),
+    createdTaskId: integer('created_task_id').references(() => tasks.id),
+    errorReason: text('error_reason'),
+    processedAt: timestamp('processed_at'),
+    attemptCount: integer('attempt_count').notNull().default(0),
+    lastAttemptAt: timestamp('last_attempt_at'),
+    leaseExpiresAt: timestamp('lease_expires_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (t) => [unique('inbound_provider_gmail_msg').on(t.provider, t.gmailMessageId)],
+);
+
+export type InboundEmailProcessingRow = typeof inboundEmailProcessing.$inferSelect;
+export type GmailWatchCursorRow = typeof gmailWatchCursor.$inferSelect;
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument -- Drizzle relations API uses internal any types */
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
