@@ -34,6 +34,7 @@ const mockStorage = vi.hoisted(() => ({
 vi.mock('./storage', () => ({ storage: mockStorage }));
 
 import { createApp } from './app';
+import { api } from '@shared/routes';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -98,6 +99,18 @@ beforeEach(async () => {
   vi.resetAllMocks();
   const result = await createApp();
   app = result.app;
+});
+
+// ===========================================================================
+// Health
+// ===========================================================================
+
+describe('GET /api/health', () => {
+  it('returns 200 with ok: true', async () => {
+    const res = await request(app).get(api.health.path);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ ok: true });
+  });
 });
 
 // ===========================================================================

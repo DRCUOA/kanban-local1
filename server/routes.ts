@@ -4,6 +4,8 @@ import type { Server } from 'http';
 import { storage } from './storage';
 import { parseIdParam } from './utils';
 import { api } from '@shared/routes';
+
+const healthPath = api.health.path;
 import { z } from 'zod';
 import type {
   Task,
@@ -20,6 +22,10 @@ import { registerGmailPubSubWebhook } from './webhooks/gmail-pubsub';
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   registerGmailPubSubWebhook(app);
+
+  app.get(healthPath, (_req: Request, res: Response<{ ok: true }>) => {
+    res.status(200).json({ ok: true });
+  });
 
   // Task endpoints
   app.get(api.tasks.list.path, async (_req: Request, res: Response<Task[]>) => {

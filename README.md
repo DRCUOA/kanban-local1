@@ -36,7 +36,8 @@ The app serves both API and client on **port 5000** (`http://localhost:5000`).
 | `npm run build` | Production build (client → `dist/public/`, server → `dist/index.cjs`) |
 | `npm start` | Run production build |
 | `npm run check` | TypeScript type-check (`tsc --noEmit`) |
-| `npm run db:push` | Push Drizzle schema to database |
+| `npm run db:push` | Push Drizzle schema to database (handy for local dev) |
+| `npm run db:migrate` | Apply versioned SQL migrations (`migrations/`) — use for production and CI |
 | `npm run db:add-color` | Migration: add color column to stages |
 | `npm run db:enhance-tasks` | Migration: add enhanced task fields |
 | `npm run db:add-sub-stages` | Migration: add sub_stages table |
@@ -48,6 +49,13 @@ The app serves both API and client on **port 5000** (`http://localhost:5000`).
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
 | `PORT` | No | Server port (default: `5000`) |
 | `NODE_ENV` | No | `development` or `production` |
+| `GMAIL_INBOUND_WORKER_DISABLED` | No | Set to `true` in production if you are not using the Gmail inbound pipeline (avoids background polling) |
+
+### Production on Railway
+
+The repo includes [`railway.json`](railway.json) (Dockerfile builder, health check on `/api/health`). Provision a **PostgreSQL** plugin in the same Railway project and set **`DATABASE_URL`** from the database service (reference the variable Railway provides). Set **`NODE_ENV=production`**. Railway injects **`PORT`** automatically; the server reads it.
+
+On **deploy**, the production server runs SQL migrations from `migrations/` before starting (using Drizzle’s migrator). You can also run `npm run db:migrate` locally or in CI when `DATABASE_URL` points at your database (uses `drizzle-kit migrate`).
 
 ---
 
@@ -83,6 +91,11 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full system diagram, request life
 ## API Endpoints
 
 All routes are defined declaratively in `shared/routes.ts` and registered in `server/routes.ts`.
+
+### Health
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/health` | Liveness check (`{ "ok": true }`) — used by Railway and load balancers |
 
 ### Tasks
 | Method | Path | Description |

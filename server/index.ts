@@ -11,8 +11,12 @@ import { errorHandler } from './errors';
 import { createServer } from 'http';
 import { logger } from '@shared/logger';
 import { startInboundEmailWorker } from './jobs/inbound-email-worker';
+import { runMigrations } from './migrate';
 
 const app = express();
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
 const httpServer = createServer(app);
 
 declare module 'http' {
@@ -74,6 +78,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  await runMigrations();
   await seedDatabase(storage);
   await registerRoutes(httpServer, app);
 

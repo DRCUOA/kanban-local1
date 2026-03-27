@@ -10,6 +10,13 @@ import {
 } from './schema';
 
 export const api = {
+  health: {
+    method: 'GET' as const,
+    path: '/api/health',
+    responses: {
+      200: z.object({ ok: z.literal(true) }),
+    },
+  },
   tasks: {
     list: {
       method: 'GET' as const,
