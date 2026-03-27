@@ -16,8 +16,11 @@ import type {
 } from '@shared/schema';
 import type { ApiErrorResponse, IdParams, StageIdParams } from '@shared/api-types';
 import { logger } from '@shared/logger';
+import { registerGmailPubSubWebhook } from './webhooks/gmail-pubsub';
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
+  registerGmailPubSubWebhook(app);
+
   // Task endpoints
   app.get(api.tasks.list.path, async (_req: Request, res: Response<Task[]>) => {
     const allTasks = await storage.getTasks();

@@ -8,6 +8,7 @@ import { serveStatic } from './static';
 import { errorHandler } from './errors';
 import { createServer } from 'http';
 import { logger } from '@shared/logger';
+import { startInboundEmailWorker } from './jobs/inbound-email-worker';
 
 const app = express();
 const httpServer = createServer(app);
@@ -93,5 +94,6 @@ app.use((req, res, next) => {
   const port = parseInt(process.env.PORT || '5000', 10);
   httpServer.listen(port, '0.0.0.0', () => {
     log(`serving on port ${port}`);
+    startInboundEmailWorker();
   });
 })();
