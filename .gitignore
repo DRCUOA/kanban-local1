@@ -51,6 +51,9 @@ Thumbs.db
 credentials.json
 service-account*.json
 
+# Cloudflare Wrangler
+.wrangler/
+
 # Project specific
 server/public
 vite.config.ts.*
