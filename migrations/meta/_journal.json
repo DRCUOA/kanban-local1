@@ -29,6 +29,13 @@
       "when": 1774647000000,
       "tag": "0003_add_task_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1774650000000,
+      "tag": "0004_sub_stages",
+      "breakpoints": true
     }
   ]
 }
