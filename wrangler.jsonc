@@ -1,9 +1,0 @@
-{
-  "name": "kanban-local",
-  "compatibility_date": "2026-03-27",
-  "assets": {
-    // Vite build output (client); run `npm run build` first
-    "directory": "./dist/public",
-    "not_found_handling": "single-page-application",
-  },
-}
