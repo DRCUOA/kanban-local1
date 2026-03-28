@@ -3,11 +3,11 @@ import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
 import { z } from 'zod';
 import { getErrorTraceFields, logGmailInboundTrace } from '../gmail/inbound-trace';
 
-const extractionSchema = z.object({
+export const extractionSchema = z.object({
   title: z.string(),
-  description: z.string().optional(),
-  priority: z.enum(['low', 'normal', 'high', 'critical']).optional(),
-  targetStageName: z.string().optional(),
+  description: z.string().nullable(),
+  priority: z.enum(['low', 'normal', 'high', 'critical']).nullable(),
+  targetStageName: z.string().nullable(),
 });
 
 export type EmailTaskExtraction = z.infer<typeof extractionSchema>;
