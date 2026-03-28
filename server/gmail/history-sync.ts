@@ -4,12 +4,36 @@ import { logger } from '@shared/logger';
 import { RECOVERY_NEWER_THAN_QUERY } from './constants';
 import { getErrorTraceFields, logGmailInboundTrace } from './inbound-trace';
 
+interface HistoryMessageRef {
+  message?: { id?: string | null } | null;
+}
+
+interface HistoryEntry {
+  messagesAdded?: HistoryMessageRef[] | null;
+  labelsAdded?: HistoryMessageRef[] | null;
+}
+
 export function isStaleHistoryError(err: unknown): boolean {
   if (!err || typeof err !== 'object') return false;
   const e = err as { code?: number; response?: { status?: number }; message?: string };
   if (e.code === 404 || e.response?.status === 404) return true;
   const msg = typeof e.message === 'string' ? e.message : '';
   return /history/i.test(msg) && (/invalid/i.test(msg) || /not.?found/i.test(msg));
+}
+
+export function extractTriggeredMessageIds(history: HistoryEntry[] | null | undefined): string[] {
+  const messageIdSet = new Set<string>();
+
+  for (const entry of history ?? []) {
+    for (const event of entry.messagesAdded ?? []) {
+      if (event.message?.id) messageIdSet.add(event.message.id);
+    }
+    for (const event of entry.labelsAdded ?? []) {
+      if (event.message?.id) messageIdSet.add(event.message.id);
+    }
+  }
+
+  return Array.from(messageIdSet);
 }
 
 async function recoveryListMessageIds(
@@ -49,13 +73,13 @@ async function collectFromHistory(
       userId: 'me',
       startHistoryId,
       labelId,
-      historyTypes: ['messageAdded'],
+      historyTypes: ['messageAdded', 'labelAdded'],
       pageToken,
     });
-    for (const h of res.data.history ?? []) {
-      for (const ma of h.messagesAdded ?? []) {
-        if (ma.message?.id) messageIdSet.add(ma.message.id);
-      }
+    for (const messageId of extractTriggeredMessageIds(
+      res.data.history as HistoryEntry[] | undefined,
+    )) {
+      messageIdSet.add(messageId);
     }
     const nextHid = res.data.historyId;
     if (nextHid != null) {
