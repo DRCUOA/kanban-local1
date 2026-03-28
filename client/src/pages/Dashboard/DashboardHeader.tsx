@@ -27,10 +27,11 @@ export function DashboardHeader({
           </div>
           <div>
             <h1 className="text-lg font-bold tracking-tight text-foreground leading-tight">
-              {import.meta.env.VITE_APP_NAME || 'NameNotSetInEnv'}
+              {import.meta.env.VITE_APP_NAME || 'Kanbando'}
             </h1>
             <p className="text-[10px] text-muted-foreground leading-tight">
-              {import.meta.env.VITE_APP_NAME_SUBTITLE || 'SubNameNotSetInEnv'}
+              {import.meta.env.VITE_APP_NAME_SUBTITLE ||
+                'Keep on top of the bandos who you need to do'}
             </p>
           </div>
         </div>
