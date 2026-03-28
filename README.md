@@ -50,6 +50,7 @@ The app serves both API and client on **port 5000** (`http://localhost:5000`).
 | `PORT` | No | Server port (default: `5000`) |
 | `NODE_ENV` | No | `development` or `production` |
 | `GMAIL_INBOUND_WORKER_DISABLED` | No | Set to `true` in production if you are not using the Gmail inbound pipeline (avoids background polling) |
+| Gmail / Pub/Sub / OpenAI | No | Plain steps: [GMAIL_SETUP_SIMPLE.md](GMAIL_SETUP_SIMPLE.md); technical detail: [GMAIL_PUBSUB_SETUP.md](GMAIL_PUBSUB_SETUP.md) |
 
 ### Production on Railway
 
