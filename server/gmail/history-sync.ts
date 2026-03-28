@@ -2,6 +2,7 @@ import { getGmailApi } from './gmail-client';
 import { commitCursorAndInboundRows, getWatchCursor } from '../inbound-email/repository';
 import { logger } from '@shared/logger';
 import { RECOVERY_NEWER_THAN_QUERY } from './constants';
+import { getErrorTraceFields, logGmailInboundTrace } from './inbound-trace';
 
 export function isStaleHistoryError(err: unknown): boolean {
   if (!err || typeof err !== 'object') return false;
@@ -69,29 +70,87 @@ export async function syncAfterPubSubNotification(params: {
   mailbox: string;
   notificationHistoryId: string;
   labelId: string;
+  traceContext?: {
+    traceId?: string;
+    pubsubMessageId?: string | null;
+    pubsubPublishTime?: string | null;
+  };
 }): Promise<void> {
-  const { mailbox, notificationHistoryId, labelId } = params;
+  const { mailbox, notificationHistoryId, labelId, traceContext } = params;
   const cursorBefore = await getWatchCursor(mailbox);
   const historyIdSeen = notificationHistoryId;
 
+  logGmailInboundTrace('sync.cursor_loaded', {
+    trace_id: traceContext?.traceId,
+    pubsub_message_id: traceContext?.pubsubMessageId,
+    mailbox,
+    notification_history_id: notificationHistoryId,
+    stored_cursor_history_id: cursorBefore?.historyId ?? null,
+    has_cursor: Boolean(cursorBefore?.historyId),
+    label_id: labelId,
+  });
+
   if (!cursorBefore?.historyId) {
     logger.warn('No gmail_watch_cursor row; running 72h bounded recovery list');
+    logGmailInboundTrace('sync.recovery_started', {
+      trace_id: traceContext?.traceId,
+      pubsub_message_id: traceContext?.pubsubMessageId,
+      mailbox,
+      notification_history_id: notificationHistoryId,
+      label_id: labelId,
+      recovery_query: RECOVERY_NEWER_THAN_QUERY,
+      reason: 'missing_cursor',
+    });
     const rec = await recoveryListMessageIds(labelId);
     const upserts = rec.ids.map((id) => ({ gmailMessageId: id, historyIdSeen }));
     const newCursor = rec.latestHistoryId || notificationHistoryId;
+    logGmailInboundTrace('sync.recovery_collected', {
+      trace_id: traceContext?.traceId,
+      pubsub_message_id: traceContext?.pubsubMessageId,
+      mailbox,
+      recovered_message_count: rec.ids.length,
+      sample_gmail_message_ids: rec.ids.slice(0, 10),
+      latest_history_id: rec.latestHistoryId || null,
+      new_cursor_history_id: newCursor,
+    });
     await commitCursorAndInboundRows({
       mailbox,
       newHistoryId: newCursor,
       upserts,
     });
+    logGmailInboundTrace('sync.commit_completed', {
+      trace_id: traceContext?.traceId,
+      pubsub_message_id: traceContext?.pubsubMessageId,
+      mailbox,
+      committed_message_count: upserts.length,
+      new_cursor_history_id: newCursor,
+      sync_mode: 'recovery',
+    });
     return;
   }
 
   try {
+    logGmailInboundTrace('sync.history_started', {
+      trace_id: traceContext?.traceId,
+      pubsub_message_id: traceContext?.pubsubMessageId,
+      mailbox,
+      start_history_id: cursorBefore.historyId,
+      notification_history_id: notificationHistoryId,
+      label_id: labelId,
+    });
     const { messageIds, latestHistoryId } = await collectFromHistory(
       cursorBefore.historyId,
       labelId,
     );
+    logGmailInboundTrace('sync.history_collected', {
+      trace_id: traceContext?.traceId,
+      pubsub_message_id: traceContext?.pubsubMessageId,
+      mailbox,
+      start_history_id: cursorBefore.historyId,
+      latest_history_id: latestHistoryId,
+      collected_message_count: messageIds.length,
+      sample_gmail_message_ids: messageIds.slice(0, 10),
+    });
     const upserts = messageIds.map((id) => ({
       gmailMessageId: id,
       historyIdSeen: latestHistoryId,
@@ -101,19 +160,62 @@ export async function syncAfterPubSubNotification(params: {
       newHistoryId: latestHistoryId,
       upserts,
     });
+    logGmailInboundTrace('sync.commit_completed', {
+      trace_id: traceContext?.traceId,
+      pubsub_message_id: traceContext?.pubsubMessageId,
+      mailbox,
+      committed_message_count: upserts.length,
+      new_cursor_history_id: latestHistoryId,
+      sync_mode: 'history',
+    });
   } catch (e) {
     if (isStaleHistoryError(e)) {
       logger.warn('Stale Gmail history cursor; running 72h bounded resync', e);
+      logGmailInboundTrace('sync.stale_history_recovery', {
+        trace_id: traceContext?.traceId,
+        pubsub_message_id: traceContext?.pubsubMessageId,
+        mailbox,
+        notification_history_id: notificationHistoryId,
+        stale_cursor_history_id: cursorBefore.historyId,
+        label_id: labelId,
+        recovery_query: RECOVERY_NEWER_THAN_QUERY,
+        ...getErrorTraceFields(e),
+      });
       const rec = await recoveryListMessageIds(labelId);
       const upserts = rec.ids.map((id) => ({ gmailMessageId: id, historyIdSeen }));
       const newCursor = rec.latestHistoryId || notificationHistoryId;
+      logGmailInboundTrace('sync.recovery_collected', {
+        trace_id: traceContext?.traceId,
+        pubsub_message_id: traceContext?.pubsubMessageId,
+        mailbox,
+        recovered_message_count: rec.ids.length,
+        sample_gmail_message_ids: rec.ids.slice(0, 10),
+        latest_history_id: rec.latestHistoryId || null,
+        new_cursor_history_id: newCursor,
+      });
       await commitCursorAndInboundRows({
         mailbox,
         newHistoryId: newCursor,
         upserts,
       });
+      logGmailInboundTrace('sync.commit_completed', {
+        trace_id: traceContext?.traceId,
+        pubsub_message_id: traceContext?.pubsubMessageId,
+        mailbox,
+        committed_message_count: upserts.length,
+        new_cursor_history_id: newCursor,
+        sync_mode: 'stale_history_recovery',
+      });
       return;
     }
+    logGmailInboundTrace('sync.error', {
+      trace_id: traceContext?.traceId,
+      pubsub_message_id: traceContext?.pubsubMessageId,
+      mailbox,
+      notification_history_id: notificationHistoryId,
+      label_id: labelId,
+      ...getErrorTraceFields(e),
+    });
     throw e;
   }
 }
