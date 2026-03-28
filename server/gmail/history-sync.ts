@@ -13,6 +13,13 @@ interface HistoryEntry {
   labelsAdded?: HistoryMessageRef[] | null;
 }
 
+interface HistoryCollectionStats {
+  pageCount: number;
+  historyRecordCount: number;
+  messagesAddedCount: number;
+  labelsAddedCount: number;
+}
+
 export function isStaleHistoryError(err: unknown): boolean {
   if (!err || typeof err !== 'object') return false;
   const e = err as { code?: number; response?: { status?: number }; message?: string };
@@ -63,9 +70,19 @@ async function recoveryListMessageIds(
 async function collectFromHistory(
   startHistoryId: string,
   labelId: string,
-): Promise<{ messageIds: string[]; latestHistoryId: string }> {
+): Promise<{
+  messageIds: string[];
+  latestHistoryId: string;
+  stats: HistoryCollectionStats;
+}> {
   const gmail = getGmailApi();
   const messageIdSet = new Set<string>();
+  const stats: HistoryCollectionStats = {
+    pageCount: 0,
+    historyRecordCount: 0,
+    messagesAddedCount: 0,
+    labelsAddedCount: 0,
+  };
   let latestHistoryId = startHistoryId;
   let pageToken: string | undefined;
   do {
@@ -76,9 +93,14 @@ async function collectFromHistory(
       historyTypes: ['messageAdded', 'labelAdded'],
       pageToken,
     });
-    for (const messageId of extractTriggeredMessageIds(
-      res.data.history as HistoryEntry[] | undefined,
-    )) {
+    const history = res.data.history as HistoryEntry[] | undefined;
+    stats.pageCount += 1;
+    stats.historyRecordCount += history?.length ?? 0;
+    for (const entry of history ?? []) {
+      stats.messagesAddedCount += entry.messagesAdded?.length ?? 0;
+      stats.labelsAddedCount += entry.labelsAdded?.length ?? 0;
+    }
+    for (const messageId of extractTriggeredMessageIds(history)) {
       messageIdSet.add(messageId);
     }
     const nextHid = res.data.historyId;
@@ -87,7 +109,7 @@ async function collectFromHistory(
     }
     pageToken = res.data.nextPageToken ?? undefined;
   } while (pageToken);
-  return { messageIds: Array.from(messageIdSet), latestHistoryId };
+  return { messageIds: Array.from(messageIdSet), latestHistoryId, stats };
 }
 
 export async function syncAfterPubSubNotification(params: {
@@ -162,7 +184,7 @@ export async function syncAfterPubSubNotification(params: {
       notification_history_id: notificationHistoryId,
       label_id: labelId,
     });
-    const { messageIds, latestHistoryId } = await collectFromHistory(
+    const { messageIds, latestHistoryId, stats } = await collectFromHistory(
       cursorBefore.historyId,
       labelId,
     );
@@ -171,10 +193,30 @@ export async function syncAfterPubSubNotification(params: {
       pubsub_message_id: traceContext?.pubsubMessageId,
       mailbox,
       start_history_id: cursorBefore.historyId,
+      notification_history_id: notificationHistoryId,
       latest_history_id: latestHistoryId,
+      history_page_count: stats.pageCount,
+      history_record_count: stats.historyRecordCount,
+      messages_added_count: stats.messagesAddedCount,
+      labels_added_count: stats.labelsAddedCount,
       collected_message_count: messageIds.length,
       sample_gmail_message_ids: messageIds.slice(0, 10),
     });
+    if (messageIds.length === 0) {
+      logGmailInboundTrace('sync.no_triggered_messages', {
+        trace_id: traceContext?.traceId,
+        pubsub_message_id: traceContext?.pubsubMessageId,
+        mailbox,
+        start_history_id: cursorBefore.historyId,
+        notification_history_id: notificationHistoryId,
+        latest_history_id: latestHistoryId,
+        history_page_count: stats.pageCount,
+        history_record_count: stats.historyRecordCount,
+        messages_added_count: stats.messagesAddedCount,
+        labels_added_count: stats.labelsAddedCount,
+        reason: 'history_returned_no_matching_message_ids',
+      });
+    }
     const upserts = messageIds.map((id) => ({
       gmailMessageId: id,
       historyIdSeen: latestHistoryId,
@@ -189,6 +231,7 @@ export async function syncAfterPubSubNotification(params: {
       pubsub_message_id: traceContext?.pubsubMessageId,
       mailbox,
       committed_message_count: upserts.length,
+      notification_history_id: notificationHistoryId,
       new_cursor_history_id: latestHistoryId,
       sync_mode: 'history',
     });
