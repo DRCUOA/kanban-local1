@@ -12,11 +12,12 @@ function isTraceEnabled(): boolean {
 
 export function logGmailInboundTrace(stage: string, fields: GmailInboundTraceFields = {}): void {
   if (!isTraceEnabled()) return;
-  logger.info('gmail inbound trace', {
+  const payload = {
     pipeline: 'gmail_inbound',
     stage,
     ...fields,
-  });
+  };
+  logger.info(`gmail inbound trace ${JSON.stringify(payload)}`);
 }
 
 export function getErrorTraceFields(error: unknown): GmailInboundTraceFields {

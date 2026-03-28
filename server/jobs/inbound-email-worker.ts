@@ -37,7 +37,10 @@ function recipientMatches(filter: string | undefined, toHeader: string): boolean
 export async function processOneInboundRow(): Promise<void> {
   await reconcileExpiredLeases();
   const row = await claimNextPendingRow();
-  if (!row) return;
+  if (!row) {
+    logGmailInboundTrace('worker.no_pending_row');
+    return;
+  }
 
   logGmailInboundTrace('worker.row_claimed', {
     inbound_row_id: row.id,
