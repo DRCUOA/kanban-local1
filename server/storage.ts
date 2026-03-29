@@ -3,6 +3,7 @@ import {
   tasks,
   stages,
   subStages,
+  inboundEmailProcessing,
   type Task,
   type Stage,
   type SubStage,
@@ -19,7 +20,7 @@ import {
   getStatusFromStageName,
 } from '@shared/constants';
 import { db } from './db';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { logger } from '@shared/logger';
 
 type TaskInsertExecutor = Pick<typeof db, 'insert' | 'select'>;
@@ -168,6 +169,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteTask(id: number): Promise<void> {
+    await db
+      .update(inboundEmailProcessing)
+      .set({ createdTaskId: null })
+      .where(eq(inboundEmailProcessing.createdTaskId, id));
+
+    await db.execute(sql`
+      UPDATE inbound_email_processing
+      SET created_task_ids = (
+        SELECT jsonb_agg(elem)
+        FROM jsonb_array_elements(created_task_ids) AS elem
+        WHERE elem::int != ${id}
+      ),
+      updated_at = NOW()
+      WHERE created_task_ids @> ${JSON.stringify([id])}::jsonb
+    `);
+
     await db.delete(tasks).where(eq(tasks.id, id));
   }
 
