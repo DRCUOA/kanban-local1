@@ -22,6 +22,41 @@ import { db } from './db';
 import { eq, and } from 'drizzle-orm';
 import { logger } from '@shared/logger';
 
+type TaskInsertExecutor = Pick<typeof db, 'insert' | 'select'>;
+
+async function insertTaskWithExecutor(
+  executor: TaskInsertExecutor,
+  insertTask: InsertTask,
+): Promise<Task> {
+  let initialStatus = insertTask.status || TASK_STATUS.BACKLOG;
+
+  if (!insertTask.status && insertTask.stageId) {
+    const [stage] = await executor.select().from(stages).where(eq(stages.id, insertTask.stageId));
+    if (stage) {
+      initialStatus = getStatusFromStageName(stage.name);
+    }
+  }
+
+  const history: TaskHistoryEntry[] = [
+    {
+      status: initialStatus,
+      timestamp: new Date().toISOString(),
+    },
+  ];
+
+  const taskData = {
+    ...insertTask,
+    status: initialStatus,
+    priority: insertTask.priority || TASK_PRIORITY.NORMAL,
+    recurrence: insertTask.recurrence || TASK_RECURRENCE.NONE,
+    history,
+    updatedAt: new Date(),
+  };
+
+  const [task] = await executor.insert(tasks).values(taskData).returning();
+  return task!;
+}
+
 export interface IStorage {
   getTasks(): Promise<Task[]>;
   getArchivedTasks(): Promise<Task[]>;
@@ -101,35 +136,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTask(insertTask: InsertTask): Promise<Task> {
-    // Initialize history with initial status
-    // If status not provided, infer from stage name
-    let initialStatus = insertTask.status || TASK_STATUS.BACKLOG;
-
-    if (!insertTask.status && insertTask.stageId) {
-      const [stage] = await db.select().from(stages).where(eq(stages.id, insertTask.stageId));
-      if (stage) {
-        initialStatus = getStatusFromStageName(stage.name);
-      }
-    }
-
-    const history: TaskHistoryEntry[] = [
-      {
-        status: initialStatus,
-        timestamp: new Date().toISOString(),
-      },
-    ];
-
-    const taskData = {
-      ...insertTask,
-      status: initialStatus,
-      priority: insertTask.priority || TASK_PRIORITY.NORMAL,
-      recurrence: insertTask.recurrence || TASK_RECURRENCE.NONE,
-      history,
-      updatedAt: new Date(),
-    };
-
-    const [task] = await db.insert(tasks).values(taskData).returning();
-    return task!;
+    return insertTaskWithExecutor(db, insertTask);
   }
 
   async updateTask(id: number, updates: Partial<InsertTask>): Promise<Task | undefined> {
@@ -261,6 +268,27 @@ export class DatabaseStorage implements IStorage {
   async deleteSubStage(id: number): Promise<void> {
     await db.delete(subStages).where(eq(subStages.id, id));
   }
+}
+
+export async function createEmailTasks(params: {
+  parent: InsertTask;
+  children: InsertTask[];
+}): Promise<{ parent: Task; children: Task[] }> {
+  return db.transaction(async (tx) => {
+    const parent = await insertTaskWithExecutor(tx, params.parent);
+    const children: Task[] = [];
+
+    for (const child of params.children) {
+      children.push(
+        await insertTaskWithExecutor(tx, {
+          ...child,
+          parentTaskId: parent.id,
+        }),
+      );
+    }
+
+    return { parent, children };
+  });
 }
 
 export const storage = new DatabaseStorage();

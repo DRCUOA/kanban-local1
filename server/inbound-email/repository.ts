@@ -144,12 +144,17 @@ export async function markInboundPendingRetry(id: number, reason: string): Promi
     .where(eq(inboundEmailProcessing.id, id));
 }
 
-export async function markInboundCompleted(id: number, taskId: number | null): Promise<void> {
+export async function markInboundCompleted(
+  id: number,
+  taskId: number | null,
+  createdTaskIds: number[] = taskId === null ? [] : [taskId],
+): Promise<void> {
   await db
     .update(inboundEmailProcessing)
     .set({
       processingStatus: INBOUND_PROCESSING_STATUS.COMPLETED,
       createdTaskId: taskId,
+      createdTaskIds,
       processedAt: new Date(),
       updatedAt: new Date(),
     })

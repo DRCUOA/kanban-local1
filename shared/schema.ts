@@ -119,6 +119,7 @@ export const inboundEmailProcessing = pgTable(
     normalizedBodyHash: text('normalized_body_hash'),
     processingStatus: text('processing_status').notNull(),
     createdTaskId: integer('created_task_id').references(() => tasks.id),
+    createdTaskIds: jsonb('created_task_ids').$type<number[]>(),
     errorReason: text('error_reason'),
     processedAt: timestamp('processed_at'),
     attemptCount: integer('attempt_count').notNull().default(0),
