@@ -13,9 +13,9 @@ import {
 } from '../inbound-email/repository';
 import { invokeEmailTaskGraph } from '../langgraph/email-task-graph';
 import { resolveStageId } from '../langgraph/stage-resolve';
-import { storage } from '../storage';
+import { createEmailTasks, storage } from '../storage';
 import { logger } from '@shared/logger';
-import type { InsertTask } from '@shared/schema';
+import type { InsertTask, Stage } from '@shared/schema';
 import { getErrorTraceFields, logGmailInboundTrace } from '../gmail/inbound-trace';
 
 function getHeader(
@@ -32,6 +32,46 @@ function getHeader(
 function recipientMatches(filter: string | undefined, toHeader: string): boolean {
   if (!filter?.trim()) return true;
   return toHeader.toLowerCase().includes(filter.trim().toLowerCase());
+}
+
+const priorityMap: Record<string, NonNullable<InsertTask['priority']>> = {
+  low: 'low',
+  normal: 'normal',
+  high: 'high',
+  critical: 'critical',
+};
+
+function mapPriority(priority: string | null | undefined): NonNullable<InsertTask['priority']> {
+  return priority ? priorityMap[priority] : TASK_PRIORITY.NORMAL;
+}
+
+function buildTaskInsert(input: {
+  draft: {
+    title: string;
+    description: string | null;
+    priority: string | null;
+    targetStageName: string | null;
+  };
+  fallbackTitle: string;
+  fallbackStageName: string | null;
+  stages: Stage[];
+}): {
+  task: InsertTask;
+  resolvedStageId: number;
+  requestedStageName: string | null;
+} {
+  const requestedStageName = input.draft.targetStageName ?? input.fallbackStageName;
+  const { stageId } = resolveStageId(input.stages, requestedStageName);
+  return {
+    task: {
+      title: input.draft.title || input.fallbackTitle,
+      description: input.draft.description ?? null,
+      stageId,
+      priority: mapPriority(input.draft.priority),
+    },
+    resolvedStageId: stageId,
+    requestedStageName,
+  };
 }
 
 export async function processOneInboundRow(): Promise<void> {
@@ -95,7 +135,7 @@ export async function processOneInboundRow(): Promise<void> {
         to_header: to || null,
       });
       logger.info('Inbound email skipped: recipient filter', { id: fresh.id, to });
-      await markInboundCompleted(fresh.id, null);
+      await markInboundCompleted(fresh.id, null, []);
       return;
     }
 
@@ -112,7 +152,8 @@ export async function processOneInboundRow(): Promise<void> {
       body_source: norm.plainBody ? 'plain_body' : 'snippet_fallback',
     });
 
-    const extraction = await invokeEmailTaskGraph({
+    const stagesPromise = storage.getStages();
+    const extractionPromise = invokeEmailTaskGraph({
       subject,
       body: bodyText,
       traceContext: {
@@ -122,58 +163,71 @@ export async function processOneInboundRow(): Promise<void> {
         normalizedBodyHash: bodyHash,
       },
     });
+    const [stages, extraction] = await Promise.all([stagesPromise, extractionPromise]);
+
     logGmailInboundTrace('worker.extraction_completed', {
       inbound_row_id: fresh.id,
       gmail_message_id: fresh.gmailMessageId,
       history_id_seen: fresh.historyIdSeen,
       normalized_body_hash: bodyHash,
-      extracted_title_present: Boolean(extraction.title),
-      extracted_priority: extraction.priority ?? null,
-      extracted_target_stage_name: extraction.targetStageName ?? null,
-      extracted_description_present: Boolean(extraction.description),
+      extracted_parent_title_present: Boolean(extraction.parentTask.title),
+      extracted_parent_priority: extraction.parentTask.priority ?? null,
+      extracted_parent_target_stage_name: extraction.parentTask.targetStageName ?? null,
+      extracted_parent_description_present: Boolean(extraction.parentTask.description),
+      extracted_child_task_count: extraction.childTasks.length,
+      extracted_is_epic: extraction.flags.isEpic,
+      extracted_used_web_search: extraction.flags.usedWebSearch,
     });
-    const stages = await storage.getStages();
-    const { stageId } = resolveStageId(stages, extraction.targetStageName);
+
+    const parentTask = buildTaskInsert({
+      draft: extraction.parentTask,
+      fallbackTitle: subject,
+      fallbackStageName: null,
+      stages,
+    });
+    const childTasks = extraction.childTasks.map((child) =>
+      buildTaskInsert({
+        draft: child,
+        fallbackTitle: child.title,
+        fallbackStageName: extraction.parentTask.targetStageName,
+        stages,
+      }),
+    );
 
     logGmailInboundTrace('worker.stage_resolved', {
       inbound_row_id: fresh.id,
       gmail_message_id: fresh.gmailMessageId,
       history_id_seen: fresh.historyIdSeen,
-      requested_stage_name: extraction.targetStageName ?? null,
-      resolved_stage_id: stageId,
+      requested_stage_name: parentTask.requestedStageName ?? null,
+      resolved_stage_id: parentTask.resolvedStageId,
+      child_requested_stage_names: childTasks.map((child) => child.requestedStageName ?? ''),
+      child_resolved_stage_ids: childTasks.map((child) => child.resolvedStageId),
     });
 
-    const priorityMap: Record<string, NonNullable<InsertTask['priority']>> = {
-      low: 'low',
-      normal: 'normal',
-      high: 'high',
-      critical: 'critical',
-    };
-    const priority = extraction.priority ? priorityMap[extraction.priority] : TASK_PRIORITY.NORMAL;
-
-    const task = await storage.createTask({
-      title: extraction.title || subject,
-      description: extraction.description ?? null,
-      stageId,
-      priority,
+    const created = await createEmailTasks({
+      parent: parentTask.task,
+      children: childTasks.map((child) => child.task),
     });
+    const createdTaskIds = [created.parent.id, ...created.children.map((child) => child.id)];
 
-    logGmailInboundTrace('worker.task_created', {
+    logGmailInboundTrace('worker.task_group_created', {
       inbound_row_id: fresh.id,
       gmail_message_id: fresh.gmailMessageId,
       history_id_seen: fresh.historyIdSeen,
-      created_task_id: task.id,
-      resolved_stage_id: stageId,
-      priority,
+      created_task_id: created.parent.id,
+      created_task_ids: createdTaskIds,
+      resolved_stage_id: parentTask.resolvedStageId,
+      child_task_count: created.children.length,
     });
 
-    await markInboundCompleted(fresh.id, task.id);
+    await markInboundCompleted(fresh.id, created.parent.id, createdTaskIds);
 
     logGmailInboundTrace('worker.completed', {
       inbound_row_id: fresh.id,
       gmail_message_id: fresh.gmailMessageId,
       history_id_seen: fresh.historyIdSeen,
-      created_task_id: task.id,
+      created_task_id: created.parent.id,
+      created_task_ids: createdTaskIds,
       final_outcome: 'completed',
       normalized_body_hash: bodyHash,
     });
@@ -183,7 +237,8 @@ export async function processOneInboundRow(): Promise<void> {
       gmail_message_id: fresh.gmailMessageId,
       attempt_count: fresh.attemptCount,
       final_outcome: 'completed',
-      created_task_id: task.id,
+      created_task_id: created.parent.id,
+      created_task_ids: createdTaskIds,
       rfc_message_id: rfcId,
       normalized_body_hash: bodyHash,
     });
