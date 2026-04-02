@@ -35,6 +35,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Plus, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import {
   Select,
@@ -240,17 +241,26 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
                       Effort ({EFFORT_MIN}-{EFFORT_MAX})
                     </FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        min={EFFORT_MIN}
-                        max={EFFORT_MAX}
-                        className="h-12 rounded-xl text-base"
-                        {...field}
-                        value={field.value || ''}
-                        onChange={(e) => {
-                          field.onChange(e.target.value ? parseInt(e.target.value) : undefined);
-                        }}
-                      />
+                      <div className="flex gap-1.5">
+                        {Array.from(
+                          { length: EFFORT_MAX - EFFORT_MIN + 1 },
+                          (_, i) => EFFORT_MIN + i,
+                        ).map((val) => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => field.onChange(val)}
+                            className={cn(
+                              'flex-1 h-12 rounded-xl text-base font-semibold transition-colors',
+                              field.value === val
+                                ? 'bg-primary text-primary-foreground neo-raised'
+                                : 'bg-secondary/50 text-secondary-foreground hover:bg-secondary',
+                            )}
+                          >
+                            {val}
+                          </button>
+                        ))}
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
