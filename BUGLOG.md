@@ -57,19 +57,20 @@ Railway runs `npm run db:push` (which calls `drizzle-kit push`) at container sta
 
 ### Root cause
 
-The Railway service has a start command override (set in the dashboard) that runs `db:push` before the app. This is wrong for two reasons:
+The Railway dashboard has `npm run db:push` set as a **pre-deploy command**. This runs between build and deploy, using the production image which only has production deps. Two problems:
 
-1. `drizzle-kit` is a devDependency — not available in the production image.
+1. `drizzle-kit` is a devDependency — not installed in the production image (`npm ci --omit=dev`).
 2. `drizzle-kit push` is a development tool that diffs live schema against TypeScript source. Production should use SQL file migrations instead.
 
-The server already handles this correctly: `server/index.ts` calls `runMigrations()` at boot, which applies SQL files from `migrations/` using the drizzle-orm migrator (a runtime dependency).
+The server already handles migrations correctly: `server/index.ts` calls `runMigrations()` at boot, which applies SQL files from `migrations/` using the drizzle-orm migrator (a runtime dependency).
 
 ### Fix
 
-Added `"startCommand": "node dist/index.cjs"` to `railway.json` so the deploy config in the repo overrides whatever the Railway dashboard has. This starts the server directly, which runs SQL migrations automatically before listening.
+Set `"preDeployCommand": null` in `railway.json` to override the dashboard setting and disable the broken pre-deploy step. Also set explicit `"startCommand": "node dist/index.cjs"`. Migrations run automatically at server boot.
 
 ### Verification
 
 Check the next deploy logs for:
+- No `drizzle-kit` errors
 - `Database migrations applied` (from `runMigrations()`)
 - `serving on port ...` (server started successfully)
