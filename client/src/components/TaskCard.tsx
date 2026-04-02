@@ -93,10 +93,9 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
               }
         }
       >
-        {/* Drag handle - always visible on mobile, touch-action: none so drag works */}
         <div
           className="drag-handle absolute top-0 right-0 p-3 cursor-grab active:cursor-grabbing z-10"
-          style={{ touchAction: 'none' }}
+          onContextMenu={(e) => e.preventDefault()}
           {...listeners}
         >
           <GripVertical className="h-5 w-5 text-muted-foreground/50" />

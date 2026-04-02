@@ -108,6 +108,15 @@
     min-height: 36px;
     min-width: 36px;
   }
+
+  /* Prevent mobile browsers from hijacking long-press on drag handles
+     (iOS callout menu, Android text selection, context menus). */
+  .drag-handle {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: none;
+  }
 }
 
 @layer components {

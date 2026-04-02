@@ -6,6 +6,7 @@ import {
   type DragStartEvent,
   type DragOverEvent,
   type DragEndEvent,
+  PointerSensor,
   MouseSensor,
   TouchSensor,
   useSensor,
@@ -66,12 +67,17 @@ export function useKanbanDragDrop({ tasks, sortedStages, allSubStages }: UseKanb
     return closestCenter(args);
   };
 
-  // Separate sensors for mouse and touch to avoid conflicts
-  // TouchSensor uses delay so scrolling still works (long-press to drag)
-  // MouseSensor uses distance for desktop testing
+  // PointerSensor (unified touch/mouse via Pointer Events API) is tried first for
+  // broad mobile-browser compatibility. TouchSensor is the fallback for devices
+  // where PointerEvents are incomplete, and MouseSensor covers legacy desktop.
+  // delay = long-press to differentiate from scroll; tolerance is generous to
+  // accommodate natural finger tremor on phones/tablets.
   const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { delay: 200, tolerance: 8 },
+    }),
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 200, tolerance: 5 },
+      activationConstraint: { delay: 250, tolerance: 8 },
     }),
     useSensor(MouseSensor, {
       activationConstraint: { distance: 8 },

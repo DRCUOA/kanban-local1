@@ -116,7 +116,6 @@ export function TaskCardSummary({
       ref={setNodeRef}
       style={{
         ...style,
-        touchAction: 'none',
         ...(panelBorderColor ? { borderColor: panelBorderColor, borderWidth: '2px' } : {}),
       }}
       {...attributes}
@@ -135,7 +134,7 @@ export function TaskCardSummary({
     >
       <div
         className="drag-handle flex-shrink-0 p-1 cursor-grab active:cursor-grabbing"
-        style={{ touchAction: 'none' }}
+        onContextMenu={(e) => e.preventDefault()}
         {...listeners}
       >
         <GripVertical className="h-4 w-4 text-muted-foreground/50" />
@@ -165,8 +164,9 @@ export function TaskCardSummary({
       tabIndex={0}
       onClick={handleClick}
       onTouchStart={triggerHapticFeedback}
+      onContextMenu={(e) => e.preventDefault()}
       className={cn(
-        'rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 ease-out',
+        'rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 ease-out select-none',
         'active:scale-[0.88] focus-visible:scale-[1.03] task-summary-magnify',
         stageColor ? 'neo-beveled-circle-colored' : 'neo-beveled-circle',
       )}
