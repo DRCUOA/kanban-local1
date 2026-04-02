@@ -39,3 +39,37 @@ When a user deletes a task that was originally created by the email ingest pipel
 | 3 | Delete a task with no inbound references | No regression for normal deletes |
 
 All 3 failed before the fix (same FK error as production), all pass after.
+
+---
+
+## BUG-002: Deploy fails — `drizzle-kit: not found`
+
+**Date:** 2026-04-02
+**Severity:** Critical (blocks deployment)
+**Error:**
+```
+sh: 1: drizzle-kit: not found
+```
+
+### What happens
+
+Railway runs `npm run db:push` (which calls `drizzle-kit push`) at container startup. `drizzle-kit` is a devDependency, and the production Docker image installs only production deps (`npm ci --omit=dev`), so the binary isn't there. Container dies immediately.
+
+### Root cause
+
+The Railway service has a start command override (set in the dashboard) that runs `db:push` before the app. This is wrong for two reasons:
+
+1. `drizzle-kit` is a devDependency — not available in the production image.
+2. `drizzle-kit push` is a development tool that diffs live schema against TypeScript source. Production should use SQL file migrations instead.
+
+The server already handles this correctly: `server/index.ts` calls `runMigrations()` at boot, which applies SQL files from `migrations/` using the drizzle-orm migrator (a runtime dependency).
+
+### Fix
+
+Added `"startCommand": "node dist/index.cjs"` to `railway.json` so the deploy config in the repo overrides whatever the Railway dashboard has. This starts the server directly, which runs SQL migrations automatically before listening.
+
+### Verification
+
+Check the next deploy logs for:
+- `Database migrations applied` (from `runMigrations()`)
+- `serving on port ...` (server started successfully)
