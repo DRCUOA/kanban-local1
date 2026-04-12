@@ -66,7 +66,7 @@ describe('useFilteredTasks', () => {
       }),
     );
     expect(result.current).toHaveLength(1);
-    expect(result.current[0].title).toBe('Fix login bug');
+    expect(result.current.at(0)?.title).toBe('Fix login bug');
   });
 
   it('filters tasks by description matching the search query', () => {
@@ -84,7 +84,7 @@ describe('useFilteredTasks', () => {
       }),
     );
     expect(result.current).toHaveLength(1);
-    expect(result.current[0].id).toBe(1);
+    expect(result.current.at(0)?.id).toBe(1);
   });
 
   it('search is case-insensitive', () => {

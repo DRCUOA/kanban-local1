@@ -66,7 +66,7 @@ function makeStructuredInvoker(apiKey: string, modelName: string) {
   const model = new ChatOpenAI({ model: modelName, apiKey });
   return async function structuredInvoke<T>(schema: z.ZodType<T>, prompt: string): Promise<T> {
     const runnable = model.withStructuredOutput(schema);
-    return runnable.invoke(prompt);
+    return runnable.invoke(prompt) as Promise<T>;
   };
 }
 

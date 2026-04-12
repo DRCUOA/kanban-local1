@@ -8,19 +8,33 @@ interface TaskColumnProps {
   title: string;
   count: number;
   stageColor: string;
+  boardLayout?: 'vertical' | 'horizontal';
   children: React.ReactNode;
 }
 
-export function TaskColumn({ id, title, count, stageColor, children }: TaskColumnProps) {
+export function TaskColumn({
+  id,
+  title,
+  count,
+  stageColor,
+  boardLayout = 'vertical',
+  children,
+}: TaskColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: id,
   });
 
   const isEmpty = count === 0;
 
+  const isHorizontal = boardLayout === 'horizontal';
+
   return (
-    <div className="w-full flex flex-col">
-      {/* Column header - integrated into the column */}
+    <div
+      className={cn(
+        'flex flex-col',
+        isHorizontal ? 'min-w-[280px] max-w-[320px] flex-shrink-0' : 'w-full',
+      )}
+    >
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: stageColor }} />
@@ -36,12 +50,12 @@ export function TaskColumn({ id, title, count, stageColor, children }: TaskColum
         </Badge>
       </div>
 
-      {/* Column content - taller when empty so it's a clear drop target */}
       <div
         ref={setNodeRef}
         className={cn(
           'p-3 transition-all duration-200 rounded-xl neo-container',
           isEmpty ? 'min-h-[120px]' : 'min-h-[80px]',
+          isHorizontal && 'flex-1 overflow-y-auto',
           isOver && 'bg-primary/5 ring-2 ring-primary/30 scale-[1.01]',
         )}
       >

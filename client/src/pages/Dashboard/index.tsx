@@ -27,6 +27,7 @@ export default function Dashboard(_props: DashboardProps) {
   const [showSearch, setShowSearch] = useState(false);
   const [viewMode, setViewMode] = useState<'detail' | 'summary'>('summary');
   const [focusMode, setFocusMode] = useState(false);
+  const [boardLayout, setBoardLayout] = useState<'vertical' | 'horizontal'>('vertical');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const { data: stages = [] } = useStages();
@@ -106,6 +107,7 @@ export default function Dashboard(_props: DashboardProps) {
         filteredTasks={filteredTasks}
         focusMode={focusMode}
         viewMode={viewMode}
+        boardLayout={boardLayout}
         searchQuery={searchQuery}
         onTaskClick={handleTaskClick}
       />
@@ -113,9 +115,13 @@ export default function Dashboard(_props: DashboardProps) {
       <DashboardBottomNav
         viewMode={viewMode}
         focusMode={focusMode}
+        boardLayout={boardLayout}
         onSetViewMode={setViewMode}
         onToggleFocusMode={() => {
           setFocusMode(!focusMode);
+        }}
+        onToggleBoardLayout={() => {
+          setBoardLayout(boardLayout === 'vertical' ? 'horizontal' : 'vertical');
         }}
         onArchive={() => (window.location.href = ROUTES.ARCHIVE)}
         onAdmin={() => (window.location.href = ROUTES.ADMIN)}
