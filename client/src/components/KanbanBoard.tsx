@@ -9,12 +9,14 @@ import { KanbanColumnContent } from './KanbanColumnContent';
 import { KanbanDragOverlay } from './KanbanDragOverlay';
 import { ArchiveZone } from './ArchiveZone';
 import { DEFAULT_STAGE_COLORS } from '@shared/constants';
+import { cn } from '@/lib/utils';
 
 export interface KanbanBoardProps {
   tasks: Task[];
   onTaskClick: (task: Task) => void;
   viewMode?: 'detail' | 'summary';
   focusMode?: boolean;
+  boardLayout?: 'vertical' | 'horizontal';
 }
 
 export function KanbanBoard({
@@ -22,6 +24,7 @@ export function KanbanBoard({
   onTaskClick,
   viewMode = 'detail',
   focusMode = false,
+  boardLayout = 'vertical',
 }: KanbanBoardProps) {
   const { data: stages = [] } = useStages();
   const { data: allSubStages = [] } = useSubStages();
@@ -31,7 +34,10 @@ export function KanbanBoard({
   const stageColorMap = useMemo(() => {
     const map = new Map<number, string>();
     sortedStages.forEach((stage, index) =>
-      map.set(stage.id, stage.color || DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length]),
+      map.set(
+        stage.id,
+        stage.color ?? DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length] ?? '#6B7280',
+      ),
     );
     return map;
   }, [sortedStages]);
@@ -60,7 +66,12 @@ export function KanbanBoard({
         },
       }}
     >
-      <div className="flex flex-col h-full gap-3 pb-4">
+      <div
+        className={cn(
+          'h-full gap-3 pb-4',
+          boardLayout === 'horizontal' ? 'flex flex-row overflow-x-auto' : 'flex flex-col',
+        )}
+      >
         {sortedStages.map((stage) => {
           const stageColor = stageColorMap.get(stage.id) || DEFAULT_STAGE_COLORS[0];
           const stageTasks = activeTasks.filter((t) => t.stageId === stage.id);
@@ -71,6 +82,7 @@ export function KanbanBoard({
               title={stage.name}
               count={stageTasks.length}
               stageColor={stageColor}
+              boardLayout={boardLayout}
             >
               <KanbanColumnContent
                 stageId={stage.id}

@@ -42,7 +42,7 @@ const priorityMap: Record<string, NonNullable<InsertTask['priority']>> = {
 };
 
 function mapPriority(priority: string | null | undefined): NonNullable<InsertTask['priority']> {
-  return priority ? priorityMap[priority] : TASK_PRIORITY.NORMAL;
+  return (priority ? priorityMap[priority] : undefined) ?? TASK_PRIORITY.NORMAL;
 }
 
 function buildTaskInsert(input: {
@@ -159,7 +159,7 @@ export async function processOneInboundRow(): Promise<void> {
       traceContext: {
         inboundRowId: fresh.id,
         gmailMessageId: fresh.gmailMessageId,
-        historyIdSeen: fresh.historyIdSeen,
+        historyIdSeen: fresh.historyIdSeen ?? undefined,
         normalizedBodyHash: bodyHash,
       },
     });

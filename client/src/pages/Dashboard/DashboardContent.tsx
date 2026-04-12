@@ -10,6 +10,7 @@ export interface DashboardContentProps {
   filteredTasks: Task[];
   focusMode: boolean;
   viewMode: 'detail' | 'summary';
+  boardLayout: 'vertical' | 'horizontal';
   searchQuery: string;
   onTaskClick: (task: Task) => void;
 }
@@ -19,6 +20,7 @@ export function DashboardContent({
   filteredTasks,
   focusMode,
   viewMode,
+  boardLayout,
   searchQuery,
   onTaskClick,
 }: DashboardContentProps) {
@@ -47,6 +49,7 @@ export function DashboardContent({
               onTaskClick={onTaskClick}
               viewMode={viewMode}
               focusMode={focusMode}
+              boardLayout={boardLayout}
             />
           </div>
         ) : (

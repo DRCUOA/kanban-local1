@@ -25,8 +25,10 @@ describe('DashboardBottomNav', () => {
   const defaults = {
     viewMode: 'detail' as const,
     focusMode: false,
+    boardLayout: 'vertical' as const,
     onSetViewMode: vi.fn(),
     onToggleFocusMode: vi.fn(),
+    onToggleBoardLayout: vi.fn(),
     onArchive: vi.fn(),
     onAdmin: vi.fn(),
     onExport: vi.fn(),

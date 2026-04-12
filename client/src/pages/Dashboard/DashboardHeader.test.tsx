@@ -32,8 +32,9 @@ describe('DashboardHeader', () => {
     const onToggleSearch = vi.fn();
     render(<DashboardHeader {...defaults} onToggleSearch={onToggleSearch} />);
 
-    const buttons = screen.getAllByRole('button');
-    fireEvent.click(buttons[0]);
+    const firstBtn = screen.getAllByRole('button').at(0);
+    if (!firstBtn) throw new Error('Expected at least one button');
+    fireEvent.click(firstBtn);
     expect(onToggleSearch).toHaveBeenCalledOnce();
   });
 
@@ -49,8 +50,8 @@ describe('DashboardHeader', () => {
     const onClearSearch = vi.fn();
     render(<DashboardHeader {...defaults} showSearch={true} onClearSearch={onClearSearch} />);
 
-    const buttons = screen.getAllByRole('button');
-    const clearBtn = buttons[buttons.length - 1];
+    const clearBtn = screen.getAllByRole('button').at(-1);
+    if (!clearBtn) throw new Error('Expected at least one button');
     fireEvent.click(clearBtn);
     expect(onClearSearch).toHaveBeenCalledOnce();
   });

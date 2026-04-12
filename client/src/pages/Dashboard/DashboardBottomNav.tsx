@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression -- R2 baseline: strict fixes deferred to follow-up tasks */
-import { List, CircleDot, Focus } from 'lucide-react';
+import { List, CircleDot, Focus, Columns, Rows } from 'lucide-react';
 import { CreateTaskDialog } from '@/components/CreateTaskDialog';
 import { cn } from '@/lib/utils';
 import { MoreActionsMenu } from './MoreActionsMenu';
@@ -7,8 +7,10 @@ import { MoreActionsMenu } from './MoreActionsMenu';
 export interface DashboardBottomNavProps {
   viewMode: 'detail' | 'summary';
   focusMode: boolean;
+  boardLayout: 'vertical' | 'horizontal';
   onSetViewMode: (mode: 'detail' | 'summary') => void;
   onToggleFocusMode: () => void;
+  onToggleBoardLayout: () => void;
   onArchive: () => void;
   onAdmin: () => void;
   onExport: () => void;
@@ -18,8 +20,10 @@ export interface DashboardBottomNavProps {
 export function DashboardBottomNav({
   viewMode,
   focusMode,
+  boardLayout,
   onSetViewMode,
   onToggleFocusMode,
+  onToggleBoardLayout,
   onArchive,
   onAdmin,
   onExport,
@@ -74,6 +78,24 @@ export function DashboardBottomNav({
         >
           <Focus className="h-5 w-5 shrink-0" aria-hidden />
           <span className="text-[10px] font-medium">Focus</span>
+        </button>
+
+        <button
+          type="button"
+          className={toggleNavBtn(false)}
+          onClick={onToggleBoardLayout}
+          aria-label={
+            boardLayout === 'vertical' ? 'Switch to horizontal board' : 'Switch to vertical board'
+          }
+        >
+          {boardLayout === 'vertical' ? (
+            <Columns className="h-5 w-5 shrink-0" aria-hidden />
+          ) : (
+            <Rows className="h-5 w-5 shrink-0" aria-hidden />
+          )}
+          <span className="text-[10px] font-medium">
+            {boardLayout === 'vertical' ? 'Horiz' : 'Vert'}
+          </span>
         </button>
 
         <MoreActionsMenu

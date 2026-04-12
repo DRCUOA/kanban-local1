@@ -45,6 +45,7 @@ describe('DashboardContent', () => {
     filteredTasks: [] as Task[],
     focusMode: false,
     viewMode: 'detail' as const,
+    boardLayout: 'vertical' as const,
     searchQuery: '',
     onTaskClick: vi.fn(),
   };

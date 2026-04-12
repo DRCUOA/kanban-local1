@@ -375,7 +375,7 @@ describe('IStorage contract', () => {
       const s1Subs = await storage.getSubStagesByStage(parentStageId);
 
       expect(s1Subs).toHaveLength(1);
-      expect(s1Subs[0].name).toBe('S1-sub');
+      expect(s1Subs[0]!.name).toBe('S1-sub');
     });
 
     it('returns an empty array for a stageId with no sub-stages', async () => {
@@ -462,8 +462,8 @@ describe('IStorage contract', () => {
       const task = await storage.createTask(makeTaskInput(stageId));
 
       expect(task.history).toHaveLength(1);
-      expect(task.history![0].status).toBe(TASK_STATUS.BACKLOG);
-      expect(task.history![0].timestamp).toBeTruthy();
+      expect(task.history![0]!.status).toBe(TASK_STATUS.BACKLOG);
+      expect(task.history![0]!.timestamp).toBeTruthy();
     });
 
     it('infers status from stage name when not explicitly set', async () => {
@@ -471,7 +471,7 @@ describe('IStorage contract', () => {
       const task = await storage.createTask(makeTaskInput(doneStage.id));
 
       expect(task.status).toBe(TASK_STATUS.DONE);
-      expect(task.history![0].status).toBe(TASK_STATUS.DONE);
+      expect(task.history![0]!.status).toBe(TASK_STATUS.DONE);
     });
 
     it('uses explicit status over inferred stage status', async () => {
@@ -491,7 +491,7 @@ describe('IStorage contract', () => {
       const tasks = await storage.getTasks();
 
       expect(tasks).toHaveLength(1);
-      expect(tasks[0].title).toBe('Active');
+      expect(tasks[0]!.title).toBe('Active');
     });
 
     it('returns archived tasks from getArchivedTasks()', async () => {
@@ -502,7 +502,7 @@ describe('IStorage contract', () => {
       const archived = await storage.getArchivedTasks();
 
       expect(archived).toHaveLength(1);
-      expect(archived[0].title).toBe('Old');
+      expect(archived[0]!.title).toBe('Old');
     });
 
     it('returns tasks ordered by id', async () => {
@@ -511,8 +511,8 @@ describe('IStorage contract', () => {
 
       const tasks = await storage.getTasks();
 
-      expect(tasks[0].title).toBe('First');
-      expect(tasks[1].title).toBe('Second');
+      expect(tasks[0]!.title).toBe('First');
+      expect(tasks[1]!.title).toBe('Second');
     });
 
     it('filters tasks by stageId', async () => {
@@ -523,7 +523,7 @@ describe('IStorage contract', () => {
       const s1Tasks = await storage.getTasksByStage(stageId);
 
       expect(s1Tasks).toHaveLength(1);
-      expect(s1Tasks[0].title).toBe('S1');
+      expect(s1Tasks[0]!.title).toBe('S1');
     });
 
     it('getTasksByStage excludes archived tasks', async () => {
@@ -587,7 +587,7 @@ describe('IStorage contract', () => {
       const updated = await storage.updateTask(task.id, { status: TASK_STATUS.IN_PROGRESS });
 
       expect(updated!.history).toHaveLength(2);
-      expect(updated!.history![1].status).toBe(TASK_STATUS.IN_PROGRESS);
+      expect(updated!.history![1]!.status).toBe(TASK_STATUS.IN_PROGRESS);
     });
 
     it('does not append history when status is unchanged', async () => {
@@ -642,8 +642,8 @@ describe('IStorage contract', () => {
 
       const archived = await storage.archiveTask(task.id);
 
-      const lastEntry = archived!.history![archived!.history!.length - 1];
-      expect(lastEntry.note).toBe('Archived');
+      const lastEntry = archived!.history!.at(-1);
+      expect(lastEntry!.note).toBe('Archived');
     });
 
     it('returns undefined when archiving a non-existent task', async () => {
