@@ -34,8 +34,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 import { useState } from 'react';
 import {
   Select,
@@ -51,6 +54,7 @@ interface CreateTaskDialogProps {
 
 export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
   const [open, setOpen] = useState(false);
+  const [dueDateOpen, setDueDateOpen] = useState(false);
   const { toast } = useToast();
   const createTask = useCreateTask();
 
@@ -267,6 +271,61 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="dueDate"
+              render={({ field }) => {
+                const hasDate =
+                  field.value && field.value instanceof Date && !isNaN(field.value.getTime());
+                return (
+                  <FormItem>
+                    <FormLabel className="text-xs">Due Date</FormLabel>
+                    <div className="flex gap-1.5">
+                      <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                'flex-1 h-12 justify-start text-left font-normal rounded-xl',
+                                !hasDate && 'text-muted-foreground',
+                              )}
+                            >
+                              {hasDate ? format(field.value!, 'MMM d, yyyy') : 'Pick date'}
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={field.value ?? undefined}
+                            onSelect={(date: Date | undefined) => {
+                              field.onChange(date ?? null);
+                              setDueDateOpen(false);
+                            }}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      {hasDate && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-12 w-12 rounded-xl shrink-0"
+                          onClick={() => field.onChange(null)}
+                          aria-label="Clear due date"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
 
             {/* Spacer to push button to bottom */}
             <div className="flex-1" />

@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
+import { useState } from 'react';
 import type { Control } from 'react-hook-form';
 import type { InsertTask } from '@shared/schema';
 import type { Stage } from '@shared/schema';
@@ -26,6 +27,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
+import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface EditTaskFormFieldsProps {
@@ -34,6 +36,8 @@ export interface EditTaskFormFieldsProps {
 }
 
 export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps) {
+  const [dueDateOpen, setDueDateOpen] = useState(false);
+
   return (
     <>
       <FormField
@@ -193,38 +197,56 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
         <FormField
           control={control}
           name="dueDate"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs">Due Date</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
+          render={({ field }) => {
+            const hasDate =
+              field.value && field.value instanceof Date && !isNaN(field.value.getTime());
+            return (
+              <FormItem>
+                <FormLabel className="text-xs">Due Date</FormLabel>
+                <div className="flex gap-1.5">
+                  <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            'flex-1 h-12 justify-start text-left font-normal rounded-xl',
+                            !hasDate && 'text-muted-foreground',
+                          )}
+                        >
+                          {hasDate ? format(field.value!, 'MMM d, yyyy') : 'Pick date'}
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={field.value ?? undefined}
+                        onSelect={(date: Date | undefined) => {
+                          field.onChange(date ?? null);
+                          setDueDateOpen(false);
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {hasDate && (
                     <Button
+                      type="button"
                       variant="outline"
-                      className={cn(
-                        'w-full h-12 justify-start text-left font-normal rounded-xl',
-                        !field.value && 'text-muted-foreground',
-                      )}
+                      size="icon"
+                      className="h-12 w-12 rounded-xl shrink-0"
+                      onClick={() => field.onChange(null)}
+                      aria-label="Clear due date"
                     >
-                      {field.value && field.value instanceof Date && !isNaN(field.value.getTime())
-                        ? format(field.value, 'MMM d')
-                        : 'Pick date'}
+                      <X className="h-4 w-4" />
                     </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    selected={field.value ?? undefined}
-                    onSelect={(date: Date | undefined) => {
-                      field.onChange(date || undefined);
-                    }}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              <FormMessage />
-            </FormItem>
-          )}
+                  )}
+                </div>
+                <FormMessage />
+              </FormItem>
+            );
+          }}
         />
       </div>
     </>
