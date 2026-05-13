@@ -78,6 +78,10 @@ export const TASK_RECURRENCE_VALUES = [
 export const EFFORT_MIN = 1;
 export const EFFORT_MAX = 5;
 
+// --- Task Owner ---
+// Free-form owner label, capped at this length at every layer (DB, API, UI).
+export const TASK_OWNER_MAX_LEN = 15;
+
 // --- Client Routes ---
 
 export const ROUTES = {

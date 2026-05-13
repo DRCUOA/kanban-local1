@@ -59,6 +59,7 @@ function fakeTask(overrides: Partial<Task> = {}): Task {
     parentTaskId: null,
     recurrence: 'none',
     history: [{ status: 'backlog', timestamp: NOW.toISOString() }],
+    owner: null,
     ...overrides,
   };
 }

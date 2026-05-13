@@ -33,6 +33,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(allTasks);
   });
 
+  // Distinct owners — registered before any /api/tasks/:id routes so the
+  // literal "owners" segment never gets captured as an id.
+  app.get(api.tasks.owners.path, async (_req: Request, res: Response<string[]>) => {
+    const owners = await storage.getDistinctOwners();
+    res.json(owners);
+  });
+
   app.post(
     api.tasks.create.path,
     async (

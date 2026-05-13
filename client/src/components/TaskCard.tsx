@@ -8,7 +8,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { GripVertical, Clock, AlertCircle } from 'lucide-react';
+import { GripVertical, Clock, AlertCircle, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { InlineTaskEditor } from './InlineTaskEditor';
 import { format, isPast, isToday } from 'date-fns';
@@ -116,7 +116,7 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
             />
           </div>
 
-          {/* Priority and Effort - compact row */}
+          {/* Priority, Effort, Owner - compact row */}
           <div className="flex items-center gap-1.5 mb-2 flex-wrap">
             {task.priority && task.priority !== TASK_PRIORITY.NORMAL && (
               <Badge
@@ -136,6 +136,16 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
                 className="text-xs font-normal px-1.5 py-0 touch-target-sm min-h-0 min-w-0 h-5"
               >
                 {task.effort}/{EFFORT_MAX}
+              </Badge>
+            )}
+            {task.owner && (
+              <Badge
+                variant="outline"
+                className="text-xs font-normal px-1.5 py-0 touch-target-sm min-h-0 min-w-0 h-5 gap-1 max-w-[140px]"
+                data-testid="task-card-owner"
+              >
+                <User className="h-3 w-3 shrink-0" />
+                <span className="truncate">{task.owner}</span>
               </Badge>
             )}
           </div>

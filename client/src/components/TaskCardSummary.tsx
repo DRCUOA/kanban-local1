@@ -186,6 +186,11 @@ export function TaskCardSummary({
       <HoverCardContent>
         <div className="space-y-2">
           <p className="text-base font-semibold leading-tight text-foreground">{task.title}</p>
+          {task.owner && (
+            <p className="text-xs text-muted-foreground" data-testid="task-summary-owner">
+              Owner: <span className="font-medium text-foreground">{task.owner}</span>
+            </p>
+          )}
           {task.description && (
             <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
           )}
