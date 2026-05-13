@@ -36,6 +36,13 @@
       "when": 1774650000000,
       "tag": "0004_sub_stages",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778900200000,
+      "tag": "0007_add_task_owner",
+      "breakpoints": true
     }
   ]
 }

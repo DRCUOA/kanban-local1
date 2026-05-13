@@ -84,6 +84,7 @@ class MemStorage implements IStorage {
       history,
       updatedAt: now,
       createdAt: now,
+      owner: insert.owner ?? null,
     };
 
     this.taskStore.set(task.id, task);
@@ -154,6 +155,14 @@ class MemStorage implements IStorage {
 
   async deleteTask(id: number): Promise<void> {
     this.taskStore.delete(id);
+  }
+
+  async getDistinctOwners(): Promise<string[]> {
+    const set = new Set<string>();
+    for (const t of this.taskStore.values()) {
+      if (t.owner && t.owner.length > 0) set.add(t.owner);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
   }
 
   async getStages(): Promise<Stage[]> {

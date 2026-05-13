@@ -68,6 +68,7 @@ export interface IStorage {
   archiveTask(id: number): Promise<Task | undefined>;
   unarchiveTask(id: number): Promise<Task | undefined>;
   deleteTask(id: number): Promise<void>;
+  getDistinctOwners(): Promise<string[]>;
   getStages(): Promise<Stage[]>;
   createStage(stage: InsertStage): Promise<Stage>;
   updateStage(id: number, stage: Partial<InsertStage>): Promise<Stage | undefined>;
@@ -166,6 +167,19 @@ export class DatabaseStorage implements IStorage {
 
     const [updated] = await db.update(tasks).set(updateData).where(eq(tasks.id, id)).returning();
     return updated;
+  }
+
+  async getDistinctOwners(): Promise<string[]> {
+    // Returns each owner string that has been used on at least one task,
+    // sorted alphabetically (case-insensitive). Nulls/empties excluded by the WHERE clause.
+    const rows = await db
+      .selectDistinct({ owner: tasks.owner })
+      .from(tasks)
+      .where(sql`${tasks.owner} IS NOT NULL AND length(${tasks.owner}) > 0`);
+    return rows
+      .map((r) => r.owner!)
+      .filter((v): v is string => typeof v === 'string' && v.length > 0)
+      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
   }
 
   async deleteTask(id: number): Promise<void> {

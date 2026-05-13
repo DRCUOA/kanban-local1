@@ -57,6 +57,7 @@ export function useEditTaskForm({ task, open, onOpenChange }: UseEditTaskFormOpt
           dueDate: parsedDueDate,
           tags: Array.isArray(task.tags) ? task.tags : [],
           recurrence: (task.recurrence as TaskRecurrence) || TASK_RECURRENCE.NONE,
+          owner: task.owner ?? null,
         });
       } catch (error) {
         logger.error('Error resetting form:', error);
@@ -70,6 +71,7 @@ export function useEditTaskForm({ task, open, onOpenChange }: UseEditTaskFormOpt
           dueDate: undefined,
           tags: [],
           recurrence: (task.recurrence as TaskRecurrence) || TASK_RECURRENCE.NONE,
+          owner: task.owner ?? null,
         });
       }
     }

@@ -11,7 +11,14 @@ import {
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
 import { relations } from 'drizzle-orm';
-import { TASK_STATUS, TASK_PRIORITY, TASK_RECURRENCE, EFFORT_MIN, EFFORT_MAX } from './constants';
+import {
+  TASK_STATUS,
+  TASK_PRIORITY,
+  TASK_RECURRENCE,
+  EFFORT_MIN,
+  EFFORT_MAX,
+  TASK_OWNER_MAX_LEN,
+} from './constants';
 
 export const stages = pgTable('stages', {
   id: serial('id').primaryKey(),
@@ -87,6 +94,8 @@ export const tasks = pgTable('tasks', {
   parentTaskId: integer('parent_task_id'), // FK to tasks(id) enforced at DB level, not via Drizzle .references() to avoid circular type inference
   recurrence: text('recurrence').default(TASK_RECURRENCE.NONE),
   history: jsonb('history').$type<TaskHistoryEntry[]>(), // Status change history
+  // Free-form owner label (max TASK_OWNER_MAX_LEN chars) — DB-level length enforced via VARCHAR
+  owner: text('owner'),
 });
 
 /** Gmail watch cursor: one row per monitored mailbox. */
@@ -216,6 +225,16 @@ export const insertTaskSchema = createInsertSchema(tasks)
       )
       .optional()
       .nullable(),
+    owner: z
+      .string()
+      .max(TASK_OWNER_MAX_LEN, `Owner must be ${TASK_OWNER_MAX_LEN} characters or less`)
+      .optional()
+      .nullable()
+      .transform((v) => {
+        if (v == null) return v;
+        const trimmed = v.trim();
+        return trimmed.length === 0 ? null : trimmed;
+      }),
   });
 
 export type Stage = typeof stages.$inferSelect;

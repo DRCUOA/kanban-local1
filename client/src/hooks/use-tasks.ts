@@ -17,6 +17,8 @@ export function useCreateTask() {
     mutationFn: (task: InsertTask) => apiPost<Task>(api.tasks.create.path, task),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.tasks.list.path] });
+      // New task may have introduced a brand-new owner label; refresh the picker.
+      queryClient.invalidateQueries({ queryKey: [api.tasks.owners.path] });
     },
   });
 }
@@ -30,6 +32,7 @@ export function useUpdateTask() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.tasks.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.tasks.owners.path] });
     },
   });
 }

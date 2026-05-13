@@ -29,6 +29,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { format } from 'date-fns';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { OwnerSelector } from './OwnerSelector';
 
 export interface EditTaskFormFieldsProps {
   control: Control<InsertTask>;
@@ -157,6 +158,24 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
           )}
         />
       </div>
+
+      <FormField
+        control={control}
+        name="owner"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel className="text-xs">Owner</FormLabel>
+            <FormControl>
+              <OwnerSelector
+                value={field.value}
+                onChange={(next) => field.onChange(next)}
+                extraOwners={field.value ? [field.value] : []}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
       <div className="grid grid-cols-2 gap-3">
         <FormField

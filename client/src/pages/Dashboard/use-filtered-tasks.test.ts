@@ -20,6 +20,7 @@ const makeTask = (overrides: Partial<Task> = {}): Task => ({
   parentTaskId: null,
   recurrence: 'none',
   history: null,
+  owner: null,
   ...overrides,
 });
 

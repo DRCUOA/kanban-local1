@@ -82,6 +82,13 @@ export const api = {
         404: z.object({ message: z.string() }),
       },
     },
+    owners: {
+      method: 'GET' as const,
+      path: '/api/tasks/owners',
+      responses: {
+        200: z.array(z.string()),
+      },
+    },
   },
   stages: {
     list: {

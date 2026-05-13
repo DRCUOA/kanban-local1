@@ -47,6 +47,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { OwnerSelector } from './OwnerSelector';
 
 interface CreateTaskDialogProps {
   iconOnly?: boolean;
@@ -71,6 +72,7 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
       status: TASK_STATUS.BACKLOG,
       priority: TASK_PRIORITY.NORMAL,
       recurrence: TASK_RECURRENCE.NONE,
+      owner: null,
     },
   });
 
@@ -95,6 +97,7 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
             status: TASK_STATUS.BACKLOG,
             priority: TASK_PRIORITY.NORMAL,
             recurrence: TASK_RECURRENCE.NONE,
+            owner: null,
           });
         },
         onError: (error) => {
@@ -200,6 +203,24 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
                       {...field}
                       value={field.value || ''}
                       data-testid="input-task-description"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="owner"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs">Owner</FormLabel>
+                  <FormControl>
+                    <OwnerSelector
+                      value={field.value}
+                      onChange={(next) => field.onChange(next)}
+                      extraOwners={field.value ? [field.value] : []}
                     />
                   </FormControl>
                   <FormMessage />
