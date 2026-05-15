@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useLocation } from 'wouter';
 import { ROUTES } from '@shared/constants';
 import { useToast } from '@/hooks/use-toast';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function Archive() {
   const [, navigate] = useLocation();
@@ -101,6 +102,7 @@ export default function Archive() {
               <p className="text-[10px] text-muted-foreground leading-tight">Archived Tasks</p>
             </div>
           </div>
+          <ThemeToggle />
           <Button
             variant="ghost"
             size="icon"

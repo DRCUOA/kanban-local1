@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Settings } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export interface AdminHeaderProps {
   onBack: () => void;
@@ -30,6 +31,7 @@ export function AdminHeader({ onBack }: AdminHeaderProps) {
             <p className="text-[10px] text-muted-foreground leading-tight">Manage Stages</p>
           </div>
         </div>
+        <ThemeToggle />
       </div>
     </header>
   );

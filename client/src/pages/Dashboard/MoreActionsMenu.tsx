@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { useState } from 'react';
 import { Archive, Settings, Download, Upload } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export interface MoreActionsMenuProps {
   onArchive: () => void;
@@ -34,6 +35,7 @@ export function MoreActionsMenu({ onArchive, onAdmin, onExport, onImport }: More
           />
 
           <div className="absolute bottom-full right-0 mb-2 z-50 neo-raised rounded-xl p-2 w-48 animate-slide-up">
+            <ThemeToggle variant="row" />
             <button
               className="w-full flex items-center gap-3 p-3 rounded-lg text-sm active:bg-muted/50 transition-colors"
               onClick={() => {

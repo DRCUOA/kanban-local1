@@ -2,6 +2,7 @@
 import { LayoutDashboard, Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export interface DashboardHeaderProps {
   searchQuery: string;
@@ -45,6 +46,7 @@ export function DashboardHeader({
           >
             <Search className="h-5 w-5" />
           </Button>
+          <ThemeToggle />
         </div>
       </div>
 
