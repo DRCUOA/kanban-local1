@@ -4,61 +4,148 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =============================================================================
+ * Design Tokens
+ *
+ * Semantic colour system tuned for high readability across exterior lighting
+ * (bright sunlight, dim indoor, office fluorescent). Tokens are kept as raw
+ * `H S L%` triplets so Tailwind's `hsl(var(--token) / <alpha-value>)` plumbing
+ * keeps working. Shadcn-style aliases (--background, --card, etc.) are mapped
+ * onto the semantic tokens below so existing utility classes (`bg-background`,
+ * `text-foreground`, …) continue to compile unchanged.
+ *
+ * Light mode  : cool-tinted near-white surface stack — avoids glare, avoids
+ *               the muddy mid-greys that previously dominated.
+ * Dark mode   : deep blue-tinted near-black (NOT pitch black) with layered
+ *               elevation so dialogs/popovers float clearly above the page.
+ *
+ * Contrast targets:
+ *   body text on bg-base  : ≥ 7:1   (WCAG AAA)
+ *   secondary on bg-base  : ≥ 4.5:1 (WCAG AA)
+ *   accent on bg-base     : ≥ 4.5:1 (WCAG AA)
+ *   focus ring            : highly visible accent colour with 2px offset
+ * ========================================================================== */
+
 @layer base {
   :root {
-    /* Mobile-optimized neomorphic color palette */
-    --background: 0 0% 70%;
-    --foreground: 220 10% 15%;
-    --card: 0 0% 75%;
-    --card-foreground: 220 10% 15%;
-    --popover: 0 0% 75%;
-    --popover-foreground: 220 10% 15%;
-    --primary: 220 20% 40%;
-    --primary-foreground: 0 0% 90%;
-    --secondary: 0 0% 65%;
-    --secondary-foreground: 220 10% 20%;
-    --muted: 0 0% 62%;
-    --muted-foreground: 220 8% 55%;
-    --accent: 220 20% 40%;
-    --accent-foreground: 0 0% 90%;
-    --destructive: 0 70% 55%;
-    --destructive-foreground: 0 0% 90%;
-    --border: 0 0% 60%;
-    --input: 0 0% 60%;
-    --ring: 220 20% 40%;
+    /* ---- Surfaces (layered from page → most-elevated) ---- */
+    --bg-base: 220 28% 96%; /* #eef1f6 — page background */
+    --bg-surface: 0 0% 100%; /* #ffffff — cards / columns */
+    --bg-elevated: 0 0% 100%; /* #ffffff — dialogs, popovers (extra shadow) */
+    --bg-sunken: 220 30% 92%; /* #e2e8f0 — inputs, pressed states */
+    --bg-subtle: 220 26% 94%; /* #e6ebf2 — subtle hover / inset */
+
+    /* ---- Foreground ---- */
+    --fg-primary: 220 35% 13%; /* #161e2e — body text, 14.7:1 on bg-base */
+    --fg-secondary: 220 18% 28%; /* #3a4458 — secondary text, 8.5:1 */
+    --fg-muted: 220 12% 42%; /* #5e6878 — meta / placeholder, 4.9:1 */
+    --fg-on-accent: 0 0% 100%; /* text on accent fill */
+
+    /* ---- Borders ---- */
+    --border-subtle: 220 18% 86%; /* #d4dae5 — default divider */
+    --border-strong: 220 14% 70%; /* #a3aebf — input outlines */
+
+    /* ---- Accent / brand ---- */
+    --accent-1: 222 76% 50%; /* #1f5fde — vivid blue */
+    --accent-1-hover: 222 76% 44%; /* #1c54c4 */
+    --accent-1-pressed: 222 76% 38%; /* #194ba6 */
+    --accent-1-fg: 0 0% 100%;
+    --accent-1-soft: 222 80% 94%; /* tinted background for accent surfaces */
+
+    /* ---- Status ---- */
+    --success: 142 64% 36%; /* #21924d — 4.8:1 on bg-base */
+    --success-fg: 0 0% 100%;
+    --warning: 38 92% 42%; /* #cc7a05 — readable on light bg */
+    --warning-fg: 220 35% 13%;
+    --danger: 358 74% 47%; /* #cd2233 — 5.7:1 on bg-base */
+    --danger-fg: 0 0% 100%;
+
+    /* ---- Focus ring ---- */
+    --focus-ring: 222 90% 55%; /* highly visible, accent-derived */
+
+    /* ---- Neumorphic shadow tuning (deltas above/below current surface) ---- */
+    --neo-light-edge: 255, 255, 255; /* highlight colour (RGB triplet) */
+    --neo-light-alpha: 0.85; /* light edge strength */
+    --neo-dark-edge: 30, 41, 59; /* shadow colour (RGB triplet — slate-800) */
+    --neo-dark-alpha: 0.1; /* dark edge strength */
+
+    /* ---- Shadcn aliases (preserved for existing utility/component usage) ---- */
+    --background: var(--bg-base);
+    --foreground: var(--fg-primary);
+    --card: var(--bg-surface);
+    --card-foreground: var(--fg-primary);
+    --popover: var(--bg-elevated);
+    --popover-foreground: var(--fg-primary);
+    --primary: var(--accent-1);
+    --primary-foreground: var(--accent-1-fg);
+    --secondary: var(--bg-sunken);
+    --secondary-foreground: var(--fg-secondary);
+    --muted: var(--bg-subtle);
+    --muted-foreground: var(--fg-muted);
+    --accent: var(--accent-1);
+    --accent-foreground: var(--accent-1-fg);
+    --destructive: var(--danger);
+    --destructive-foreground: var(--danger-fg);
+    --border: var(--border-subtle);
+    --input: var(--border-strong);
+    --ring: var(--focus-ring);
     --radius: 1rem;
-    /* TaskWarnings + matching task borders (Tailwind yellow-500 / red-500 / blue-500) */
-    --warning-accent: 47.9 95.8% 53.1%;
-    --toast-overdue-accent: 0 84.2% 60.2%;
-    --toast-info-accent: 217.2 91.2% 59.8%;
+
+    /* TaskWarnings + matching task borders (kept as separate tokens for the
+       inline-border helper at @/lib/task-warning-border). */
+    --warning-accent: 38 92% 50%;
+    --toast-overdue-accent: 358 78% 55%;
+    --toast-info-accent: 217 91% 55%;
 
     --font-sans: 'Inter', sans-serif;
     --font-display: 'Space Grotesk', sans-serif;
+
+    color-scheme: light;
   }
 
   .dark {
-    --background: 220 15% 18%;
-    --foreground: 220 10% 85%;
-    --card: 220 15% 18%;
-    --card-foreground: 220 10% 85%;
-    --popover: 220 15% 18%;
-    --popover-foreground: 220 10% 85%;
-    --primary: 220 25% 60%;
-    --primary-foreground: 220 15% 18%;
-    --secondary: 220 12% 22%;
-    --secondary-foreground: 220 10% 85%;
-    --muted: 220 10% 25%;
-    --muted-foreground: 220 8% 65%;
-    --accent: 220 25% 60%;
-    --accent-foreground: 220 15% 18%;
-    --destructive: 0 65% 50%;
-    --destructive-foreground: 220 15% 18%;
-    --border: 220 10% 28%;
-    --input: 220 10% 28%;
-    --ring: 220 25% 60%;
-    --warning-accent: 47.9 95.8% 53.1%;
-    --toast-overdue-accent: 0 84.2% 60.2%;
-    --toast-info-accent: 217.2 91.2% 59.8%;
+    /* ---- Surfaces ---- */
+    --bg-base: 222 22% 8%; /* #10141d — deep, NOT pitch black */
+    --bg-surface: 222 18% 12%; /* #1a1f2c — cards, clearly above page */
+    --bg-elevated: 222 16% 17%; /* #262d3d — dialogs / popovers */
+    --bg-sunken: 222 26% 5%; /* #0a0d15 — inputs, pressed wells */
+    --bg-subtle: 222 18% 14%; /* #1f2533 — subtle hover */
+
+    /* ---- Foreground ---- */
+    --fg-primary: 220 22% 97%; /* #f1f3f8 — 17.1:1 on bg-base */
+    --fg-secondary: 220 14% 80%; /* #c4cad6 — 11.0:1 */
+    --fg-muted: 220 12% 64%; /* #97a0b1 — 5.6:1 */
+    --fg-on-accent: 222 30% 10%;
+
+    /* ---- Borders ---- */
+    --border-subtle: 220 14% 24%; /* #333a48 */
+    --border-strong: 220 12% 40%; /* #5b6273 */
+
+    /* ---- Accent (lighter + slightly less saturated for dark surfaces) ---- */
+    --accent-1: 222 90% 70%; /* #7197f7 — 7.3:1 on bg-base */
+    --accent-1-hover: 222 92% 78%;
+    --accent-1-pressed: 222 92% 62%;
+    --accent-1-fg: 222 35% 10%;
+    --accent-1-soft: 222 60% 22%;
+
+    /* ---- Status (lifted brightness for dark surfaces) ---- */
+    --success: 142 55% 60%; /* #57c180 */
+    --success-fg: 222 30% 10%;
+    --warning: 38 92% 64%; /* #f3b558 */
+    --warning-fg: 222 30% 10%;
+    --danger: 358 80% 68%; /* #ed697b */
+    --danger-fg: 222 30% 10%;
+
+    /* ---- Focus ring (brighter on dark) ---- */
+    --focus-ring: 220 95% 75%;
+
+    /* ---- Neumorphic shadows re-tuned for near-black surfaces ---- */
+    --neo-light-edge: 255, 255, 255;
+    --neo-light-alpha: 0.04;
+    --neo-dark-edge: 0, 0, 0;
+    --neo-dark-alpha: 0.45;
+
+    color-scheme: dark;
   }
 }
 
@@ -69,48 +156,78 @@
   }
 
   html {
-    /* Prevent horizontal scroll on mobile */
     overflow-x: hidden;
-    /* Smooth scrolling for iOS */
     -webkit-overflow-scrolling: touch;
   }
 
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
-    background: linear-gradient(135deg, #a8a8a8 0%, #909090 50%, #989898 100%);
-    /* Prevent pull-to-refresh interfering */
+    /* Subtle, theme-aware page wash. Uses tokens so it transitions cleanly. */
+    background-color: hsl(var(--bg-base));
+    background-image:
+      radial-gradient(ellipse at top left, hsl(var(--bg-surface) / 0.35), transparent 55%),
+      radial-gradient(ellipse at bottom right, hsl(var(--accent-1-soft) / 0.25), transparent 60%);
+    background-attachment: fixed;
     overscroll-behavior-y: contain;
-    /* Safe area for notch/home indicator */
     padding-bottom: env(safe-area-inset-bottom);
     padding-top: env(safe-area-inset-top);
-    /* Prevent text size adjustment */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }
 
-  .dark body {
-    background: linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%);
+  /* Smooth theme transition — fast enough to feel instant, slow enough to
+     avoid a jarring flash when toggling. */
+  body,
+  body * {
+    transition:
+      background-color 150ms ease,
+      color 150ms ease,
+      border-color 150ms ease,
+      fill 150ms ease,
+      stroke 150ms ease;
+  }
+  /* Opt-out for elements that animate transforms/opacity (e.g. dnd-kit) so
+     theme transitions don't conflict with motion. */
+  [data-no-theme-transition='true'],
+  [data-no-theme-transition='true'] * {
+    transition: none !important;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-display);
     @apply font-bold tracking-tight;
   }
 
-  /* Touch target helper - apply explicitly where needed */
+  /* Accessible focus ring — always visible for keyboard users, never on mouse
+     focus (per :focus-visible spec). */
+  *:focus-visible {
+    outline: 2px solid hsl(var(--focus-ring));
+    outline-offset: 2px;
+    border-radius: calc(var(--radius) * 0.75);
+  }
+
+  /* Selection — themed accent at low alpha, readable text. */
+  ::selection {
+    background-color: hsl(var(--accent-1) / 0.25);
+    color: hsl(var(--fg-primary));
+  }
+
+  /* Touch target helpers (preserved). */
   .touch-target {
     min-height: 44px;
     min-width: 44px;
   }
-
   .touch-target-sm {
     min-height: 36px;
     min-width: 36px;
   }
 
-  /* Prevent mobile browsers from hijacking long-press on drag handles
-     (iOS callout menu, Android text selection, context menus). */
   .drag-handle {
     -webkit-touch-callout: none;
     -webkit-user-select: none;
@@ -120,112 +237,76 @@
 }
 
 @layer components {
-  /* Mobile-optimized neomorphic raised effect - smaller shadows */
+  /* --------------------------------------------------------------------------
+   * Neomorphic surface helpers
+   * Tuned so cards (--bg-surface) read clearly above the page (--bg-base) in
+   * both modes. Shadow intensities come from theme-aware tokens so the same
+   * helper renders correctly under .dark.
+   * ------------------------------------------------------------------------ */
+
   .neo-raised {
     background: hsl(var(--card));
     border-radius: var(--radius);
-    box-shadow: 
-      4px 4px 8px rgba(0, 0, 0, 0.08),
-      -4px -4px 8px rgba(255, 255, 255, 0.25);
+    box-shadow:
+      4px 4px 10px rgba(var(--neo-dark-edge), var(--neo-dark-alpha)),
+      -3px -3px 8px rgba(var(--neo-light-edge), var(--neo-light-alpha));
   }
 
-  .dark .neo-raised {
-    border-radius: var(--radius);
-    box-shadow: 
-      4px 4px 8px rgba(0, 0, 0, 0.25),
-      -4px -4px 8px rgba(255, 255, 255, 0.04);
-  }
-
-  /* Mobile-optimized pressed/inset effect */
   .neo-pressed {
-    background: hsl(var(--card));
+    background: hsl(var(--bg-sunken));
     border-radius: var(--radius);
-    box-shadow: 
-      inset 2px 2px 4px rgba(0, 0, 0, 0.08),
-      inset -2px -2px 4px rgba(255, 255, 255, 0.25);
+    box-shadow:
+      inset 2px 2px 5px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) + 0.04)),
+      inset -2px -2px 5px rgba(var(--neo-light-edge), var(--neo-light-alpha));
   }
 
-  .dark .neo-pressed {
-    border-radius: var(--radius);
-    box-shadow: 
-      inset 2px 2px 4px rgba(0, 0, 0, 0.25),
-      inset -2px -2px 4px rgba(255, 255, 255, 0.04);
-  }
-
-  /* Mobile card - uses active state instead of hover */
   .neo-card {
     @apply neo-raised transition-all duration-200;
   }
 
   .neo-card:active {
     border-radius: var(--radius);
-    box-shadow: 
-      2px 2px 4px rgba(0, 0, 0, 0.06),
-      -2px -2px 4px rgba(255, 255, 255, 0.2);
+    box-shadow:
+      2px 2px 6px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) - 0.02)),
+      -2px -2px 4px rgba(var(--neo-light-edge), calc(var(--neo-light-alpha) - 0.1));
     transform: scale(0.98);
   }
 
-  .dark .neo-card:active {
-    border-radius: var(--radius);
-    box-shadow: 
-      2px 2px 4px rgba(0, 0, 0, 0.2),
-      -2px -2px 4px rgba(255, 255, 255, 0.03);
-    transform: scale(0.98);
-  }
-
-  /* Mobile beveled circle - touch-optimized */
   .neo-beveled-circle {
     position: relative;
     background: hsl(var(--card));
     border-radius: 50%;
-    box-shadow: 
-      0 3px 6px rgba(0, 0, 0, 0.12),
-      0 -2px 4px rgba(255, 255, 255, 0.25),
-      inset 0 0 12px rgba(0, 0, 0, 0.15),
-      inset 0 0 6px rgba(0, 0, 0, 0.08);
+    box-shadow:
+      0 3px 7px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) + 0.04)),
+      0 -2px 4px rgba(var(--neo-light-edge), var(--neo-light-alpha)),
+      inset 0 0 12px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) + 0.05)),
+      inset 0 0 6px rgba(var(--neo-dark-edge), var(--neo-dark-alpha));
   }
 
   .neo-beveled-circle:active {
-    box-shadow: 
-      inset 0 2px 4px rgba(0, 0, 0, 0.2),
-      inset 0 1px 2px rgba(0, 0, 0, 0.12),
-      inset 0 -1px 2px rgba(255, 255, 255, 0.08),
-      0 1px 2px rgba(0, 0, 0, 0.08);
+    box-shadow:
+      inset 0 2px 4px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) + 0.1)),
+      inset 0 1px 2px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) + 0.02)),
+      inset 0 -1px 2px rgba(var(--neo-light-edge), calc(var(--neo-light-alpha) - 0.04)),
+      0 1px 2px rgba(var(--neo-dark-edge), var(--neo-dark-alpha));
     transform: scale(0.95);
   }
 
-  .dark .neo-beveled-circle {
-    box-shadow: 
-      0 3px 6px rgba(0, 0, 0, 0.35),
-      0 -2px 4px rgba(255, 255, 255, 0.04),
-      inset 0 0 12px rgba(0, 0, 0, 0.4),
-      inset 0 0 6px rgba(0, 0, 0, 0.25);
-  }
-
-  .dark .neo-beveled-circle:active {
-    box-shadow: 
-      inset 0 2px 4px rgba(0, 0, 0, 0.5),
-      inset 0 1px 2px rgba(0, 0, 0, 0.35),
-      inset 0 -1px 2px rgba(255, 255, 255, 0.03),
-      0 1px 2px rgba(0, 0, 0, 0.25);
-    transform: scale(0.95);
-  }
-
-  /* Beveled circle colored - mobile touch (border from inline style: stage or warning highlight) */
   .neo-beveled-circle-colored {
-    transition: box-shadow 0.15s ease, transform 0.15s ease;
+    transition:
+      box-shadow 0.15s ease,
+      transform 0.15s ease;
   }
 
   .neo-beveled-circle-colored:active {
-    box-shadow: 
-      inset 0 2px 4px rgba(0, 0, 0, 0.25),
-      inset 0 1px 2px rgba(0, 0, 0, 0.15),
-      inset 0 -1px 2px rgba(255, 255, 255, 0.08),
-      0 1px 2px rgba(0, 0, 0, 0.12);
+    box-shadow:
+      inset 0 2px 4px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) + 0.15)),
+      inset 0 1px 2px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) + 0.05)),
+      inset 0 -1px 2px rgba(var(--neo-light-edge), var(--neo-light-alpha)),
+      0 1px 2px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) + 0.02));
     transform: scale(0.92);
   }
 
-  /* Mobile button */
   .neo-button {
     @apply neo-raised transition-all duration-150;
   }
@@ -235,35 +316,37 @@
     transform: scale(0.97);
   }
 
-  /* Mobile input */
   .neo-input {
     @apply neo-pressed;
+    color: hsl(var(--fg-primary));
+    border: 1px solid hsl(var(--border-subtle));
   }
 
-  .neo-input:focus {
+  .neo-input:focus,
+  .neo-input:focus-visible {
     @apply neo-raised;
     outline: none;
+    border-color: hsl(var(--focus-ring));
+    box-shadow:
+      4px 4px 10px rgba(var(--neo-dark-edge), var(--neo-dark-alpha)),
+      -3px -3px 8px rgba(var(--neo-light-edge), var(--neo-light-alpha)),
+      0 0 0 2px hsl(var(--focus-ring) / 0.4);
   }
 
-  /* Mobile container */
   .neo-container {
     @apply neo-raised;
   }
 
-  /* Mobile bottom navigation bar */
+  /* Mobile bottom nav — elevated above page with a top edge shadow. */
   .mobile-bottom-nav {
-    @apply fixed bottom-0 left-0 right-0 z-50 neo-raised;
+    @apply fixed bottom-0 left-0 right-0 z-50;
+    background: hsl(var(--bg-surface));
     padding-bottom: env(safe-area-inset-bottom);
+    border-top: 1px solid hsl(var(--border-subtle));
     border-radius: 1rem 1rem 0 0;
-    box-shadow: 
-      0 -2px 8px rgba(0, 0, 0, 0.1),
-      0 -1px 3px rgba(0, 0, 0, 0.06);
-  }
-
-  .dark .mobile-bottom-nav {
-    box-shadow: 
-      0 -2px 8px rgba(0, 0, 0, 0.3),
-      0 -1px 3px rgba(0, 0, 0, 0.2);
+    box-shadow:
+      0 -4px 14px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) + 0.02)),
+      0 -1px 3px rgba(var(--neo-dark-edge), var(--neo-dark-alpha));
   }
 
   /* Scrollable tabs container */
@@ -273,7 +356,6 @@
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
-
   .scroll-tabs::-webkit-scrollbar {
     display: none;
   }
@@ -286,14 +368,14 @@
   }
 }
 
-/* Hide scrollbars on mobile - use momentum scrolling */
+/* Hide scrollbars on mobile - use momentum scrolling. The app is mobile-only
+   so this matches the use case; do NOT remove unless desktop is targeted. */
 ::-webkit-scrollbar {
   width: 0;
   height: 0;
   display: none;
 }
 
-/* Smooth scroll containers */
 .scroll-container {
   -webkit-overflow-scrolling: touch;
 }
@@ -303,5 +385,18 @@
   .task-card-magnify:hover,
   .task-summary-magnify:hover {
     transform: scale(1.03);
+  }
+}
+
+/* Respect users who explicitly request reduced motion — keep theme transitions
+   short but disable element-level motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

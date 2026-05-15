@@ -34,11 +34,11 @@ export function DashboardBottomNav({
       'flex flex-col items-center gap-1 py-2 px-3 min-w-[4.25rem] rounded-xl transition-[color,box-shadow,background-color,transform] duration-200 active:scale-90',
       active
         ? cn(
-            'text-muted-foreground bg-black/[0.04] dark:bg-white/[0.06]',
-            'shadow-[2px_2px_6px_rgba(0,0,0,0.12),-1px_-1px_4px_rgba(255,255,255,0.28)]',
-            'dark:shadow-[2px_2px_10px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.05)]',
+            'text-primary bg-primary/10 dark:bg-primary/15',
+            'shadow-[inset_2px_2px_6px_rgba(0,0,0,0.10),inset_-1px_-1px_4px_rgba(255,255,255,0.30)]',
+            'dark:shadow-[inset_2px_2px_8px_rgba(0,0,0,0.45),inset_-1px_-1px_2px_rgba(255,255,255,0.05)]',
           )
-        : 'text-foreground/80 hover:text-foreground',
+        : 'text-fg-secondary hover:text-foreground',
     );
 
   return (

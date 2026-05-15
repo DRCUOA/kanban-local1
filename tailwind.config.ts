@@ -23,10 +23,12 @@ export default {
         'bottom-nav': '5rem', // Height of bottom nav bar
       },
       colors: {
+        /* ----- Shadcn aliases (mapped to semantic tokens in index.css) ----- */
         background: 'hsl(var(--background) / <alpha-value>)',
         foreground: 'hsl(var(--foreground) / <alpha-value>)',
         border: 'hsl(var(--border) / <alpha-value>)',
         input: 'hsl(var(--input) / <alpha-value>)',
+        ring: 'hsl(var(--ring) / <alpha-value>)',
         card: {
           DEFAULT: 'hsl(var(--card) / <alpha-value>)',
           foreground: 'hsl(var(--card-foreground) / <alpha-value>)',
@@ -62,7 +64,36 @@ export default {
           foreground: 'hsl(var(--destructive-foreground) / <alpha-value>)',
           border: 'var(--destructive-border)',
         },
-        ring: 'hsl(var(--ring) / <alpha-value>)',
+
+        /* ----- Semantic tokens (new) — preferred for new code ---------- */
+        surface: {
+          DEFAULT: 'hsl(var(--bg-surface) / <alpha-value>)',
+          elevated: 'hsl(var(--bg-elevated) / <alpha-value>)',
+          sunken: 'hsl(var(--bg-sunken) / <alpha-value>)',
+          subtle: 'hsl(var(--bg-subtle) / <alpha-value>)',
+        },
+        fg: {
+          DEFAULT: 'hsl(var(--fg-primary) / <alpha-value>)',
+          secondary: 'hsl(var(--fg-secondary) / <alpha-value>)',
+          muted: 'hsl(var(--fg-muted) / <alpha-value>)',
+          'on-accent': 'hsl(var(--fg-on-accent) / <alpha-value>)',
+        },
+        'border-subtle': 'hsl(var(--border-subtle) / <alpha-value>)',
+        'border-strong': 'hsl(var(--border-strong) / <alpha-value>)',
+        success: {
+          DEFAULT: 'hsl(var(--success) / <alpha-value>)',
+          foreground: 'hsl(var(--success-fg) / <alpha-value>)',
+        },
+        warning: {
+          DEFAULT: 'hsl(var(--warning) / <alpha-value>)',
+          foreground: 'hsl(var(--warning-fg) / <alpha-value>)',
+        },
+        danger: {
+          DEFAULT: 'hsl(var(--danger) / <alpha-value>)',
+          foreground: 'hsl(var(--danger-fg) / <alpha-value>)',
+        },
+
+        /* ----- Existing sub-namespaces preserved for components that use them ----- */
         chart: {
           '1': 'hsl(var(--chart-1) / <alpha-value>)',
           '2': 'hsl(var(--chart-2) / <alpha-value>)',

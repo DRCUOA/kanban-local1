@@ -80,7 +80,7 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
           'group relative cursor-pointer transition-transform duration-200 ease-out active:scale-[0.97] focus-visible:scale-[1.03] task-card-magnify',
           showStageOrWarningBorder && 'border-2',
           isOverdue && 'opacity-90 saturate-75',
-          isDueToday && 'ring-2 ring-yellow-500/30',
+          isDueToday && 'ring-2 ring-warning/30',
         )}
         style={
           showStageOrWarningBorder && borderColor
@@ -123,8 +123,8 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
                 variant="outline"
                 className={cn(
                   'text-xs font-normal px-1.5 py-0 touch-target-sm min-h-0 min-w-0 h-5',
-                  priority === 'high' && 'border-orange-500/50 text-orange-600',
-                  priority === 'critical' && 'border-red-500/50 text-red-600',
+                  priority === 'high' && 'border-warning/60 text-warning',
+                  priority === 'critical' && 'border-danger/60 text-danger',
                 )}
               >
                 {priority}
@@ -155,8 +155,8 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
             <div
               className={cn(
                 'flex items-center gap-1 mb-2 text-xs',
-                isOverdue && 'text-red-600 font-medium',
-                isDueToday && 'text-yellow-600 font-medium',
+                isOverdue && 'text-danger font-medium',
+                isDueToday && 'text-warning font-medium',
                 !isOverdue && !isDueToday && 'text-muted-foreground',
               )}
             >

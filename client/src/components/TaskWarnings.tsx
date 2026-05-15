@@ -86,13 +86,11 @@ export function TaskWarnings({ tasks }: TaskWarningsProps) {
           <Alert
             key={idx}
             className={cn(
-              'border-l-4 py-2 px-3 rounded-lg',
+              'border-l-4 py-2 px-3 rounded-lg bg-surface',
               warning.type === 'destructive' &&
-                'border-l-[hsl(var(--toast-overdue-accent))] bg-red-50 dark:bg-red-950/20',
-              warning.type === 'warning' &&
-                'border-l-[hsl(var(--warning-accent))] bg-yellow-50 dark:bg-yellow-950/20',
-              warning.type === 'info' &&
-                'border-l-[hsl(var(--toast-info-accent))] bg-blue-50 dark:bg-blue-950/20',
+                'border-l-[hsl(var(--toast-overdue-accent))] text-danger',
+              warning.type === 'warning' && 'border-l-[hsl(var(--warning-accent))] text-warning',
+              warning.type === 'info' && 'border-l-[hsl(var(--toast-info-accent))] text-primary',
             )}
           >
             <div className="flex items-center gap-2">
