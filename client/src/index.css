@@ -366,6 +366,125 @@
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
   }
+
+  /* --------------------------------------------------------------------------
+   * Rich text (task descriptions) — shared by the TipTap editor and read views.
+   * ------------------------------------------------------------------------ */
+
+  .rich-editor:focus-within {
+    @apply neo-raised;
+    border-color: hsl(var(--focus-ring));
+    box-shadow:
+      4px 4px 10px rgba(var(--neo-dark-edge), var(--neo-dark-alpha)),
+      -3px -3px 8px rgba(var(--neo-light-edge), var(--neo-light-alpha)),
+      0 0 0 2px hsl(var(--focus-ring) / 0.4);
+  }
+
+  .rich-text p {
+    margin: 0;
+  }
+  .rich-text p + p,
+  .rich-text ul + p,
+  .rich-text ol + p,
+  .rich-text blockquote + p {
+    margin-top: 0.375rem;
+  }
+  .rich-text h1,
+  .rich-text h2,
+  .rich-text h3 {
+    font-weight: 600;
+    line-height: 1.25;
+    margin: 0.5rem 0 0.25rem;
+  }
+  .rich-text h1 {
+    font-size: 1.25em;
+  }
+  .rich-text h2 {
+    font-size: 1.125em;
+  }
+  .rich-text h3 {
+    font-size: 1em;
+  }
+  .rich-text ul,
+  .rich-text ol {
+    padding-left: 1.25rem;
+    margin: 0.25rem 0;
+  }
+  .rich-text ul {
+    list-style: disc;
+  }
+  .rich-text ol {
+    list-style: decimal;
+  }
+  .rich-text blockquote {
+    border-left: 3px solid hsl(var(--border));
+    padding-left: 0.75rem;
+    margin: 0.375rem 0;
+    color: hsl(var(--muted-foreground));
+  }
+  .rich-text code {
+    background: hsl(var(--muted));
+    border-radius: 0.25rem;
+    padding: 0.1em 0.35em;
+    font-size: 0.875em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .rich-text pre {
+    background: hsl(var(--muted));
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    margin: 0.375rem 0;
+    overflow-x: auto;
+  }
+  .rich-text pre code {
+    background: transparent;
+    padding: 0;
+  }
+  .rich-text a:not(.file-chip) {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+  .rich-text hr {
+    border: none;
+    border-top: 1px solid hsl(var(--border));
+    margin: 0.5rem 0;
+  }
+
+  /* Inline attachment chip */
+  .file-chip {
+    @apply inline-flex items-center gap-1 align-middle;
+    background: hsl(var(--secondary));
+    color: hsl(var(--secondary-foreground));
+    border: 1px solid hsl(var(--border-subtle));
+    border-radius: 9999px;
+    padding: 0.05rem 0.5rem;
+    font-size: 0.8em;
+    max-width: 14rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .file-chip::before {
+    content: '📎';
+    margin-right: 0.15rem;
+    font-size: 0.9em;
+  }
+  .rich-editor .file-chip.ProseMirror-selectednode {
+    outline: 2px solid hsl(var(--focus-ring));
+  }
+
+  /* TipTap placeholder (Placeholder extension) */
+  .rich-editor .tiptap p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+    color: hsl(var(--muted-foreground));
+  }
 }
 
 /* Hide scrollbars on mobile - use momentum scrolling. The app is mobile-only

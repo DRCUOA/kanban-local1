@@ -32,7 +32,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/RichTextEditor';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -196,12 +196,10 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
                 <FormItem>
                   <FormLabel className="text-xs">Description</FormLabel>
                   <FormControl>
-                    <Textarea
+                    <RichTextEditor
                       placeholder="Add details..."
-                      className="resize-none rounded-xl text-base"
-                      rows={4}
-                      {...field}
                       value={field.value || ''}
+                      onChange={field.onChange}
                       data-testid="input-task-description"
                     />
                   </FormControl>

@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { useForm, FormProvider } from 'react-hook-form';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { EditTaskFormFields } from './EditTaskFormFields';
 import type { InsertTask, Stage } from '@shared/schema';
@@ -24,11 +25,15 @@ function Harness({ stagesOverride }: { stagesOverride?: Stage[] }) {
   });
 
   return (
-    <FormProvider {...form}>
-      <form>
-        <EditTaskFormFields control={form.control} stages={stagesOverride ?? stages} />
-      </form>
-    </FormProvider>
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      <FormProvider {...form}>
+        <form>
+          <EditTaskFormFields control={form.control} stages={stagesOverride ?? stages} />
+        </form>
+      </FormProvider>
+    </QueryClientProvider>
   );
 }
 
@@ -39,10 +44,10 @@ describe('EditTaskFormFields', () => {
     expect(titleInput.value).toBe('Test title');
   });
 
-  it('renders the description textarea with the default value', () => {
+  it('renders the description editor with the default value', () => {
     render(<Harness />);
-    const descInput: HTMLTextAreaElement = screen.getByTestId('input-edit-description');
-    expect(descInput.value).toBe('Test desc');
+    const descEditor: HTMLElement = screen.getByTestId('input-edit-description');
+    expect(descEditor.textContent).toContain('Test desc');
   });
 
   it('renders all form field labels', () => {

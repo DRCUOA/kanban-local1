@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/prefer-optional-chain, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/no-unnecessary-condition -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { useMemo } from 'react';
 import { type Task, type Stage } from '@shared/schema';
+import { richTextToPlainText } from '@/lib/rich-text';
 import {
   TASK_STATUS,
   TASK_PRIORITY,
@@ -37,7 +38,8 @@ export function useFilteredTasks({
       tasks?.filter(
         (t) =>
           t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (t.description && t.description.toLowerCase().includes(searchQuery.toLowerCase())),
+          (t.description &&
+            richTextToPlainText(t.description).toLowerCase().includes(searchQuery.toLowerCase())),
       ) || [];
 
     if (focusMode) {

@@ -15,7 +15,7 @@ import {
 } from '@shared/constants';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/RichTextEditor';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -94,11 +94,9 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
           <FormItem>
             <FormLabel className="text-xs">Description</FormLabel>
             <FormControl>
-              <Textarea
-                className="resize-none rounded-xl text-base"
-                rows={5}
-                {...field}
+              <RichTextEditor
                 value={field.value || ''}
+                onChange={field.onChange}
                 data-testid="input-edit-description"
               />
             </FormControl>
