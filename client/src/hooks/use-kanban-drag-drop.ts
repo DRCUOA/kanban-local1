@@ -60,9 +60,23 @@ export function useKanbanDragDrop({ tasks, sortedStages, allSubStages }: UseKanb
         return archiveRectCollisions;
       }
     }
+    // Sub-stage zones are nested inside stage columns, and task cards are
+    // sortable droppables nested inside both — pointerWithin can rank any of
+    // them first. Prefer the most specific target under the pointer:
+    // task card (sortable) > sub-stage zone > stage column.
     const pointerCollisions = pointerWithin(args);
     if (pointerCollisions.length > 0) {
-      return pointerCollisions;
+      const rank = (collision: (typeof pointerCollisions)[number]) => {
+        const container = droppableContainers.find((c) => c.id === collision.id);
+        if (container?.data.current?.sortable) return 0;
+        if (container?.data.current?.type === 'SubStage') return 1;
+        return 2;
+      };
+      return [...pointerCollisions].sort((a, b) => rank(a) - rank(b));
+    }
+    const rectCollisions = rectIntersection(args);
+    if (rectCollisions.length > 0) {
+      return rectCollisions;
     }
     return closestCenter(args);
   };
@@ -182,19 +196,41 @@ export function useKanbanDragDrop({ tasks, sortedStages, allSubStages }: UseKanb
       return;
     }
 
-    // overContainerId may be a number (from useDroppable) or string (from SortableContext)
+    // Stage columns register as `stage-<id>` (with data.stageId); flat-stage
+    // SortableContexts still use the bare numeric string, and legacy numeric
+    // ids are kept for safety.
+    const stageIdFromData =
+      over.data?.current?.type === 'Stage' ? (over.data.current.stageId as number) : null;
     const parsedStageId =
-      typeof overContainerId === 'number'
-        ? overContainerId
-        : typeof overContainerId === 'string' && /^\d+$/.test(overContainerId)
-          ? parseInt(overContainerId, 10)
-          : null;
+      stageIdFromData !== null
+        ? stageIdFromData
+        : typeof overContainerId === 'number'
+          ? overContainerId
+          : typeof overContainerId === 'string' && /^(?:stage-)?\d+$/.test(overContainerId)
+            ? parseInt(overContainerId.replace('stage-', ''), 10)
+            : null;
 
     if (activeTask && parsedStageId !== null) {
       const newStageId = parsedStageId;
       const newStage = sortedStages.find((s) => s.id === newStageId);
 
-      if (activeTask.stageId !== newStageId && newStage) {
+      if (activeTask.stageId === newStageId) {
+        // Dropping on the column body of the task's own stage un-assigns its
+        // sub-stage: the task falls back into the first (catch-all) sub-stage.
+        const stageSubStageTags = allSubStages
+          .filter((ss) => ss.stageId === newStageId)
+          .map((ss) => ss.tag);
+        const currentTags = activeTask.tags || [];
+        const newTags = currentTags.filter((tag) => !stageSubStageTags.includes(tag));
+        if (newTags.length !== currentTags.length) {
+          setActiveTasks((prev) =>
+            prev.map((t) =>
+              t.id === activeTask.id ? { ...t, tags: newTags.length > 0 ? newTags : null } : t,
+            ),
+          );
+          updateTask.mutate({ id: activeTask.id, tags: newTags.length > 0 ? newTags : null });
+        }
+      } else if (newStage) {
         const newStatus = getStatusFromStageName(newStage.name);
         let newTags = activeTask.tags || [];
         const newStageSubStages = allSubStages.filter((ss) => ss.stageId === newStageId);

@@ -20,8 +20,11 @@ export function TaskColumn({
   boardLayout = 'vertical',
   children,
 }: TaskColumnProps) {
+  // Namespaced id: a bare numeric id would collide with task-card sortable ids
+  // in dnd-kit's droppable registry (e.g. task 3 hijacking stage 3's column).
   const { setNodeRef, isOver } = useDroppable({
-    id: id,
+    id: `stage-${id}`,
+    data: { type: 'Stage', stageId: id },
   });
 
   const isEmpty = count === 0;
