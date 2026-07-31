@@ -7,6 +7,7 @@ import { useStages } from '@/hooks/use-stages';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
+import { richTextToPlainText } from '@/lib/rich-text';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { GripVertical } from 'lucide-react';
 
@@ -192,7 +193,9 @@ export function TaskCardSummary({
             </p>
           )}
           {task.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
+            <p className="text-sm text-muted-foreground line-clamp-2">
+              {richTextToPlainText(task.description)}
+            </p>
           )}
         </div>
       </HoverCardContent>

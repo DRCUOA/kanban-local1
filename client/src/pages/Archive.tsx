@@ -12,6 +12,7 @@ import { useLocation } from 'wouter';
 import { ROUTES } from '@shared/constants';
 import { useToast } from '@/hooks/use-toast';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { richTextToPlainText } from '@/lib/rich-text';
 
 export default function Archive() {
   const [, navigate] = useLocation();
@@ -43,7 +44,8 @@ export default function Archive() {
   const filteredTasks = archivedTasks?.filter(
     (t) =>
       t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (t.description && t.description.toLowerCase().includes(searchQuery.toLowerCase())),
+      (t.description &&
+        richTextToPlainText(t.description).toLowerCase().includes(searchQuery.toLowerCase())),
   );
 
   if (isLoading) {
@@ -174,7 +176,7 @@ export default function Archive() {
                   <CardContent className="p-3 pt-1">
                     {task.description && (
                       <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                        {task.description}
+                        {richTextToPlainText(task.description)}
                       </p>
                     )}
                     <div className="flex items-center justify-between mt-2">

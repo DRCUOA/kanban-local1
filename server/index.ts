@@ -43,14 +43,15 @@ app.use(
 
 app.use(
   express.json({
-    limit: '1mb',
+    // 10mb: task descriptions can embed image attachments as data URLs.
+    limit: '10mb',
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
   }),
 );
 
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 export function log(message: string, source = 'express') {
   const formattedTime = new Date().toLocaleTimeString('en-US', {

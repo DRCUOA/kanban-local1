@@ -11,8 +11,9 @@ import { errorHandler } from './errors';
  */
 export async function createApp(): Promise<{ app: express.Express; httpServer: Server }> {
   const app = express();
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: false }));
+  // 10mb: task descriptions can embed image attachments as data URLs.
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
   const httpServer = createServer(app);
   await registerRoutes(httpServer, app);

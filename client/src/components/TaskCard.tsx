@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { GripVertical, Clock, AlertCircle, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { InlineTaskEditor } from './InlineTaskEditor';
+import { RichTextContent } from './RichTextContent';
 import { format, isPast, isToday } from 'date-fns';
 
 interface TaskCardProps {
@@ -107,14 +108,14 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
           </CardTitle>
         </CardHeader>
         <CardContent className="p-3 pt-1">
-          <div className="inline-editor mb-2">
-            <InlineTaskEditor
-              task={task}
-              field="description"
-              onSave={onInlineEdit}
-              className="text-sm text-muted-foreground"
-            />
-          </div>
+          {task.description && (
+            <div className="mb-2">
+              <RichTextContent
+                value={task.description}
+                className="text-sm text-muted-foreground line-clamp-3"
+              />
+            </div>
+          )}
 
           {/* Priority, Effort, Owner - compact row */}
           <div className="flex items-center gap-1.5 mb-2 flex-wrap">
