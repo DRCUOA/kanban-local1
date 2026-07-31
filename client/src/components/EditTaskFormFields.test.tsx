@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
@@ -44,10 +44,21 @@ describe('EditTaskFormFields', () => {
     expect(titleInput.value).toBe('Test title');
   });
 
-  it('renders the description editor with the default value', () => {
+  it('shows the description in read-only view mode by default', () => {
     render(<Harness />);
+    const descView: HTMLElement = screen.getByTestId('text-edit-description');
+    expect(descView.textContent).toContain('Test desc');
+    expect(screen.queryByTestId('input-edit-description')).toBeNull();
+  });
+
+  it('switches to the rich text editor when Edit is tapped', () => {
+    render(<Harness />);
+    fireEvent.click(screen.getByTestId('button-toggle-description-edit'));
     const descEditor: HTMLElement = screen.getByTestId('input-edit-description');
     expect(descEditor.textContent).toContain('Test desc');
+    fireEvent.click(screen.getByTestId('button-toggle-description-edit'));
+    expect(screen.queryByTestId('input-edit-description')).toBeNull();
+    expect(screen.getByTestId('text-edit-description').textContent).toContain('Test desc');
   });
 
   it('renders all form field labels', () => {

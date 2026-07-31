@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { useEffect, useRef, useState } from 'react';
-import { useEditor, EditorContent, useEditorState } from '@tiptap/react';
+import { useEditor, EditorContent, useEditorState, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Placeholder } from '@tiptap/extensions';
 import {
@@ -83,6 +83,7 @@ export function RichTextEditor({
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const lastValueRef = useRef<string>(value || '');
+  const editorRef = useRef<Editor | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -98,6 +99,28 @@ export function RichTextEditor({
       attributes: {
         class: 'rich-text focus:outline-none min-h-[96px] px-4 py-3',
       },
+      handleDOMEvents: {
+        // Mobile virtual keyboards (notably Chrome/GBoard on Android) don't
+        // deliver a usable Enter keydown — ProseMirror suppresses keyCode 13
+        // there and falls back to DOM-diffing, which is unreliable. The
+        // beforeinput event still fires with a precise inputType, so handle
+        // the split ourselves. Desktop is unaffected: a handled keydown
+        // prevents the beforeinput from ever firing.
+        beforeinput: (_view, event) => {
+          const inputType = event.inputType;
+          if (inputType !== 'insertParagraph' && inputType !== 'insertLineBreak') return false;
+          const ed = editorRef.current;
+          if (!ed) return false;
+          event.preventDefault();
+          if (inputType === 'insertLineBreak') {
+            ed.commands.setHardBreak();
+          } else {
+            // Runs the full Enter keymap (splits list items, exits quotes, …).
+            ed.commands.keyboardShortcut('Enter');
+          }
+          return true;
+        },
+      },
     },
     onUpdate: ({ editor: e }) => {
       const html = e.isEmpty ? '' : sanitizeRichText(e.getHTML());
@@ -105,6 +128,7 @@ export function RichTextEditor({
       onChange(html);
     },
   });
+  editorRef.current = editor;
 
   // Sync external resets (e.g. form.reset) without clobbering in-progress typing.
   useEffect(() => {
