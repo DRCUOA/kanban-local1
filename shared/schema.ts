@@ -192,6 +192,8 @@ export const insertSubStageSchema = createInsertSchema(subStages)
     createdAt: true,
   })
   .extend({
+    // Blank tags would make every tagged task match every sub-stage of a stage
+    tag: z.string().trim().min(1),
     opacity: z.number().min(0).max(100), // Store as 0-100 integer
   });
 
