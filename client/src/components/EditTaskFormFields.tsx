@@ -16,6 +16,8 @@ import {
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { RichTextEditor } from '@/components/RichTextEditor';
+import { RichTextContent } from '@/components/RichTextContent';
+import { isRichTextEmpty } from '@/lib/rich-text';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -27,7 +29,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
-import { X } from 'lucide-react';
+import { Check, Pencil, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { OwnerSelector } from './OwnerSelector';
 
@@ -38,6 +40,7 @@ export interface EditTaskFormFieldsProps {
 
 export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps) {
   const [dueDateOpen, setDueDateOpen] = useState(false);
+  const [editingDescription, setEditingDescription] = useState(false);
 
   return (
     <>
@@ -92,13 +95,53 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
         name="description"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-xs">Description</FormLabel>
+            <div className="flex items-center justify-between">
+              <FormLabel className="text-xs">Description</FormLabel>
+              <button
+                type="button"
+                onClick={() => setEditingDescription((v) => !v)}
+                className="flex items-center gap-1 text-xs text-primary font-medium rounded-lg px-2 py-1 hover:bg-muted transition-colors"
+                data-testid="button-toggle-description-edit"
+              >
+                {editingDescription ? (
+                  <>
+                    <Check className="h-3.5 w-3.5" />
+                    Done
+                  </>
+                ) : (
+                  <>
+                    <Pencil className="h-3.5 w-3.5" />
+                    Edit
+                  </>
+                )}
+              </button>
+            </div>
             <FormControl>
-              <RichTextEditor
-                value={field.value || ''}
-                onChange={field.onChange}
-                data-testid="input-edit-description"
-              />
+              {editingDescription ? (
+                <RichTextEditor
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                  data-testid="input-edit-description"
+                />
+              ) : isRichTextEmpty(field.value) ? (
+                <button
+                  type="button"
+                  onClick={() => setEditingDescription(true)}
+                  className="w-full text-left neo-input rounded-xl px-4 py-3 min-h-[64px] text-base text-muted-foreground italic bg-card"
+                  data-testid="text-edit-description"
+                >
+                  Tap to add a description...
+                </button>
+              ) : (
+                // Read mode: links open in a new tab, image chips open a preview.
+                <div className="neo-input rounded-xl px-4 py-3 bg-card">
+                  <RichTextContent
+                    value={field.value}
+                    className="text-base"
+                    data-testid="text-edit-description"
+                  />
+                </div>
+              )}
             </FormControl>
             <FormMessage />
           </FormItem>

@@ -149,36 +149,6 @@ export function isRichTextEmpty(value: string | null | undefined): boolean {
   return richTextToPlainText(value).length === 0;
 }
 
-/** Open a file chip's data URL in a new tab via an object URL. */
-export function openFileChip(dataUrl: string | null, name?: string | null): void {
-  if (!dataUrl?.startsWith('data:')) return;
-  const match = /^data:([^;,]+)?(;base64)?,(.*)$/s.exec(dataUrl);
-  if (!match) return;
-  const mime = match[1] ?? 'application/octet-stream';
-  const isBase64 = Boolean(match[2]);
-  const payload = match[3] ?? '';
-  try {
-    const bytes = isBase64
-      ? Uint8Array.from(atob(payload), (c) => c.charCodeAt(0))
-      : new TextEncoder().encode(decodeURIComponent(payload));
-    const blob = new Blob([bytes], { type: mime });
-    const url = URL.createObjectURL(blob);
-    const win = window.open(url, '_blank', 'noopener');
-    if (!win) {
-      // Popup blocked — fall back to a download link.
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = name ?? 'attachment';
-      link.click();
-    }
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-    }, 60_000);
-  } catch {
-    // Malformed data URL — nothing sensible to open.
-  }
-}
-
 /** Read a File as a data URL. */
 export function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {

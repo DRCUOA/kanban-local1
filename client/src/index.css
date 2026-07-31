@@ -383,6 +383,11 @@
   .rich-text p {
     margin: 0;
   }
+  /* Empty paragraphs are intentional blank lines — keep their height in read
+     views (the editor pads them with a trailing <br> itself). */
+  .rich-text p:empty {
+    min-height: 1.5em;
+  }
   .rich-text p + p,
   .rich-text ul + p,
   .rich-text ol + p,
