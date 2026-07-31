@@ -67,27 +67,33 @@ function renderWithSubStages(
   onTaskClick: (task: Task) => void,
 ) {
   const stageSubStageTags = stageSubStages.map((ss) => ss.tag);
-  const tasksWithMatchingTags: Task[] = [];
+  // Each task belongs to exactly one sub-stage. A task may carry more than one
+  // sub-stage tag (stale tags from earlier moves, shared tag strings); the last
+  // matching tag wins because drag/drop appends the newest assignment at the end.
+  const subStageTaskLists: Task[][] = stageSubStages.map(() => []);
   const tasksWithoutMatchingTags: Task[] = [];
 
   stageTasks.forEach((task) => {
     const tags = task.tags || [];
-    if (tags.some((tag) => stageSubStageTags.includes(tag))) tasksWithMatchingTags.push(task);
-    else tasksWithoutMatchingTags.push(task);
+    const assignedTag = [...tags].reverse().find((tag) => stageSubStageTags.includes(tag));
+    if (assignedTag === undefined) {
+      tasksWithoutMatchingTags.push(task);
+      return;
+    }
+    const subStageIndex = stageSubStages.findIndex((ss) => ss.tag === assignedTag);
+    subStageTaskLists[subStageIndex]?.push(task);
   });
 
   return (
     <div className="flex flex-col gap-2 min-h-[60px]">
       {stageSubStages.map((subStage, subIndex) => {
-        const subStageTasks = tasksWithMatchingTags.filter((task) =>
-          (task.tags || []).includes(subStage.tag),
-        );
+        const subStageTasks = subStageTaskLists[subIndex] ?? [];
         const finalTasks =
           subIndex === 0 ? [...subStageTasks, ...tasksWithoutMatchingTags] : subStageTasks;
 
         return (
           <DayPlanSubStage
-            key={subStage.tag}
+            key={`${subIndex}-${subStage.tag}`}
             stageId={stageId}
             stageName={stageName}
             subStage={subStage}

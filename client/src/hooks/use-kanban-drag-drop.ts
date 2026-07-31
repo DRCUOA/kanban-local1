@@ -154,11 +154,13 @@ export function useKanbanDragDrop({ tasks, sortedStages, allSubStages }: UseKanb
         subStageTag = '';
       }
 
-      const stageSubStages = allSubStages.filter((ss) => ss.stageId === stageId);
-      const stageSubStageTags = stageSubStages.map((ss) => ss.tag);
+      // A task holds at most one sub-stage tag: strip every sub-stage tag
+      // (including ones from other stages left over by cross-stage moves)
+      // before adding the drop target's tag. Never add an empty tag.
+      const allSubStageTags = allSubStages.map((ss) => ss.tag);
       const currentTags = activeTask.tags || [];
-      const filteredTags = currentTags.filter((tag) => !stageSubStageTags.includes(tag));
-      const newTags = [...filteredTags, subStageTag];
+      const filteredTags = currentTags.filter((tag) => !allSubStageTags.includes(tag));
+      const newTags = subStageTag ? [...filteredTags, subStageTag] : filteredTags;
 
       const targetStage = sortedStages.find((s) => s.id === stageId);
       if (targetStage && activeTask.stageId !== stageId) {

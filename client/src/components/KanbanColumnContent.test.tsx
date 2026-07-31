@@ -127,6 +127,68 @@ describe('KanbanColumnContent', () => {
     expect(screen.getByTestId('substage-PM')).toBeDefined();
   });
 
+  it('renders a task in exactly one sub-stage even when its tags match several', () => {
+    const makeSubStage = (id: number, name: string, tag: string, order: number): SubStage => ({
+      id,
+      stageId: 1,
+      name,
+      tag,
+      bgClass: 'bg-bg/20',
+      opacity: 20,
+      order,
+      createdAt: new Date(),
+    });
+    const subStages = [
+      makeSubStage(10, 'Waiting', 'waiting', 0),
+      makeSubStage(11, 'Rich', 'rich', 1),
+      makeSubStage(12, 'Moi', 'moi', 2),
+    ];
+    // Task carries all three sub-stage tags; the last one wins (most recent move)
+    const tasks = [
+      makeTask({ id: 1, title: 'Multi', tags: ['waiting', 'rich', 'moi'] }),
+      makeTask({ id: 2, title: 'Untagged' }),
+    ];
+
+    render(<KanbanColumnContent {...baseProps} stageTasks={tasks} allSubStages={subStages} />);
+
+    // Untagged task falls into the first sub-stage; the multi-tagged task only
+    // appears in the sub-stage of its most recently assigned tag.
+    expect(screen.getByTestId('substage-Waiting').textContent).toBe('1 tasks');
+    expect(screen.getByTestId('substage-Rich').textContent).toBe('0 tasks');
+    expect(screen.getByTestId('substage-Moi').textContent).toBe('1 tasks');
+  });
+
+  it('renders tasks once when sub-stages share the same tag', () => {
+    const shared: SubStage[] = [
+      {
+        id: 10,
+        stageId: 1,
+        name: 'A',
+        tag: 'same',
+        bgClass: 'bg-bg/20',
+        opacity: 20,
+        order: 0,
+        createdAt: new Date(),
+      },
+      {
+        id: 11,
+        stageId: 1,
+        name: 'B',
+        tag: 'same',
+        bgClass: 'bg-bg/40',
+        opacity: 40,
+        order: 1,
+        createdAt: new Date(),
+      },
+    ];
+    const tasks = [makeTask({ id: 1, title: 'Tagged', tags: ['same'] })];
+
+    render(<KanbanColumnContent {...baseProps} stageTasks={tasks} allSubStages={shared} />);
+
+    expect(screen.getByTestId('substage-A').textContent).toBe('1 tasks');
+    expect(screen.getByTestId('substage-B').textContent).toBe('0 tasks');
+  });
+
   it('ignores sub-stages that belong to a different stage', () => {
     const subStages: SubStage[] = [
       {
