@@ -47,8 +47,10 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
   const [editingDescription, setEditingDescription] = useState(false);
   const { data: allSubStages = [] } = useSubStages();
   const selectedStageId = useWatch({ control, name: 'stageId' });
+  // Blank tags exist in pre-validation data; they can't be selected (a Radix
+  // SelectItem value must be a non-empty string) so leave them out entirely.
   const stageSubStages = allSubStages
-    .filter((ss) => ss.stageId === selectedStageId)
+    .filter((ss) => ss.stageId === selectedStageId && ss.tag.trim() !== '')
     .sort((a, b) => a.order - b.order);
 
   return (
