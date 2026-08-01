@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { useState } from 'react';
+import { useWatch } from 'react-hook-form';
 import type { Control } from 'react-hook-form';
 import type { InsertTask } from '@shared/schema';
 import type { Stage } from '@shared/schema';
+import { useSubStages } from '@/hooks/use-stages';
 import {
   TASK_STATUS,
   TASK_STATUS_LABEL,
@@ -38,9 +40,16 @@ export interface EditTaskFormFieldsProps {
   stages: Stage[];
 }
 
+const NO_SUB_STAGE = '__none__';
+
 export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps) {
   const [dueDateOpen, setDueDateOpen] = useState(false);
   const [editingDescription, setEditingDescription] = useState(false);
+  const { data: allSubStages = [] } = useSubStages();
+  const selectedStageId = useWatch({ control, name: 'stageId' });
+  const stageSubStages = allSubStages
+    .filter((ss) => ss.stageId === selectedStageId)
+    .sort((a, b) => a.order - b.order);
 
   return (
     <>
@@ -90,6 +99,51 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
           </FormItem>
         )}
       />
+      {stageSubStages.length > 0 && (
+        <FormField
+          control={control}
+          name="tags"
+          render={({ field }) => {
+            const tags: string[] = Array.isArray(field.value) ? field.value : [];
+            // Mirror the board: the task's sub-stage is its most recently
+            // assigned matching tag; tasks without one sit in the first
+            // (catch-all) sub-stage.
+            const currentTag =
+              [...tags].reverse().find((tag) => stageSubStages.some((ss) => ss.tag === tag)) ??
+              NO_SUB_STAGE;
+            const allSubStageTags = allSubStages.map((ss) => ss.tag);
+            return (
+              <FormItem>
+                <FormLabel className="text-xs">Sub-stage</FormLabel>
+                <Select
+                  value={currentTag}
+                  onValueChange={(value) => {
+                    const kept = tags.filter((tag) => !allSubStageTags.includes(tag));
+                    field.onChange(value === NO_SUB_STAGE ? kept : [...kept, value]);
+                  }}
+                >
+                  <FormControl>
+                    <SelectTrigger className="h-12 rounded-xl" data-testid="select-edit-substage">
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value={NO_SUB_STAGE} className="py-3">
+                      None
+                    </SelectItem>
+                    {stageSubStages.map((ss) => (
+                      <SelectItem key={ss.id} value={ss.tag} className="py-3">
+                        {ss.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            );
+          }}
+        />
+      )}
       <FormField
         control={control}
         name="description"
