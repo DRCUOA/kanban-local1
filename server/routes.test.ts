@@ -454,6 +454,17 @@ describe('GET /api/export', () => {
     expect(res.body.error).toBe(PROJECT_SCOPE_UNSUPPORTED);
   });
 
+  it('returns a JSON 500 when a query fails, rather than hanging', async () => {
+    mockStorage.getTasks.mockRejectedValue(new Error('relation "tasks" does not exist'));
+    mockStorage.getStages.mockResolvedValue([]);
+    mockStorage.getSubStages.mockResolvedValue([]);
+
+    const res = await request(app).get(api.export.get.path);
+
+    expect(res.status).toBe(500);
+    expect(res.body).toHaveProperty('status', 500);
+  });
+
   it('reserves an empty projects section and an unscoped projectIds', async () => {
     stubBoard();
 
