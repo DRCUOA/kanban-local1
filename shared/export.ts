@@ -1,5 +1,13 @@
 import { z } from 'zod';
 import type { Task, Stage, SubStage } from './schema';
+import {
+  annotateTasksWithUrgency,
+  buildBriefing,
+  briefingDigestSchema,
+  resolveTimezone,
+  type BriefingDigest,
+  type ExportTask,
+} from './briefing';
 
 /**
  * Bump when the envelope shape changes in a way importers must react to.
@@ -23,6 +31,11 @@ export const PROJECT_SCOPE_UNSUPPORTED =
  *
  * `projects` is reserved for the project layer and is always `[]` today;
  * `scope.projectIds` is `null` meaning "everything / no project dimension".
+ *
+ * `tasks[].urgency` and `briefing` are derived, read-only views of the same
+ * data — added for the daily-briefing agent, which cannot be trusted to do
+ * date arithmetic or reconcile `status` against `stageId` on its own. Importers
+ * ignore both; every stored task field is still present and unmodified.
  */
 export interface TaskExportBundle {
   formatVersion: number;
@@ -41,9 +54,11 @@ export interface TaskExportBundle {
   };
   stages: Stage[];
   subStages: SubStage[];
-  tasks: Task[];
+  tasks: ExportTask[];
   /** Reserved for the project layer; empty until projects exist. */
   projects: unknown[];
+  /** Pre-bucketed briefing sections. Derived from `tasks`; never a new source. */
+  briefing: BriefingDigest;
 }
 
 export const taskExportBundleSchema = z.object({
@@ -64,6 +79,8 @@ export const taskExportBundleSchema = z.object({
   subStages: z.array(z.custom<SubStage>()),
   tasks: z.array(z.custom<Task>()),
   projects: z.array(z.unknown()),
+  // Optional so export files written before the briefing block still validate.
+  briefing: briefingDigestSchema.optional(),
 });
 
 /** Query params accepted by GET /api/export. */
@@ -81,6 +98,8 @@ export interface BuildExportBundleInput {
   subStages: SubStage[];
   includeArchived: boolean;
   exportedAt: string;
+  /** Overrides the host zone the due-date buckets are cut in. Tests pin this. */
+  timezone?: string;
 }
 
 /**
@@ -93,8 +112,16 @@ export function buildExportBundle({
   subStages,
   includeArchived,
   exportedAt,
+  timezone,
 }: BuildExportBundleInput): TaskExportBundle {
   const projects: unknown[] = [];
+
+  // `exportedAt` is the single reference instant: the per-task urgency and the
+  // briefing buckets are cut against it, so the envelope can never disagree
+  // with itself about what "overdue" meant at export time.
+  const now = new Date(exportedAt);
+  const zone = timezone ?? resolveTimezone();
+  const annotatedTasks = annotateTasksWithUrgency(tasks, stages, now);
 
   return {
     formatVersion: EXPORT_FORMAT_VERSION,
@@ -112,8 +139,15 @@ export function buildExportBundle({
     },
     stages,
     subStages,
-    tasks,
+    tasks: annotatedTasks,
     projects,
+    briefing: buildBriefing({
+      tasks: annotatedTasks,
+      stages,
+      subStages,
+      now,
+      timezone: zone,
+    }),
   };
 }
 
