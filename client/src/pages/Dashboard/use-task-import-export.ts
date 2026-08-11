@@ -3,6 +3,12 @@ import { type Task, type InsertTask, type Stage } from '@shared/schema';
 import { TASK_STATUS, TASK_PRIORITY, TASK_RECURRENCE } from '@shared/constants';
 import { apiGet } from '@/lib/api';
 import { api } from '@shared/routes';
+import {
+  buildExportBundle,
+  exportFilename,
+  tasksFromExportPayload,
+  type TaskExportBundle,
+} from '@shared/export';
 import { logger } from '@shared/logger';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateTask } from '@/hooks/use-tasks';
@@ -16,16 +22,47 @@ export function useTaskImportExport({ tasks, stages }: UseTaskImportExportOption
   const { toast } = useToast();
   const createTask = useCreateTask();
 
-  const handleExport = () => {
-    if (!tasks) return;
-    const dataStr = JSON.stringify(tasks, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+  const downloadBundle = (bundle: TaskExportBundle) => {
+    const dataBlob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `taskflow-export-${new Date().toISOString().split('T')[0]}.json`;
+    link.download = exportFilename(bundle.exportedAt);
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleExport = async () => {
+    try {
+      // Server-side export is authoritative: it includes stages and sub-stages,
+      // not just the tasks this board happens to have loaded.
+      downloadBundle(await apiGet<TaskExportBundle>(api.export.get.path));
+    } catch (error: unknown) {
+      logger.error('Export API failed, falling back to in-memory export:', error);
+      if (!tasks) {
+        toast({
+          title: 'Export failed',
+          description: error instanceof Error ? error.message : 'Could not export tasks.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      // Same envelope, just built from what the board already has, so the file
+      // shape is identical whichever path produced it.
+      downloadBundle(
+        buildExportBundle({
+          tasks,
+          stages,
+          subStages: [],
+          includeArchived: false,
+          exportedAt: new Date().toISOString(),
+        }),
+      );
+      toast({
+        title: 'Exported from this device',
+        description: 'The server export was unavailable, so stages and sub-stages were omitted.',
+      });
+    }
   };
 
   const handleImport = async () => {
@@ -39,12 +76,15 @@ export function useTaskImportExport({ tasks, stages }: UseTaskImportExportOption
       const reader = new FileReader();
       reader.onload = async (event) => {
         try {
-          const imported = JSON.parse(event.target?.result as string);
+          const payload = JSON.parse(event.target?.result as string);
 
-          if (!Array.isArray(imported)) {
+          // Accepts both the export envelope and legacy bare-array files.
+          const imported = tasksFromExportPayload(payload);
+
+          if (!imported) {
             toast({
               title: 'Invalid format',
-              description: 'Import file must contain an array of tasks.',
+              description: 'Import file must be an export bundle or an array of tasks.',
               variant: 'destructive',
             });
             return;
@@ -82,7 +122,8 @@ export function useTaskImportExport({ tasks, stages }: UseTaskImportExportOption
           let errorCount = 0;
           const errors: string[] = [];
 
-          for (const taskData of imported) {
+          // Imported records are unvalidated JSON; each field is defaulted below.
+          for (const taskData of imported as any[]) {
             try {
               const taskToCreate = {
                 title: taskData.title || 'Untitled Task',

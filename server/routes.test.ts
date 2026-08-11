@@ -35,6 +35,12 @@ vi.mock('./storage', () => ({ storage: mockStorage }));
 
 import { createApp } from './app';
 import { api } from '@shared/routes';
+import {
+  EXPORT_FORMAT_VERSION,
+  EXPORT_GENERATOR,
+  PROJECT_SCOPE_UNSUPPORTED,
+  taskExportBundleSchema,
+} from '@shared/export';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -370,6 +376,91 @@ describe('Task routes', () => {
       expect(res.body).toHaveProperty('error');
       expect(res.body).toHaveProperty('status', 400);
     });
+  });
+});
+
+// ===========================================================================
+// Export route
+// ===========================================================================
+
+describe('GET /api/export', () => {
+  function stubBoard() {
+    mockStorage.getTasks.mockResolvedValue([fakeTask()]);
+    mockStorage.getArchivedTasks.mockResolvedValue([fakeTask({ id: 9, archived: true })]);
+    mockStorage.getStages.mockResolvedValue([fakeStage()]);
+    mockStorage.getSubStages.mockResolvedValue([fakeSubStage()]);
+  }
+
+  it('returns 200 with a JSON object envelope, not a bare array', async () => {
+    stubBoard();
+
+    const res = await request(app).get(api.export.get.path);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(false);
+    expect(res.body.formatVersion).toBe(EXPORT_FORMAT_VERSION);
+    expect(res.body.generator).toBe(EXPORT_GENERATOR);
+    expect(typeof res.body.exportedAt).toBe('string');
+    expect(taskExportBundleSchema.safeParse(res.body).success).toBe(true);
+  });
+
+  it('includes stages and sub-stages so the export is self-contained', async () => {
+    stubBoard();
+
+    const res = await request(app).get(api.export.get.path);
+
+    expect(res.body.stages).toHaveLength(1);
+    expect(res.body.subStages).toHaveLength(1);
+    expect(res.body.counts).toEqual({ tasks: 1, stages: 1, subStages: 1, projects: 0 });
+  });
+
+  it('excludes archived tasks by default', async () => {
+    stubBoard();
+
+    const res = await request(app).get(api.export.get.path);
+
+    expect(mockStorage.getArchivedTasks).not.toHaveBeenCalled();
+    expect(res.body.tasks).toHaveLength(1);
+    expect(res.body.scope.includeArchived).toBe(false);
+  });
+
+  it('includes archived tasks when includeArchived=true', async () => {
+    stubBoard();
+
+    const res = await request(app).get(`${api.export.get.path}?includeArchived=true`);
+
+    expect(res.body.tasks).toHaveLength(2);
+    expect(res.body.scope.includeArchived).toBe(true);
+  });
+
+  it('returns 400 for an unrecognised includeArchived value', async () => {
+    stubBoard();
+
+    const res = await request(app).get(`${api.export.get.path}?includeArchived=yes`);
+
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty('status', 400);
+  });
+
+  // Forward-compat guard: see docs/epics/EPIC-01-project-layer.md. Until tasks
+  // carry a project, a projectId filter must fail rather than quietly return
+  // the whole board.
+  it('returns 400 when asked for a project-scoped export', async () => {
+    stubBoard();
+
+    const res = await request(app).get(`${api.export.get.path}?projectId=1`);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe(PROJECT_SCOPE_UNSUPPORTED);
+  });
+
+  it('reserves an empty projects section and an unscoped projectIds', async () => {
+    stubBoard();
+
+    const res = await request(app).get(api.export.get.path);
+
+    expect(res.body.projects).toEqual([]);
+    expect(res.body.scope.projectIds).toBeNull();
   });
 });
 

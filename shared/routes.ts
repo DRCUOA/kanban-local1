@@ -8,6 +8,7 @@ import {
   type SubStage,
   type TaskHistoryEntry,
 } from './schema';
+import { exportQuerySchema, taskExportBundleSchema } from './export';
 
 export const api = {
   health: {
@@ -87,6 +88,17 @@ export const api = {
       path: '/api/tasks/owners',
       responses: {
         200: z.array(z.string()),
+      },
+    },
+  },
+  export: {
+    get: {
+      method: 'GET' as const,
+      path: '/api/export',
+      query: exportQuerySchema,
+      responses: {
+        200: taskExportBundleSchema,
+        400: z.object({ error: z.string(), status: z.number() }),
       },
     },
   },

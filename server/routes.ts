@@ -17,6 +17,12 @@ import type {
   TaskHistoryEntry,
 } from '@shared/schema';
 import type { ApiErrorResponse, IdParams, StageIdParams } from '@shared/api-types';
+import {
+  buildExportBundle,
+  PROJECT_SCOPE_UNSUPPORTED,
+  type ExportQuery,
+  type TaskExportBundle,
+} from '@shared/export';
 import { logger } from '@shared/logger';
 import { registerGmailPubSubWebhook } from './webhooks/gmail-pubsub';
 
@@ -135,6 +141,51 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.status(404).json({ error: 'Task not found', status: 404 });
       }
       res.json(task);
+    },
+  );
+
+  // Export endpoint — returns the whole board as a single JSON envelope.
+  // Shape is defined once in shared/export.ts so the client download and this
+  // route can never drift apart.
+  app.get(
+    api.export.get.path,
+    async (req: Request, res: Response<TaskExportBundle | ApiErrorResponse>) => {
+      // The project layer does not exist yet, so a project-scoped request can
+      // only be answered with a lie. Fail loudly instead of silently returning
+      // everything. See docs/epics/EPIC-01-project-layer.md.
+      if (req.query.projectId !== undefined) {
+        return res.status(400).json({ error: PROJECT_SCOPE_UNSUPPORTED, status: 400 });
+      }
+
+      let query: ExportQuery;
+      try {
+        query = api.export.get.query.parse(req.query);
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            error: error.errors[0]?.message ?? 'Invalid export query',
+            status: 400,
+          });
+        }
+        throw error;
+      }
+
+      const [activeTasks, archivedTasks, allStages, allSubStages] = await Promise.all([
+        storage.getTasks(),
+        query.includeArchived ? storage.getArchivedTasks() : Promise.resolve([]),
+        storage.getStages(),
+        storage.getSubStages(),
+      ]);
+
+      res.json(
+        buildExportBundle({
+          tasks: [...activeTasks, ...archivedTasks],
+          stages: allStages,
+          subStages: allSubStages,
+          includeArchived: query.includeArchived,
+          exportedAt: new Date().toISOString(),
+        }),
+      );
     },
   );
 

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `GET /api/export` returns the board as a single JSON object (`shared/export.ts`): stages, sub-stages and tasks plus `formatVersion`, `exportedAt`, `scope` and `counts`. Supports `?includeArchived=true`.
+- Reserved `projects: []` and `scope.projectIds: null` in the envelope for the forthcoming project layer; `?projectId=` returns 400 rather than silently exporting everything.
+
+### Changed
+- "Export Tasks" now downloads the server-side export (so stages and sub-stages are included), falling back to an in-memory export in the same envelope shape if the API is unreachable.
+- Import accepts both the new envelope and legacy bare-array export files.
+
 ## [1.2.1] - 2026-03-24
 
 ### Added
