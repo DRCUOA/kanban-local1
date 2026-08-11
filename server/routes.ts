@@ -2,6 +2,7 @@
 import type { Express, Request, Response } from 'express';
 import type { Server } from 'http';
 import { storage } from './storage';
+import { asyncHandler } from './errors';
 import { parseIdParam } from './utils';
 import { api } from '@shared/routes';
 
@@ -147,9 +148,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Export endpoint — returns the whole board as a single JSON envelope.
   // Shape is defined once in shared/export.ts so the client download and this
   // route can never drift apart.
+  // asyncHandler: Express 4 does not catch rejections from async handlers, so
+  // without it a failing query escapes as an unhandled rejection (hung request,
+  // errors only on the server console) instead of a JSON 500.
   app.get(
     api.export.get.path,
-    async (req: Request, res: Response<TaskExportBundle | ApiErrorResponse>) => {
+    asyncHandler(async (req: Request, res: Response<TaskExportBundle | ApiErrorResponse>) => {
       // The project layer does not exist yet, so a project-scoped request can
       // only be answered with a lie. Fail loudly instead of silently returning
       // everything. See docs/epics/EPIC-01-project-layer.md.
@@ -186,7 +190,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           exportedAt: new Date().toISOString(),
         }),
       );
-    },
+    }),
   );
 
   // Stage endpoints
