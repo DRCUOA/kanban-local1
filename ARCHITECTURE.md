@@ -61,7 +61,22 @@ kanban-local1/
 
 ## Shared Modules (`shared/`)
 
-Shared modules are the single source of truth for types, constants, API contracts, and logging. Both client and server import from here — nothing is redefined on either side. Five modules: `schema.ts` (Drizzle tables, Zod schemas, TS types), `routes.ts` (declarative API contracts), `constants.ts` (enums, labels, helpers), `api-types.ts` (error/response types), and `logger.ts` (log-level-gated logger — all application logging routes through this, no direct `console.log`).
+Shared modules are the single source of truth for types, constants, API contracts, and logging. Both client and server import from here — nothing is redefined on either side. Six modules: `schema.ts` (Drizzle tables, Zod schemas, TS types), `routes.ts` (declarative API contracts), `constants.ts` (enums, labels, helpers), `api-types.ts` (error/response types), `export.ts` (export envelope + builder, used by `GET /api/export` and the client download), and `logger.ts` (log-level-gated logger — all application logging routes through this, no direct `console.log`).
+
+### Export envelope
+
+`GET /api/export` returns a single JSON object (never a bare array) built by `buildExportBundle` in `shared/export.ts`:
+
+| Key | Notes |
+|---|---|
+| `formatVersion` | Bump only on breaking envelope changes |
+| `generator`, `exportedAt` | Provenance |
+| `scope` | `{ includeArchived, projectIds }`; `projectIds` is `null` until tasks carry a project |
+| `counts` | `tasks`, `stages`, `subStages`, `projects` |
+| `stages`, `subStages`, `tasks` | Payload — makes the export self-contained |
+| `projects` | Reserved for the project layer, always `[]` today |
+
+Query params: `includeArchived=true|false` (default `false`). `projectId` is rejected with 400 until the project layer exists, so a scoped request can never be silently answered with the whole board. Import accepts both this envelope and legacy bare-array files via `tasksFromExportPayload`.
 
 See [COMPONENT_INDEX.md — Shared Modules](COMPONENT_INDEX.md#shared-modules-shared) for the full export listing.
 
