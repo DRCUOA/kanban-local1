@@ -28,6 +28,48 @@ describe('buildExportBundle', () => {
     expect(bundle.scope).toEqual({ includeArchived: true, projectIds: null });
     expect(bundle.projects).toEqual([]);
   });
+
+  it('annotates every task with urgency and attaches a briefing digest', () => {
+    const overdue = {
+      id: 142,
+      title: 'Check remaining gas',
+      stageId: 2,
+      archived: false,
+      status: 'in_progress',
+      priority: 'normal',
+      dueDate: new Date(2026, 7, 9, 12, 0),
+      tags: ['Rich'],
+      owner: 'Moi',
+    } as unknown as Task;
+    const inProgressStage = { id: 2, name: 'In Progress' } as unknown as Stage;
+
+    const bundle = buildExportBundle({
+      tasks: [overdue],
+      stages: [inProgressStage],
+      subStages: [{ id: 7, stageId: 2, name: 'Rich', tag: 'Rich' } as unknown as SubStage],
+      includeArchived: false,
+      exportedAt: new Date(2026, 7, 11, 19, 46).toISOString(),
+      timezone: 'Pacific/Auckland',
+    });
+
+    const [annotated] = bundle.tasks;
+    expect(annotated?.urgency).toMatchObject({ isOverdue: true, mustSurface: true });
+    expect(bundle.briefing.overdue.map((e) => e.id)).toEqual([142]);
+    expect(bundle.briefing.timezone).toBe('Pacific/Auckland');
+    expect(taskExportBundleSchema.safeParse(bundle).success).toBe(true);
+  });
+
+  it('cuts urgency against exportedAt so the envelope cannot disagree with itself', () => {
+    const bundle = buildExportBundle({
+      tasks: [task],
+      stages: [stage],
+      subStages: [subStage],
+      includeArchived: false,
+      exportedAt: '2026-08-11T09:00:00.000Z',
+    });
+
+    expect(bundle.briefing.now).toBe(bundle.exportedAt);
+  });
 });
 
 describe('tasksFromExportPayload', () => {
@@ -40,7 +82,9 @@ describe('tasksFromExportPayload', () => {
       exportedAt: '2026-08-11T09:00:00.000Z',
     });
 
-    expect(tasksFromExportPayload(bundle)).toEqual([task]);
+    // Exported tasks carry a derived `urgency` block; every stored field is
+    // still present and unmodified, which is all an importer reads.
+    expect(tasksFromExportPayload(bundle)).toMatchObject([task]);
   });
 
   it('accepts legacy bare-array export files', () => {

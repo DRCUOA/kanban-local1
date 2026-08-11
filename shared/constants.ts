@@ -138,3 +138,12 @@ export function isInProgressStageName(stageName: string): boolean {
   const name = stageName.toLowerCase();
   return name.includes('progress') || name.includes('doing') || name.includes('active');
 }
+
+/**
+ * Waiting/blocked columns have no `TASK_STATUS` of their own — `getStatusFromStageName`
+ * folds them into `backlog` — so they can only be recognised by name.
+ */
+export function isWaitingStageName(stageName: string): boolean {
+  const name = stageName.toLowerCase();
+  return name.includes('wait') || name.includes('block') || name.includes('hold');
+}
