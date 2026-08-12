@@ -54,6 +54,19 @@ describe('EditTaskDialogActions', () => {
     expect(screen.queryByText('History')).toBeNull();
   });
 
+  it('renders the Share button when onShare is provided', () => {
+    const onShare = vi.fn();
+    render(<EditTaskDialogActions {...defaults} onShare={onShare} />);
+
+    fireEvent.click(screen.getByTestId('button-share-task'));
+    expect(onShare).toHaveBeenCalledOnce();
+  });
+
+  it('does not render the Share button when onShare is omitted', () => {
+    render(<EditTaskDialogActions {...defaults} />);
+    expect(screen.queryByTestId('button-share-task')).toBeNull();
+  });
+
   it('shows confirmation dialog content when Delete is clicked', () => {
     render(<EditTaskDialogActions {...defaults} />);
 

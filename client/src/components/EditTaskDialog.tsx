@@ -2,10 +2,13 @@
 import type { Task } from '@shared/schema';
 import { useStages } from '@/hooks/use-stages';
 import { useEditTaskForm } from '@/hooks/use-edit-task-form';
+import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form } from '@/components/ui/form';
 import { EditTaskFormFields } from '@/components/EditTaskFormFields';
 import { EditTaskDialogActions } from '@/components/EditTaskDialogActions';
+import { formatTaskAsEmail } from '@/lib/task-email';
+import { copyToClipboard } from '@/lib/clipboard';
 import 'react-day-picker/dist/style.css';
 
 export interface EditTaskDialogProps {
@@ -17,7 +20,30 @@ export interface EditTaskDialogProps {
 
 export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: EditTaskDialogProps) {
   const { data: stages = [] } = useStages();
+  const { toast } = useToast();
   const { form, onSubmit, handleDelete, isSaving } = useEditTaskForm({ task, open, onOpenChange });
+
+  // Share = clipboard only. Nothing is handed to a mail client; the user pastes
+  // the formatted email wherever they want. Reflects the saved task, so any
+  // unsaved edits in this dialog are not included.
+  const handleShare = async () => {
+    if (!task) return;
+    const stageName = stages.find((stage) => stage.id === task.stageId)?.name ?? null;
+    const email = formatTaskAsEmail(task, { stageName });
+    const copied = await copyToClipboard({ text: email.text, html: email.html });
+    toast(
+      copied
+        ? {
+            title: 'Copied as email',
+            description: 'Paste it into a new message — nothing was sent.',
+          }
+        : {
+            title: 'Copy failed',
+            description: 'Your browser blocked clipboard access.',
+            variant: 'destructive',
+          },
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -36,6 +62,7 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
 
             <EditTaskDialogActions
               onViewHistory={onViewHistory}
+              onShare={task ? () => void handleShare() : undefined}
               onDelete={handleDelete}
               onCancel={() => {
                 onOpenChange(false);

@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Voice dictation on every free-text task field (title, description, owner): a mic button starts the browser's Web Speech API — Apple's recogniser under macOS Safari — shows an animated sound wave and live interim words while listening, and inserts finalised phrases at the caret (`useSpeechDictation`, `DictationButton`, `VoiceInput`, `lib/dictation.ts`). Browsers without the API fall back to focusing the field and pointing at macOS Dictation.
+- "Share" in the task view copies the task to the clipboard as a formatted, paste-ready email in both plain-text and HTML flavours (`lib/task-email.ts`, `lib/clipboard.ts`). Clipboard only — no mail client is contacted and no `mailto:` link is produced.
 - Resizable board columns in horizontal layout: drag (or arrow-key) the gutter between two stages to change their split, double-click a gutter to even the pair out, and "Reset widths" next to the archive strip clears every override. Widths are stored per stage as flex weights in `localStorage` (`kanban-column-weights`), so the board stays proportional at any viewport width.
 - `GET /api/export` returns the board as a single JSON object (`shared/export.ts`): stages, sub-stages and tasks plus `formatVersion`, `exportedAt`, `scope` and `counts`. Supports `?includeArchived=true`.
 - Reserved `projects: []` and `scope.projectIds: null` in the envelope for the forthcoming project layer; `?projectId=` returns 400 rather than silently exporting everything.

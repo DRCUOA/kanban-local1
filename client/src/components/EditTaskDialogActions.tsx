@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { Button } from '@/components/ui/button';
-import { Trash2, History } from 'lucide-react';
+import { Trash2, History, Share2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,6 +15,8 @@ import {
 
 export interface EditTaskDialogActionsProps {
   onViewHistory?: () => void;
+  /** Copies the task to the clipboard as an email; omitted when no task is loaded. */
+  onShare?: () => void;
   onDelete: () => void;
   onCancel: () => void;
   isSaving: boolean;
@@ -22,6 +24,7 @@ export interface EditTaskDialogActionsProps {
 
 export function EditTaskDialogActions({
   onViewHistory,
+  onShare,
   onDelete,
   onCancel,
   isSaving,
@@ -38,6 +41,18 @@ export function EditTaskDialogActions({
           >
             <History className="h-4 w-4 mr-2" />
             History
+          </Button>
+        )}
+        {onShare && (
+          <Button
+            type="button"
+            variant="outline"
+            className="h-12 rounded-xl flex-1"
+            onClick={onShare}
+            data-testid="button-share-task"
+          >
+            <Share2 className="h-4 w-4 mr-2" />
+            Share
           </Button>
         )}
         <AlertDialog>

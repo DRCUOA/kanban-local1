@@ -3,7 +3,8 @@ import { useMemo, useState } from 'react';
 import { TASK_OWNER_MAX_LEN } from '@shared/constants';
 import { useOwners } from '@/hooks/use-owners';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { VoiceInput } from '@/components/VoiceInput';
+import { appendTranscript } from '@/lib/dictation';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, ChevronsUpDown, Plus, X, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -97,12 +98,17 @@ export function OwnerSelector({
         </PopoverTrigger>
         <PopoverContent className="w-[260px] p-0" align="start">
           <div className="p-2 border-b">
-            <Input
+            <VoiceInput
               autoFocus
               value={query}
               onChange={(e) => {
                 setQuery(enforceLimit(e.target.value));
               }}
+              onDictate={(transcript) => {
+                setQuery((current) => enforceLimit(appendTranscript(current, transcript)));
+              }}
+              fieldLabel="owner"
+              micTestId="button-dictate-owner"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();

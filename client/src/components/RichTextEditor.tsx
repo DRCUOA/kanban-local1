@@ -20,9 +20,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DictationButton } from '@/components/DictationButton';
+import { useSpeechDictation } from '@/hooks/use-speech-dictation';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { FileChip } from '@/lib/file-chip-extension';
+import { formatDictatedInsertion, MACOS_DICTATION_HINT } from '@/lib/dictation';
 import {
   toRichHtml,
   sanitizeRichText,
@@ -38,6 +41,9 @@ interface RichTextEditorProps {
   className?: string;
   'data-testid'?: string;
 }
+
+/** How much text before the caret dictation inspects for spacing/capitalisation. */
+const CARET_CONTEXT_CHARS = 4;
 
 interface ToolbarButtonProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -158,7 +164,35 @@ export function RichTextEditor({
         : null,
   });
 
+  // Dictated phrases land at the caret, spaced/capitalised against the text
+  // already in front of it. Interim words are shown but never inserted.
+  const dictation = useSpeechDictation({
+    onFinal: (transcript) => {
+      const ed = editorRef.current;
+      if (!ed) return;
+      const { from } = ed.state.selection;
+      // A short look-back is enough to decide on a space and a capital.
+      const before = ed.state.doc.textBetween(Math.max(0, from - CARET_CONTEXT_CHARS), from, '\n');
+      const text = formatDictatedInsertion(before, transcript);
+      if (text) ed.chain().focus().insertContent(text).run();
+    },
+    onError: (message) => {
+      toast({ title: 'Dictation', description: message, variant: 'destructive' });
+    },
+  });
+
   if (!editor) return null;
+
+  const handleMicClick = () => {
+    if (!dictation.supported) {
+      // macOS Dictation types into whatever is focused, so hand it the editor.
+      editor.commands.focus();
+      toast({ title: 'Use macOS Dictation', description: MACOS_DICTATION_HINT });
+      return;
+    }
+    editor.commands.focus();
+    dictation.toggle();
+  };
 
   const openLinkPopover = (open: boolean) => {
     if (open) {
@@ -316,6 +350,13 @@ export function RichTextEditor({
           label="Attach image"
           onClick={() => fileInputRef.current?.click()}
         />
+        <DictationButton
+          listening={dictation.listening}
+          supported={dictation.supported}
+          onClick={handleMicClick}
+          fieldLabel="description"
+          data-testid="button-dictate-description"
+        />
         <div className="flex-1" />
         <ToolbarButton
           icon={Undo2}
@@ -330,6 +371,11 @@ export function RichTextEditor({
           onClick={() => editor.chain().focus().redo().run()}
         />
       </div>
+      {dictation.listening && (
+        <p className="px-4 pt-1 text-xs text-muted-foreground italic" aria-live="polite">
+          {dictation.interim.trim().length > 0 ? dictation.interim : 'Listening…'}
+        </p>
+      )}
       <EditorContent editor={editor} />
       <input
         ref={fileInputRef}

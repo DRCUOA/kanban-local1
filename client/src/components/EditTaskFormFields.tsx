@@ -16,7 +16,8 @@ import {
   type TaskPriorityValue,
 } from '@shared/constants';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+import { VoiceInput } from '@/components/VoiceInput';
+import { appendTranscript } from '@/lib/dictation';
 import { RichTextEditor } from '@/components/RichTextEditor';
 import { RichTextContent } from '@/components/RichTextContent';
 import { isRichTextEmpty } from '@/lib/rich-text';
@@ -62,10 +63,15 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
           <FormItem>
             <FormLabel className="text-xs">Title</FormLabel>
             <FormControl>
-              <Input
+              <VoiceInput
                 {...field}
+                onDictate={(transcript) => {
+                  field.onChange(appendTranscript(field.value, transcript));
+                }}
+                fieldLabel="title"
                 className="h-12 text-base rounded-xl"
                 data-testid="input-edit-title"
+                micTestId="button-dictate-edit-title"
               />
             </FormControl>
             <FormMessage />
