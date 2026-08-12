@@ -128,6 +128,18 @@ All routes are defined declaratively in `shared/routes.ts` and registered in `se
 | PATCH | `/api/sub-stages/:id` | Update sub-stage |
 | DELETE | `/api/sub-stages/:id` | Delete sub-stage |
 
+### Export
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/export` | Self-contained JSON bundle: tasks, stages, sub-stages. Accepts `?includeArchived=true` |
+
+Alongside the stored data the bundle carries two derived, read-only views, built in `shared/briefing.ts` for the scheduled briefing agent:
+
+- **`tasks[].urgency`** — `isOverdue`, `daysOverdue`, `dueBucket`, `briefingRank`, `mustSurface`
+- **`briefing`** — `overdue` / `dueToday` / `inProgress` / `blocked`, pre-sorted most-urgent-first, with the reference instant, timezone, and overdue rule declared inline
+
+Both are cut against `exportedAt`, and the overdue rule matches the board's own highlight, so export and UI always agree. Stored task fields are unmodified, so the file round-trips through import unchanged.
+
 ---
 
 ## Client Pages & Components
