@@ -1,5 +1,6 @@
 # EPIC-03: One authoritative state per task
 
+**Version:** 3.1
 **Epic type:** Enabler
 **Status:** Ready for refinement
 **Owner:** Platform
@@ -168,3 +169,34 @@ Each change ships expand → backfill → contract so no deploy has a broken win
 2. Should a person-named sub-stage and the assignment field be the _same_ concept (a lane **is** the assignee) rather than two synced fields? _Recommendation:_ yes for stage 2's lanes; it deletes the conflict class outright rather than keeping it in sync.
 3. `recurrence` is `'none'` on all 22 tasks — is it an unfinished feature or dead weight? If dead, drop the column in this epic; if unfinished, it needs its own epic before it can be relied on.
 4. Should the export offer `?include=descriptions` for the raw HTML, or should heavy bodies always be fetched per-task? _Recommendation:_ per-task, so the default board read has no large-payload path at all.
+
+## Implementation cost estimate (agent-assisted)
+
+_Added in v3.1. Estimates assume the stories are implemented by an agent in this repo, not by hand._
+
+**Calibration basis.** The briefing-digest change that prompted this epic was measured, not guessed: 155 model invocations, 148k output tokens, ~18.0M total, producing ~1,000 committed lines plus the payload analysis, PR, and this document. Cache reads were **96.6%** of consumption at an average context of ~112k, so cost scales with _invocations × context size_, not code volume. Long debugging loops are the expense; writing code is close to free by comparison.
+
+| Cluster                                 | Stories      | Pts | Est. tokens   |
+| --------------------------------------- | ------------ | --- | ------------- |
+| Stage classification + state            | 1, 2, 9      | 12  | ~30M          |
+| Membership + assignment                 | 3, 5         | 10  | ~25M          |
+| Attachments + text projection           | 7, 8         | 8   | ~20M          |
+| Normalisation + smaller enablers        | 4, 6, 10, 11 | 9   | ~19M          |
+| **Subtotal**                            |              | 39  | **~94M**      |
+| Rework, review cycles, failed backfills |              |     | +25%          |
+| **Total**                               |              |     | **~100–130M** |
+
+Output tokens specifically: ~700–900k. Cross-check: this session ran ~2.2M tokens per point of comparable work; EPIC-03's points are harder (migrations, client UI, cross-release coordination), so ~2.5–3M/pt × 39 ≈ 98–117M. Both methods agree.
+
+**Time.**
+
+- **Agent wall-clock: ~8–10 hours active.** The briefing layer took ~20–25 minutes end to end; a 5-pt story with a migration, backfill verification, and client changes runs 45–90 minutes.
+- **Calendar: 1.5–2 sprints**, floored by process rather than typing. Story 5 needs a human decision (R2 — do not guess #142's assignee), story 2 needs two releases for expand → contract, and production migrations need review, backup, and a window.
+
+**Story 0 — stand up a test database (2–3 pts, ~4M tokens). Do this first.** `DATABASE_URL` is unset locally, and `server/routes.test.ts`, `server/delete-task-fk.integration.test.ts`, and `server/gmail/history-sync.test.ts` all fail on a clean checkout because of it. Every migration story here needs a working test DB before a backfill can be verified at all; without it, stories 1–7 are written against untested migrations. This is unbudgeted in the story table above and is where the fat tail in these estimates lives.
+
+**Confidence: ±30–50%, skewed high.** Migration risk is asymmetric — a backfill that corrupts data on a dry run can double a story, while nothing makes a story dramatically cheaper than estimated.
+
+**Cost lever.** Batching related stories into shared sessions (the clusters above) avoids re-exploring the repo each time. Worth ~20–30%, not more: longer sessions carry larger contexts, so part of the saving is given back per invocation.
+
+> **Bookkeeping:** the header target says ≈34 pts, but the story table sums to **39**. The estimates above use 39. The header is left unchanged pending a call on which figure is authoritative.
