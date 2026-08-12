@@ -18,7 +18,7 @@ export function ArchiveZone({ isOver }: ArchiveZoneProps) {
     <div
       ref={setNodeRef}
       className={cn(
-        'w-full mt-3 p-5 rounded-xl transition-all duration-200 border-0 relative z-20 min-h-[56px]',
+        'w-full flex-1 p-4 rounded-xl transition-all duration-200 border-0 relative z-20 min-h-[56px]',
         isOver
           ? 'neo-pressed bg-destructive/10 ring-2 ring-destructive/50 scale-[1.02]'
           : 'neo-raised',

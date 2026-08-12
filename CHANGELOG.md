@@ -8,10 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Resizable board columns in horizontal layout: drag (or arrow-key) the gutter between two stages to change their split, double-click a gutter to even the pair out, and "Reset widths" next to the archive strip clears every override. Widths are stored per stage as flex weights in `localStorage` (`kanban-column-weights`), so the board stays proportional at any viewport width.
 - `GET /api/export` returns the board as a single JSON object (`shared/export.ts`): stages, sub-stages and tasks plus `formatVersion`, `exportedAt`, `scope` and `counts`. Supports `?includeArchived=true`.
 - Reserved `projects: []` and `scope.projectIds: null` in the envelope for the forthcoming project layer; `?projectId=` returns 400 rather than silently exporting everything.
 
 ### Changed
+- Horizontal board columns now share the full width of the viewport instead of being capped at 320px each, so wide/ultrawide screens are filled rather than leaving the right-hand side empty. Columns fall back to a 260px minimum and horizontal scrolling when there are more stages than fit.
+- The archive drop zone moved from a full-height column at the end of the row to a strip underneath the board, where it no longer consumes the majority of a wide viewport.
+- The dashboard is now a fixed-height app shell (`h-dvh`): the header, stage chips and bottom nav stay put and the board scrolls inside itself, which keeps the archive strip clear of the bottom nav on short viewports.
 - "Export Tasks" now downloads the server-side export (so stages and sub-stages are included), falling back to an in-memory export in the same envelope shape if the API is unreachable.
 - Import accepts both the new envelope and legacy bare-array export files.
 
