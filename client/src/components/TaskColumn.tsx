@@ -9,6 +9,10 @@ interface TaskColumnProps {
   count: number;
   stageColor: string;
   boardLayout?: 'vertical' | 'horizontal';
+  /** Outer element ref — the board measures column widths while resizing. */
+  outerRef?: (element: HTMLDivElement | null) => void;
+  /** Flex sizing supplied by the board (horizontal layout only). */
+  style?: React.CSSProperties;
   children: React.ReactNode;
 }
 
@@ -18,6 +22,8 @@ export function TaskColumn({
   count,
   stageColor,
   boardLayout = 'vertical',
+  outerRef,
+  style,
   children,
 }: TaskColumnProps) {
   // Namespaced id: a bare numeric id would collide with task-card sortable ids
@@ -33,9 +39,15 @@ export function TaskColumn({
 
   return (
     <div
+      ref={outerRef}
+      style={isHorizontal ? style : undefined}
       className={cn(
         'flex flex-col',
-        isHorizontal ? 'min-w-[280px] max-w-[320px] flex-shrink-0' : 'w-full',
+        // Horizontal: share the row proportionally (weight comes from `style`)
+        // so wide/ultrawide viewports are filled instead of left blank, while
+        // the min-width keeps columns readable and lets the row scroll when
+        // there are more stages than fit.
+        isHorizontal ? 'min-w-[260px] min-h-0' : 'w-full',
       )}
     >
       <div className="flex items-center justify-between px-4 py-3">
