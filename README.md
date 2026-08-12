@@ -148,6 +148,18 @@ Four routes: Dashboard (`/`), Admin (`/admin`), Archive (`/archive`), and a 404 
 
 See [COMPONENT_INDEX.md](COMPONENT_INDEX.md) for the full breakdown of every component, hook, utility, shared module, and server module with exports and responsibilities.
 
+### Voice dictation
+
+Every free-text field on the create/edit task forms — title, description, owner — carries a mic button (`DictationButton`). Clicking it starts the browser's Web Speech API (`useSpeechDictation`); on macOS Safari that is Apple's own recogniser, the same engine behind System Settings → Keyboard → Dictation, and the browser prompts for microphone access the first time. The icon becomes an animated sound wave while listening, interim words appear under the field as feedback, and only finalised phrases are written in — spaced and sentence-capitalised by `lib/dictation.ts`.
+
+Browsers without the API (Firefox) still show the button: it focuses the field and points at macOS Dictation (Fn Fn), which types into the focused field directly.
+
+### Share a task as an email
+
+The task view has a **Share** button that copies the task to the clipboard as a ready-to-paste email — subject line, detail block (stage, status, priority, owner, effort, due date, tags, dates) and description. `lib/task-email.ts` builds both a plain-text and an HTML flavour and `lib/clipboard.ts` puts both on the clipboard, so a rich compose window keeps the layout and a plain one still reads well.
+
+This is clipboard-only by design: no mail client is launched, no `mailto:` link is produced, and nothing is sent. The user pastes it wherever they like.
+
 ---
 
 ## R2 Refactor Context

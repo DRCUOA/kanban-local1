@@ -31,7 +31,8 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+import { VoiceInput } from '@/components/VoiceInput';
+import { appendTranscript } from '@/lib/dictation';
 import { RichTextEditor } from '@/components/RichTextEditor';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -149,11 +150,16 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
                 <FormItem>
                   <FormLabel className="text-xs">Title</FormLabel>
                   <FormControl>
-                    <Input
+                    <VoiceInput
                       placeholder="e.g., Design homepage"
                       {...field}
+                      onDictate={(transcript) => {
+                        field.onChange(appendTranscript(field.value, transcript));
+                      }}
+                      fieldLabel="title"
                       className="h-12 text-base rounded-xl"
                       data-testid="input-task-title"
+                      micTestId="button-dictate-title"
                     />
                   </FormControl>
                   <FormMessage />
