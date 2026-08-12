@@ -1,6 +1,11 @@
 import { differenceInCalendarDays, startOfDay } from 'date-fns';
 import { z } from 'zod';
-import { getStatusFromStageName, isInProgressStageName, isWaitingStageName } from './constants';
+import {
+  TASK_STATUS,
+  getStatusFromStageName,
+  isInProgressStageName,
+  isWaitingStageName,
+} from './constants';
 import type { Task, Stage, SubStage } from './schema';
 
 /**
@@ -106,6 +111,12 @@ export interface BriefingDigest {
   inProgress: BriefingEntry[];
   /** Tasks parked in a waiting/blocked column. */
   blocked: BriefingEntry[];
+  /**
+   * Tasks sitting in a Backlog column — not yet started. May overlap
+   * `overdue`/`dueToday` by design. Excludes waiting/blocked columns, which
+   * the stage-name status inference would otherwise fold into backlog.
+   */
+  backlog: BriefingEntry[];
 }
 
 // --- Resolution helpers ---
@@ -326,6 +337,12 @@ export function buildBriefing({
     dueToday: pick((_, task) => task.urgency.dueBucket === DUE_BUCKET.TODAY),
     inProgress: pick((entry) => isInProgressStageName(entry.stageLabel)),
     blocked: pick((entry) => isWaitingStageName(entry.stageLabel)),
+    // `stage` folds waiting columns into 'backlog' (the status enum has no
+    // waiting value), so a true backlog is backlog-by-stage minus the columns
+    // already reported as blocked.
+    backlog: pick(
+      (entry) => entry.stage === TASK_STATUS.BACKLOG && !isWaitingStageName(entry.stageLabel),
+    ),
   };
 }
 
@@ -386,4 +403,5 @@ export const briefingDigestSchema = z.object({
   dueToday: z.array(briefingEntrySchema),
   inProgress: z.array(briefingEntrySchema),
   blocked: z.array(briefingEntrySchema),
+  backlog: z.array(briefingEntrySchema),
 });
