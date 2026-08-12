@@ -433,6 +433,46 @@ describe('GET /api/export', () => {
     expect(res.body.scope.includeArchived).toBe(true);
   });
 
+  it('returns only the digest for view=briefing', async () => {
+    stubBoard();
+
+    const res = await request(app).get(`${api.export.get.path}?view=briefing`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.briefing).toBeDefined();
+    expect(res.body.formatVersion).toBe(EXPORT_FORMAT_VERSION);
+    // The whole point of the view: no bulk arrays for a truncating fetcher to
+    // choke on before it reaches the digest.
+    expect(res.body.tasks).toBeUndefined();
+    expect(res.body.stages).toBeUndefined();
+    expect(res.body.subStages).toBeUndefined();
+  });
+
+  it('serializes briefing before tasks in the full view', async () => {
+    // Consumers with truncating fetch tools read the response as a prefix.
+    // If `tasks` (which can carry ~540 KB of embedded images) serialized
+    // first, a cut-off read would look like a missing digest.
+    stubBoard();
+
+    const res = await request(app).get(api.export.get.path);
+    const text = JSON.stringify(res.body);
+
+    // '"tasks":[' targets the array; bare '"tasks"' would match the count in
+    // `counts` first.
+    expect(text.indexOf('"briefing"')).toBeGreaterThan(-1);
+    expect(text.indexOf('"tasks":[')).toBeGreaterThan(-1);
+    expect(text.indexOf('"briefing"')).toBeLessThan(text.indexOf('"tasks":['));
+  });
+
+  it('returns 400 for an unrecognised view value', async () => {
+    stubBoard();
+
+    const res = await request(app).get(`${api.export.get.path}?view=summary`);
+
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty('status', 400);
+  });
+
   it('returns 400 for an unrecognised includeArchived value', async () => {
     stubBoard();
 

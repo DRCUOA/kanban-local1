@@ -20,7 +20,9 @@ import type {
 import type { ApiErrorResponse, IdParams, StageIdParams } from '@shared/api-types';
 import {
   buildExportBundle,
+  toBriefingExport,
   PROJECT_SCOPE_UNSUPPORTED,
+  type BriefingExport,
   type ExportQuery,
   type TaskExportBundle,
 } from '@shared/export';
@@ -153,44 +155,48 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // errors only on the server console) instead of a JSON 500.
   app.get(
     api.export.get.path,
-    asyncHandler(async (req: Request, res: Response<TaskExportBundle | ApiErrorResponse>) => {
-      // The project layer does not exist yet, so a project-scoped request can
-      // only be answered with a lie. Fail loudly instead of silently returning
-      // everything. See docs/epics/EPIC-01-project-layer.md.
-      if (req.query.projectId !== undefined) {
-        return res.status(400).json({ error: PROJECT_SCOPE_UNSUPPORTED, status: 400 });
-      }
-
-      let query: ExportQuery;
-      try {
-        query = api.export.get.query.parse(req.query);
-      } catch (error) {
-        if (error instanceof z.ZodError) {
-          return res.status(400).json({
-            error: error.errors[0]?.message ?? 'Invalid export query',
-            status: 400,
-          });
+    asyncHandler(
+      async (req: Request, res: Response<TaskExportBundle | BriefingExport | ApiErrorResponse>) => {
+        // The project layer does not exist yet, so a project-scoped request can
+        // only be answered with a lie. Fail loudly instead of silently returning
+        // everything. See docs/epics/EPIC-01-project-layer.md.
+        if (req.query.projectId !== undefined) {
+          return res.status(400).json({ error: PROJECT_SCOPE_UNSUPPORTED, status: 400 });
         }
-        throw error;
-      }
 
-      const [activeTasks, archivedTasks, allStages, allSubStages] = await Promise.all([
-        storage.getTasks(),
-        query.includeArchived ? storage.getArchivedTasks() : Promise.resolve([]),
-        storage.getStages(),
-        storage.getSubStages(),
-      ]);
+        let query: ExportQuery;
+        try {
+          query = api.export.get.query.parse(req.query);
+        } catch (error) {
+          if (error instanceof z.ZodError) {
+            return res.status(400).json({
+              error: error.errors[0]?.message ?? 'Invalid export query',
+              status: 400,
+            });
+          }
+          throw error;
+        }
 
-      res.json(
-        buildExportBundle({
+        const [activeTasks, archivedTasks, allStages, allSubStages] = await Promise.all([
+          storage.getTasks(),
+          query.includeArchived ? storage.getArchivedTasks() : Promise.resolve([]),
+          storage.getStages(),
+          storage.getSubStages(),
+        ]);
+
+        const bundle = buildExportBundle({
           tasks: [...activeTasks, ...archivedTasks],
           stages: allStages,
           subStages: allSubStages,
           includeArchived: query.includeArchived,
           exportedAt: new Date().toISOString(),
-        }),
-      );
-    }),
+        });
+
+        // The briefing view exists for consumers whose fetch tools truncate
+        // large responses: ~4 KB of digest instead of ~540 KB of bundle.
+        res.json(query.view === 'briefing' ? toBriefingExport(bundle) : bundle);
+      },
+    ),
   );
 
   // Stage endpoints
