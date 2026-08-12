@@ -82,7 +82,10 @@ export default function Dashboard(_props: DashboardProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col pb-bottom-nav">
+    // App shell: pin to the viewport (dvh keeps mobile browser chrome honest)
+    // so the board owns the space between header and bottom nav and scrolls
+    // inside <main> instead of pushing the archive strip under the nav.
+    <div className="h-dvh overflow-hidden bg-background flex flex-col pb-bottom-nav">
       <DashboardHeader
         searchQuery={searchQuery}
         showSearch={showSearch}
