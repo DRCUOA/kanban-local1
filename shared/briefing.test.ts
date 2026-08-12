@@ -281,6 +281,23 @@ describe('buildBriefing', () => {
     expect(digest().blocked.map((e) => e.id)).toEqual([128]);
   });
 
+  it('collects backlog-column work, excluding waiting columns', () => {
+    // #146 sits in Backlog; #128 resolves to stage 'backlog' too (the status
+    // enum has no waiting value) but sits in a Waiting column and is already
+    // reported as blocked — it must not appear as backlog.
+    const { backlog } = digest();
+
+    expect(backlog.map((e) => e.id)).toEqual([146]);
+  });
+
+  it('keeps in-progress and done work out of the backlog', () => {
+    const ids = digest().backlog.map((e) => e.id);
+
+    expect(ids).not.toContain(142);
+    expect(ids).not.toContain(107);
+    expect(ids).not.toContain(99);
+  });
+
   it('excludes archived tasks from every section', () => {
     const { overdue, inProgress, blocked, dueToday } = digest();
     const ids = [...overdue, ...inProgress, ...blocked, ...dueToday].map((e) => e.id);
