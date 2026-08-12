@@ -132,6 +132,7 @@ All routes are defined declaratively in `shared/routes.ts` and registered in `se
 | Method | Path | Description |
 |---|---|---|
 | GET | `/api/export` | Self-contained JSON bundle: tasks, stages, sub-stages. Accepts `?includeArchived=true` |
+| GET | `/api/export?view=briefing` | Digest only (~4 KB vs ~540 KB): the `briefing` object plus envelope metadata. For consumers whose fetch tools truncate large responses (LLM agents) |
 
 Alongside the stored data the bundle carries two derived, read-only views, built in `shared/briefing.ts` for the scheduled briefing agent:
 

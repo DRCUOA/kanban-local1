@@ -89,8 +89,36 @@ export const exportQuerySchema = z.object({
     .enum(['true', 'false'])
     .optional()
     .transform((v) => v === 'true'),
+  /**
+   * `briefing` returns only the digest (~4 KB) instead of the full bundle
+   * (~540 KB with embedded images). Built for the scheduled briefing agent,
+   * whose fetch tool truncates large responses — it must never need to read
+   * past the digest to get the overdue list.
+   */
+  view: z.enum(['full', 'briefing']).optional().default('full'),
 });
 export type ExportQuery = z.infer<typeof exportQuerySchema>;
+
+/**
+ * The `?view=briefing` response: the digest plus just enough envelope to
+ * identify what produced it. Deliberately excludes `tasks` — the digest is
+ * self-sufficient, and the heavy descriptions are the reason this view exists.
+ */
+export interface BriefingExport {
+  formatVersion: number;
+  generator: string;
+  exportedAt: string;
+  briefing: BriefingDigest;
+}
+
+export function toBriefingExport(bundle: TaskExportBundle): BriefingExport {
+  return {
+    formatVersion: bundle.formatVersion,
+    generator: bundle.generator,
+    exportedAt: bundle.exportedAt,
+    briefing: bundle.briefing,
+  };
+}
 
 export interface BuildExportBundleInput {
   tasks: Task[];
@@ -137,10 +165,10 @@ export function buildExportBundle({
       subStages: subStages.length,
       projects: projects.length,
     },
-    stages,
-    subStages,
-    tasks: annotatedTasks,
-    projects,
+    // Serialization order is deliberate: `briefing` before the heavy arrays.
+    // Consumers whose fetch tools truncate large responses (LLM agents cap
+    // around ~100 KB) must see the digest before the first base64 blob in
+    // `tasks[].description`, or a cut-off read looks like a missing digest.
     briefing: buildBriefing({
       tasks: annotatedTasks,
       stages,
@@ -148,6 +176,10 @@ export function buildExportBundle({
       now,
       timezone: zone,
     }),
+    stages,
+    subStages,
+    tasks: annotatedTasks,
+    projects,
   };
 }
 
