@@ -133,13 +133,16 @@ All routes are defined declaratively in `shared/routes.ts` and registered in `se
 |---|---|---|
 | GET | `/api/export` | Self-contained JSON bundle: tasks, stages, sub-stages. Accepts `?includeArchived=true` |
 | GET | `/api/export?view=briefing` | Digest only (~4 KB vs ~540 KB): the `briefing` object plus envelope metadata. For consumers whose fetch tools truncate large responses (LLM agents) |
+| GET | `/api/export?tz=Pacific/Auckland` | IANA zone the calendar day is cut in. Defaults to `Pacific/Auckland`; an unknown zone is a 400 |
+
+Every response carries `Cache-Control: no-store, no-cache, must-revalidate` (plus `CDN-Cache-Control: no-store`) — the board changes all day, so nothing in front of the route may hold a snapshot. A CDN that ignores those headers needs a cache-bypass rule for `/api/export*`.
 
 Alongside the stored data the bundle carries two derived, read-only views, built in `shared/briefing.ts` for the scheduled briefing agent:
 
 - **`tasks[].urgency`** — `isOverdue`, `daysOverdue`, `dueBucket`, `briefingRank`, `mustSurface`
 - **`briefing`** — `overdue` / `dueToday` / `inProgress` / `blocked` / `backlog`, pre-sorted most-urgent-first, with the reference instant, timezone, and overdue rule declared inline
 
-Both are cut against `exportedAt`, and the overdue rule matches the board's own highlight, so export and UI always agree. Stored task fields are unmodified, so the file round-trips through import unchanged.
+Both are cut against `exportedAt` in `tz` (New Zealand by default, not the server's UTC — cutting in UTC put every NZ morning a day behind), and the overdue rule matches the board's own highlight, so export and UI always agree. Stored task fields are unmodified, so the file round-trips through import unchanged.
 
 ---
 

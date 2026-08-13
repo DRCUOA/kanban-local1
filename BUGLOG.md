@@ -74,3 +74,57 @@ Check the next deploy logs for:
 - No `drizzle-kit` errors
 - `Database migrations applied` (from `runMigrations()`)
 - `serving on port ...` (server started successfully)
+
+---
+
+## BUG-003: `/api/export` served a stale snapshot, and cut days in UTC
+
+**Date:** 2026-08-13
+**Severity:** High (the 7:00 AM NZT briefing was reporting a day-old, wrong-day board)
+
+Two independent defects, both reached through the same request, both invisible to a reader of the payload — the response looked internally consistent while being wrong.
+
+### Defect 1 — the response was cached
+
+`GET /api/export?view=briefing` returned `exportedAt: 2026-08-12T07:23:37Z` when fetched at 19:12 that evening and again near midnight: one 12-hour-old snapshot, replayed for the identical URL. Adding a junk query parameter forced a fresh build, which proved the app could regenerate per request and that something keyed on the exact URL was pinning the response.
+
+**Root cause:** the route set no cache directives at all, so a caching layer was free to treat a board that changes all day as a static document.
+
+**Fix** (`server/routes.ts`): set, before any branch of the handler so error responses are covered too —
+
+```
+Cache-Control: no-store, no-cache, must-revalidate
+CDN-Cache-Control: no-store
+Pragma: no-cache
+Expires: 0
+```
+
+`CDN-Cache-Control` covers an edge that ignores `Cache-Control`; `Pragma`/`Expires` cover HTTP/1.0 proxies that ignore both. **If a CDN still holds the URL**, add a cache-bypass rule for `/api/export*` at the edge — origin headers are the fix here, but only an edge that honours them.
+
+### Defect 2 — day boundaries were cut in UTC
+
+The digest reported `"timezone": "UTC"` and a `generatedFor` of the UTC calendar date. New Zealand runs 12–13 hours ahead, so for every NZ morning (midnight–noon NZT) the export's "today" was still yesterday: `daysOverdue` one low, and `dueToday` showing yesterday's cards. The 7:00 AM NZT briefing was structurally a day behind.
+
+**Root cause:** `shared/briefing.ts` cut calendar days with date-fns `startOfDay`/`differenceInCalendarDays`, which use the host zone, and `resolveTimezone()` reported that host zone. The server runs in UTC, so the payload was honestly declaring the wrong boundary rather than using the board's own.
+
+**Fix** (`shared/briefing.ts`, `shared/export.ts`, `server/routes.ts`):
+
+- `zonedDayKey` / `differenceInZonedCalendarDays` read the calendar day back out of `Intl.DateTimeFormat` for a named zone, so NZDT is handled by the platform's zone database instead of an assumed +12.
+- `DEFAULT_TIMEZONE = 'Pacific/Auckland'`, threaded through `computeTaskUrgency`, `annotateTasksWithUrgency`, `buildExportBundle` and the digest — `now`, `generatedFor`, `daysOverdue`, `dueBucket` and the overdue/dueToday bucketing all cut in that zone.
+- `?tz=` accepts any IANA zone (`GET /api/export?view=briefing&tz=Pacific/Auckland`), defaulting to `Pacific/Auckland`. An unknown zone is a 400, not a silent fallback: a briefing cut in the wrong zone looks correct and is a day out.
+- `overdueRule` names the zone actually used rather than referring to a field.
+
+Nothing else about the payload changed — field names, `briefingRank`, the conflict flags and `overdueRule` semantics are as they were. Only the zone the day is cut in.
+
+### Tests
+
+| Test | Proves |
+|---|---|
+| `server/routes.test.ts` — "forbids caching the response" / "…error responses too" | Both directives ship on 200s and 400s |
+| `server/routes.test.ts` — "rebuilds the payload on every request to the same URL" | Two fetches of one URL five seconds apart carry different `exportedAt` |
+| `server/routes.test.ts` — "cuts the day in New Zealand, not the UTC the server runs in" | At 07:00 NZT on 13 Aug, `generatedFor` is `2026-08-13`, not `2026-08-12` |
+| `shared/briefing.test.ts` — "counts a card due yesterday NZ time as one day overdue at 7:00 AM NZT" | The exact acceptance case; the same input cut in UTC reads "due today" |
+| `shared/briefing.test.ts` — "tracks NZDT, not a hardcoded +12" | A +13 instant lands on the right NZ day |
+| `shared/export.test.ts` — `exportQuerySchema` cases | Default zone, explicit zone, 400 on an unknown one |
+
+The existing briefing tests built their instants with host-local `Date` constructors, which cannot see a host-zone bug by construction. They now pin an explicit NZ offset, and the suite passes identically under `TZ=UTC`, `America/New_York`, `Asia/Kolkata` and `Pacific/Auckland`.

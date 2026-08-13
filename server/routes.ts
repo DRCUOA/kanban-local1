@@ -157,6 +157,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     api.export.get.path,
     asyncHandler(
       async (req: Request, res: Response<TaskExportBundle | BriefingExport | ApiErrorResponse>) => {
+        // Every response is a fresh snapshot of a board that changes all day, so
+        // nothing between here and the caller may keep one. Set before any
+        // branch below: an error response must not be cached either.
+        //
+        // A briefing agent polling the identical URL was served a 12-hour-old
+        // body (same `exportedAt`) until a junk query param forced a rebuild —
+        // proof something keyed on the exact URL was pinning it.
+        // `CDN-Cache-Control` covers a CDN edge that ignores `Cache-Control`;
+        // `Pragma`/`Expires` cover HTTP/1.0 proxies that ignore both.
+        res.set({
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'CDN-Cache-Control': 'no-store',
+          Pragma: 'no-cache',
+          Expires: '0',
+        });
+
         // The project layer does not exist yet, so a project-scoped request can
         // only be answered with a lie. Fail loudly instead of silently returning
         // everything. See docs/epics/EPIC-01-project-layer.md.
@@ -190,6 +206,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           subStages: allSubStages,
           includeArchived: query.includeArchived,
           exportedAt: new Date().toISOString(),
+          // Day boundaries are cut in the caller's zone, defaulting to New
+          // Zealand — not the host's, which is UTC and a day behind all NZ
+          // morning.
+          timezone: query.tz,
         });
 
         // The briefing view exists for consumers whose fetch tools truncate

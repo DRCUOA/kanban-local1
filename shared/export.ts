@@ -4,7 +4,9 @@ import {
   annotateTasksWithUrgency,
   buildBriefing,
   briefingDigestSchema,
+  isValidTimezone,
   resolveTimezone,
+  DEFAULT_TIMEZONE,
   type BriefingDigest,
   type ExportTask,
 } from './briefing';
@@ -96,6 +98,16 @@ export const exportQuerySchema = z.object({
    * past the digest to get the overdue list.
    */
   view: z.enum(['full', 'briefing']).optional().default('full'),
+  /**
+   * IANA zone the calendar day is cut in, defaulting to `DEFAULT_TIMEZONE`.
+   * Explicit so a scheduled 7:00 AM NZT briefing can state the zone it means
+   * rather than inheriting whatever the host happens to be set to.
+   */
+  tz: z
+    .string()
+    .refine(isValidTimezone, { message: 'Invalid tz: expected an IANA zone like Pacific/Auckland' })
+    .optional()
+    .default(DEFAULT_TIMEZONE),
 });
 export type ExportQuery = z.infer<typeof exportQuerySchema>;
 
@@ -126,7 +138,7 @@ export interface BuildExportBundleInput {
   subStages: SubStage[];
   includeArchived: boolean;
   exportedAt: string;
-  /** Overrides the host zone the due-date buckets are cut in. Tests pin this. */
+  /** IANA zone the due-date buckets are cut in. Defaults to `DEFAULT_TIMEZONE`. */
   timezone?: string;
 }
 
@@ -148,8 +160,8 @@ export function buildExportBundle({
   // briefing buckets are cut against it, so the envelope can never disagree
   // with itself about what "overdue" meant at export time.
   const now = new Date(exportedAt);
-  const zone = timezone ?? resolveTimezone();
-  const annotatedTasks = annotateTasksWithUrgency(tasks, stages, now);
+  const zone = resolveTimezone(timezone);
+  const annotatedTasks = annotateTasksWithUrgency(tasks, stages, now, zone);
 
   return {
     formatVersion: EXPORT_FORMAT_VERSION,
