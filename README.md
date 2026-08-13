@@ -139,10 +139,12 @@ Every response carries `Cache-Control: no-store, no-cache, must-revalidate` (plu
 
 Alongside the stored data the bundle carries two derived, read-only views, built in `shared/briefing.ts` for the scheduled briefing agent:
 
-- **`tasks[].urgency`** — `isOverdue`, `daysOverdue`, `dueBucket`, `briefingRank`, `mustSurface`
+- **`tasks[].urgency`** — `dueDay`, `isOverdue`, `daysOverdue`, `dueBucket`, `briefingRank`, `mustSurface`
 - **`briefing`** — `overdue` / `dueToday` / `inProgress` / `blocked` / `backlog`, pre-sorted most-urgent-first, with the reference instant, timezone, and overdue rule declared inline
 
 Both are cut against `exportedAt` in `tz` (New Zealand by default, not the server's UTC — cutting in UTC put every NZ morning a day behind), and the overdue rule matches the board's own highlight, so export and UI always agree. Stored task fields are unmodified, so the file round-trips through import unchanged.
+
+**Read `dueDay`, not `dueDate`.** A due date is a date wearing a timestamp's clothes: the picker stores the chosen day at local midnight, so the `dueDate` instant's own UTC date part is the day *before* the label — a card labeled 13 August is stored as `2026-08-12T12:00:00.000Z`. `dueDay` is the labeled calendar date (YYYY-MM-DD) in `tz`, and is what the card face shows. Deriving a date from `dueDate` reads every card a day early.
 
 ---
 

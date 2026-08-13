@@ -2,6 +2,7 @@
 import { Task } from '@shared/schema';
 import { TASK_PRIORITY, EFFORT_MAX } from '@shared/constants';
 import { getTaskWarningHighlight } from '@shared/task-warning-highlight';
+import { formatDueDayLabel, isDueTodayOn, isOverdueOn } from '@shared/briefing';
 import { TASK_WARNING_BORDER_COLOR } from '@/lib/task-warning-border';
 import { useStages } from '@/hooks/use-stages';
 import { useSortable } from '@dnd-kit/sortable';
@@ -12,7 +13,6 @@ import { GripVertical, Clock, AlertCircle, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { InlineTaskEditor } from './InlineTaskEditor';
 import { RichTextContent } from './RichTextContent';
-import { format, isPast, isToday } from 'date-fns';
 
 interface TaskCardProps {
   task: Task;
@@ -51,10 +51,12 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
   const priority = (task.priority as keyof typeof priorityStyles) || TASK_PRIORITY.NORMAL;
   const priorityStyle = priorityStyles[priority] || priorityStyles[TASK_PRIORITY.NORMAL];
 
-  // Overdue check
-  const dueDate = task.dueDate ? new Date(task.dueDate) : null;
-  const isOverdue = dueDate && isPast(dueDate) && !isToday(dueDate);
-  const isDueToday = dueDate && isToday(dueDate);
+  // Overdue check. Shared with the export so the card face, its highlight and
+  // the briefing all name the same day — the label is the day the picker stored
+  // at local midnight, not the UTC date part of the instant.
+  const dueDayLabel = formatDueDayLabel(task.dueDate);
+  const isOverdue = isOverdueOn(task.dueDate, new Date());
+  const isDueToday = isDueTodayOn(task.dueDate, new Date());
 
   if (isDragging) {
     return (
@@ -152,7 +154,7 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
           </div>
 
           {/* Due date */}
-          {dueDate && (
+          {dueDayLabel && (
             <div
               className={cn(
                 'flex items-center gap-1 mb-2 text-xs',
@@ -163,7 +165,7 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
             >
               {isOverdue && <AlertCircle className="h-3 w-3" />}
               {isDueToday && <Clock className="h-3 w-3" />}
-              <span>Due: {format(dueDate, 'MMM d')}</span>
+              <span>Due: {dueDayLabel}</span>
             </div>
           )}
 

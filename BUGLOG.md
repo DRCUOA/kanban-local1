@@ -128,3 +128,65 @@ Nothing else about the payload changed — field names, `briefingRank`, the conf
 | `shared/export.test.ts` — `exportQuerySchema` cases | Default zone, explicit zone, 400 on an unknown one |
 
 The existing briefing tests built their instants with host-local `Date` constructors, which cannot see a host-zone bug by construction. They now pin an explicit NZ offset, and the suite passes identically under `TZ=UTC`, `America/New_York`, `Asia/Kolkata` and `Pacific/Auckland`.
+
+---
+
+## BUG-004: due days read a day early if you take the date part of `dueDate`
+
+**Date:** 2026-08-13
+**Severity:** Medium (no wrong buckets shipped; the payload misled the consumer reading it)
+**Follows:** BUG-003, whose Pacific/Auckland day cut is deployed and working.
+
+### What was reported
+
+Cards 140, 141 and 145 store `dueDate: "2026-08-13T12:00:00.000Z"`, were read as "due 13 August", and the live briefing bucketed all three as `dueBucket: "tomorrow"` with `dueToday: []` on 13 August NZ. The proposed fix was to derive a task's due day from the stored instant's **UTC date part**.
+
+### What the code actually does
+
+Checked before changing anything, and it inverts the premise.
+
+The writer is `react-day-picker` v8 (`mode="single"`), whose day cells are built with date-fns `startOfMonth`/`startOfWeek`/`addDays` — all local-time. `onSelect` returns **local midnight**, which `JSON.stringify` sends as UTC. Reproduced in NZ:
+
+```
+picker Date for "13 Aug": Thu Aug 13 2026 00:00:00 GMT+1200
+sent to server (JSON):    {"dueDate":"2026-08-12T12:00:00.000Z"}
+```
+
+So for a picker-written card the instant's UTC date part is **the day before** the label. Both candidate conventions produce a value ending `T12:00:00.000Z` during NZST, which is why the stored value alone cannot distinguish them.
+
+The board agrees with the NZ-local reading: `TaskCard.tsx` used `isPast`/`isToday`/`format`, all browser-local, so `2026-08-13T12:00:00.000Z` renders as **"Due: Aug 14"**. Confirmed against the live board — cards 140/141/145 display Aug 14. Their `dueBucket: "tomorrow"` on 13 August was therefore correct, and `dueToday: []` was correct.
+
+Deriving the due day from the UTC date part would have moved every picker-written card one day *earlier* than the board shows it — reporting cards overdue a day early and filling `dueToday` with tomorrow's work. That is the mirror image of the reported defect, applied to the whole board.
+
+### Root cause of the real defect
+
+The payload never stated the labeled day. It emitted `dueDate` as a raw UTC instant, and `overdueRule` spoke of "its dueDate" as though the date part were the day. A consumer — here an LLM briefing agent — that took `"2026-08-13T12:00:00.000Z".slice(0,10)` read every card a day early and then, reasonably, reported the bucket as contradicting it. The buckets were right; the field the agent needed did not exist.
+
+### Fix
+
+- `dueDayFor(dueDate, zone)` in `shared/briefing.ts` is now the single derivation of a card's labeled calendar date, with `isOverdueOn` / `isDueTodayOn` / `formatDueDayLabel` beside it.
+- `dueDay` (YYYY-MM-DD) is emitted on both `tasks[].urgency` and every `briefing` entry, so no consumer has to parse a date out of an instant. `dueDate` is unchanged for back-compat.
+- `overdueRuleFor(zone)` now names `dueDay` as the field to compare and says outright that the `dueDate` instant's UTC date part is a day earlier.
+- The board's own overdue logic uses the same helper: `shared/task-warning-highlight.ts`, `TaskCard.tsx` (highlight and the printed label) and `TaskWarnings.tsx` no longer cut days with browser-local `isPast`/`isToday`. The export's contract is that it matches the board's highlight; now one function decides both. Side effect: a card's day is the board's zone rather than the viewer's, so the label no longer shifts when the board is opened from another timezone.
+
+Day-boundary derivation for `now` / `generatedFor` / bucket edges is untouched — BUG-003's zone cut stands. Nothing was changed in headers or deployment config.
+
+### Tests
+
+Due dates are now built the way production stores them (`duePicked` — the picked day at NZ local midnight, i.e. `T12:00:00.000Z` on the previous date), replacing the BUG-003 tests' NZ-noon instants, which could not see an offset defect by construction.
+
+| Test | Proves |
+|---|---|
+| "is the day the picker stored, not the UTC date part of the instant" | The convention itself, asserted rather than assumed |
+| "holds all day, from first light to last" | A card labeled 13 Aug is `today` at 00:00, 07:00, 12:00 and 23:00 NZT |
+| "reads one day overdue at 7:00 AM the next morning" | `daysOverdue: 1` at 07:00 NZT on 14 Aug |
+| "maps a card anchored in the NZDT season to its labeled date" | A +13 card (`2027-01-14T11:00:00.000Z`) labels as 15 Jan |
+| "agrees with the label the card face shows" | The reported value maps to Aug 14 / `tomorrow` — the anti-regression for the inverted fix |
+| "flags overdue for the board exactly as it does for the export" | Board helper and digest flip at the same instant |
+| `export.test.ts` — "gives the client fallback and the route the same bundle" | Both export paths serialize identically |
+
+380 tests pass under `TZ=UTC`, `America/New_York`, `Asia/Kolkata` and `Pacific/Auckland`.
+
+### Not covered
+
+`client/src/lib/task-email.ts` still formats a due date in the viewer's local zone for the "Share as email" text. Harmless from an NZ device and outside this change; worth folding into the same helper if the board ever gains non-NZ users.

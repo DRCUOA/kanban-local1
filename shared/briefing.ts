@@ -56,12 +56,23 @@ export const MUST_SURFACE_RANK = BRIEFING_RANK.DUE_TODAY;
  * which calendar day boundary was used without reading this file. Names the
  * zone actually used, because "evaluated in `timezone`" told a reader nothing
  * about whether the boundary matched their own day.
+ *
+ * Points at `dueDay` rather than `dueDate`: an agent that took the date part of
+ * the `dueDate` instant read every card a day early, since the stored instant is
+ * the labeled day at local midnight. See `dueDayFor`.
  */
 export function overdueRuleFor(timeZone: string): string {
-  return `A task is overdue when its dueDate falls on a calendar day before the day of \`now\`, evaluated in ${timeZone}. A task due today is never overdue. Matches the board’s own overdue highlight.`;
+  return `A task’s due day is \`dueDay\`, its labeled calendar date — do not derive a date from the \`dueDate\` instant, whose UTC date part is a day earlier. A task is overdue when \`dueDay\` falls before the day of \`now\`, evaluated in ${timeZone}. A task due today is never overdue. Matches the board’s own overdue highlight.`;
 }
 
 export interface TaskUrgency {
+  /**
+   * The calendar date this card is labeled with (YYYY-MM-DD in the digest's
+   * `timezone`), or null when undated. Read this rather than parsing a date out
+   * of the `dueDate` instant: the stored instant's UTC date part is a day
+   * earlier than the label. See `dueDayFor`.
+   */
+  dueDay: string | null;
   isOverdue: boolean;
   /** Whole calendar days past due; 0 when not overdue. */
   daysOverdue: number;
@@ -92,7 +103,10 @@ export interface BriefingEntry {
   swimlane: string | null;
   /** True when `owner` and `swimlane` name different people. */
   ownerConflict: boolean;
+  /** The reference instant. Its UTC date part is NOT the labeled day. */
   dueDate: string | null;
+  /** The labeled calendar date (YYYY-MM-DD) — what the card face shows. */
+  dueDay: string | null;
   daysOverdue: number;
   dueBucket: DueBucketValue;
   briefingRank: number;
@@ -233,6 +247,65 @@ function dayIndex(instant: Date, timeZone: string): number {
   return Math.round(Date.UTC(year, month - 1, day) / 86_400_000);
 }
 
+// --- Due days ---
+
+/**
+ * The calendar date a card is labeled with (YYYY-MM-DD), or null when undated.
+ *
+ * A due date is a date wearing a timestamp's clothes. The picker
+ * (react-day-picker, `mode="single"`) hands back the chosen day at *local
+ * midnight*, which is stored as the corresponding instant — so for a board zone
+ * ahead of UTC the instant's own UTC date part is the day *before* the label:
+ * "13 Aug" picked in NZ is stored as 2026-08-12T12:00:00.000Z. Reading the day
+ * back in the board's zone recovers the day the user actually picked, which is
+ * the day the card face shows.
+ *
+ * Every due-day question — the label, the bucket, the overdue count, the board's
+ * highlight — goes through here, so the export and the board cannot disagree.
+ */
+export function dueDayFor(
+  dueDate: Date | string | null | undefined,
+  timeZone: string = DEFAULT_TIMEZONE,
+): string | null {
+  if (!dueDate) return null;
+  const due = new Date(dueDate);
+  if (Number.isNaN(due.getTime())) return null;
+  return zonedDayKey(due, timeZone);
+}
+
+/**
+ * Overdue exactly as the board flags it: the labeled day is before the day of
+ * `now`. A task due today is never overdue, whatever the hour.
+ */
+export function isOverdueOn(
+  dueDate: Date | string | null | undefined,
+  now: Date,
+  timeZone: string = DEFAULT_TIMEZONE,
+): boolean {
+  const dueDay = dueDayFor(dueDate, timeZone);
+  return dueDay !== null && dueDay < zonedDayKey(now, timeZone);
+}
+
+/** True when the labeled day is the day of `now`. */
+export function isDueTodayOn(
+  dueDate: Date | string | null | undefined,
+  now: Date,
+  timeZone: string = DEFAULT_TIMEZONE,
+): boolean {
+  return dueDayFor(dueDate, timeZone) === zonedDayKey(now, timeZone);
+}
+
+/** The card-face label ("Aug 14") for a due date, rendered in `timeZone`. */
+export function formatDueDayLabel(
+  dueDate: Date | string | null | undefined,
+  timeZone: string = DEFAULT_TIMEZONE,
+): string | null {
+  if (!dueDate) return null;
+  const due = new Date(dueDate);
+  if (Number.isNaN(due.getTime())) return null;
+  return new Intl.DateTimeFormat('en-US', { timeZone, month: 'short', day: 'numeric' }).format(due);
+}
+
 // --- Urgency ---
 
 /**
@@ -245,13 +318,14 @@ export function computeTaskUrgency(
   timeZone: string = DEFAULT_TIMEZONE,
 ): TaskUrgency {
   const bucketAndDays = dueBucketFor(task, now, timeZone);
-  const { dueBucket, daysUntilDue } = bucketAndDays;
+  const { dueBucket, daysUntilDue, dueDay } = bucketAndDays;
   const isOverdue = dueBucket === DUE_BUCKET.OVERDUE;
   const daysOverdue = isOverdue && daysUntilDue !== null ? -daysUntilDue : 0;
 
   const briefingRank = rankFor(task, dueBucket);
 
   return {
+    dueDay,
     isOverdue,
     daysOverdue,
     daysUntilDue,
@@ -265,19 +339,18 @@ function dueBucketFor(
   task: Task,
   now: Date,
   timeZone: string,
-): { dueBucket: DueBucketValue; daysUntilDue: number | null } {
-  if (!task.dueDate) return { dueBucket: DUE_BUCKET.NONE, daysUntilDue: null };
+): { dueBucket: DueBucketValue; daysUntilDue: number | null; dueDay: string | null } {
+  const dueDay = dueDayFor(task.dueDate, timeZone);
+  if (dueDay === null) return { dueBucket: DUE_BUCKET.NONE, daysUntilDue: null, dueDay: null };
 
-  const due = new Date(task.dueDate);
-  if (Number.isNaN(due.getTime())) return { dueBucket: DUE_BUCKET.NONE, daysUntilDue: null };
-
+  const due = new Date(task.dueDate as Date | string);
   const daysUntilDue = differenceInZonedCalendarDays(due, now, timeZone);
 
-  if (daysUntilDue < 0) return { dueBucket: DUE_BUCKET.OVERDUE, daysUntilDue };
-  if (daysUntilDue === 0) return { dueBucket: DUE_BUCKET.TODAY, daysUntilDue };
-  if (daysUntilDue === 1) return { dueBucket: DUE_BUCKET.TOMORROW, daysUntilDue };
-  if (daysUntilDue <= 7) return { dueBucket: DUE_BUCKET.THIS_WEEK, daysUntilDue };
-  return { dueBucket: DUE_BUCKET.LATER, daysUntilDue };
+  if (daysUntilDue < 0) return { dueBucket: DUE_BUCKET.OVERDUE, daysUntilDue, dueDay };
+  if (daysUntilDue === 0) return { dueBucket: DUE_BUCKET.TODAY, daysUntilDue, dueDay };
+  if (daysUntilDue === 1) return { dueBucket: DUE_BUCKET.TOMORROW, daysUntilDue, dueDay };
+  if (daysUntilDue <= 7) return { dueBucket: DUE_BUCKET.THIS_WEEK, daysUntilDue, dueDay };
+  return { dueBucket: DUE_BUCKET.LATER, daysUntilDue, dueDay };
 }
 
 function rankFor(task: Task, dueBucket: DueBucketValue): number {
@@ -355,6 +428,7 @@ function toEntry(
     swimlane,
     ownerConflict: !isBlank(owner) && swimlaneNamesPerson && owner !== swimlane,
     dueDate: task.dueDate ? new Date(task.dueDate).toISOString() : null,
+    dueDay: task.urgency.dueDay,
     daysOverdue: task.urgency.daysOverdue,
     dueBucket: task.urgency.dueBucket,
     briefingRank: task.urgency.briefingRank,
@@ -431,6 +505,7 @@ export function buildBriefing({
 // --- Validation ---
 
 export const taskUrgencySchema = z.object({
+  dueDay: z.string().nullable(),
   isOverdue: z.boolean(),
   daysOverdue: z.number(),
   daysUntilDue: z.number().nullable(),
@@ -458,6 +533,7 @@ export const briefingEntrySchema = z.object({
   swimlane: z.string().nullable(),
   ownerConflict: z.boolean(),
   dueDate: z.string().nullable(),
+  dueDay: z.string().nullable(),
   daysOverdue: z.number(),
   dueBucket: taskUrgencySchema.shape.dueBucket,
   briefingRank: z.number(),
