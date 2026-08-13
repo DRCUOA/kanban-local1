@@ -38,7 +38,9 @@ describe('buildExportBundle', () => {
       archived: false,
       status: 'in_progress',
       priority: 'normal',
-      dueDate: new Date('2026-08-09T12:00:00+12:00'),
+      // As production stores it: the picked day at NZ local midnight, i.e. the
+      // day *before* the label in UTC. See `duePicked` in briefing.test.ts.
+      dueDate: new Date('2026-08-09T00:00:00+12:00'),
       tags: ['Rich'],
       owner: 'Moi',
     } as unknown as Task;
@@ -54,7 +56,13 @@ describe('buildExportBundle', () => {
     });
 
     const [annotated] = bundle.tasks;
-    expect(annotated?.urgency).toMatchObject({ isOverdue: true, mustSurface: true });
+    expect(annotated?.urgency).toMatchObject({
+      isOverdue: true,
+      mustSurface: true,
+      // The labeled day, not the 2026-08-08 date part of the stored instant.
+      dueDay: '2026-08-09',
+    });
+    expect(bundle.briefing.overdue.map((e) => e.dueDay)).toEqual(['2026-08-09']);
     expect(bundle.briefing.overdue.map((e) => e.id)).toEqual([142]);
     expect(bundle.briefing.timezone).toBe('Pacific/Auckland');
     expect(taskExportBundleSchema.safeParse(bundle).success).toBe(true);
@@ -99,6 +107,24 @@ describe('buildExportBundle', () => {
 
     expect(bundle.briefing.timezone).toBe('UTC');
     expect(bundle.briefing.generatedFor).toBe('2026-08-12');
+  });
+
+  it('gives the client fallback and the route the same bundle', () => {
+    // The fallback in use-task-import-export.ts passes no timezone; the route
+    // passes the query default. If those ever diverge, the same board exports
+    // as two different files depending on which path produced it.
+    const input = {
+      tasks: [task],
+      stages: [stage],
+      subStages: [subStage],
+      includeArchived: false,
+      exportedAt: '2026-08-12T19:00:00.000Z',
+    };
+
+    const fallback = buildExportBundle(input);
+    const route = buildExportBundle({ ...input, timezone: exportQuerySchema.parse({}).tz });
+
+    expect(JSON.stringify(fallback)).toBe(JSON.stringify(route));
   });
 });
 

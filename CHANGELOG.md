@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - `GET /api/export` no longer serves a cached snapshot: every response sends `Cache-Control: no-store, no-cache, must-revalidate` and `CDN-Cache-Control: no-store`, so two fetches of the same URL return different `exportedAt` values. A briefing agent polling the identical URL had been replayed the same 12-hour-old body until a junk query parameter forced a rebuild. (BUG-003)
 - Export day boundaries are cut in `Pacific/Auckland` rather than the server's UTC, so `generatedFor`, `daysOverdue`, `dueBucket` and the overdue/dueToday buckets are right during NZ mornings, when UTC is still on the previous date. `?tz=` accepts any IANA zone, defaulting to `Pacific/Auckland`; an unknown zone is a 400, and `overdueRule` names the zone actually used. (BUG-003)
+- Export entries carry `dueDay`, the card's labeled calendar date (YYYY-MM-DD), on both `tasks[].urgency` and every `briefing` entry. The date picker stores a due date as the chosen day at local midnight, so the `dueDate` instant's UTC date part is a day earlier than the label — a consumer reading a date out of that instant saw every card a day early. `overdueRule` now names `dueDay` as the field to compare. (BUG-004)
+
+### Changed
+- The board's overdue highlight, the card's printed due date and the export's `overdue` list all derive from one helper (`dueDayFor` / `isOverdueOn` in `shared/briefing.ts`) instead of browser-local `isPast`/`isToday`, so board and export cannot disagree. A card's day is now the board's zone rather than the viewer's, so due dates no longer shift when the board is opened from another timezone. (BUG-004)
 
 ## [1.2.1] - 2026-03-24
 

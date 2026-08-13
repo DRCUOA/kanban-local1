@@ -7,6 +7,10 @@ import {
   annotateTasksWithUrgency,
   buildBriefing,
   computeTaskUrgency,
+  dueDayFor,
+  formatDueDayLabel,
+  isDueTodayOn,
+  isOverdueOn,
   resolveTimezone,
   resolveSwimlane,
   briefingDigestSchema,
@@ -29,7 +33,23 @@ const nzt = (y: number, m: number, d: number, h = 12, min = 0) =>
   );
 
 const NOW = nzt(2026, 8, 11, 19, 46); // 11 Aug 2026, NZ evening
-const day = (y: number, m: number, d: number) => nzt(y, m, d, 12, 0);
+
+/**
+ * A due date exactly as production stores it. The picker (react-day-picker,
+ * `mode="single"`) hands back the chosen day at NZ *local midnight*, which is
+ * serialized to UTC — so a card labeled "13 Aug" is stored as
+ * 2026-08-12T12:00:00.000Z, an instant whose own UTC date part is the day
+ * before the label. Tests that build due dates as NZ noon instants (as the
+ * BUG-003 tests did) cannot see a defect in that offset.
+ *
+ * `offset` is the NZ offset in the month concerned: +12 NZST, +13 NZDT.
+ */
+const duePicked = (y: number, m: number, d: number, offset = '+12:00') =>
+  new Date(
+    `${y}-${`${m}`.padStart(2, '0')}-${`${d}`.padStart(2, '0')}T00:00:00${offset}`,
+  ) as unknown as Task['dueDate'];
+
+const day = (y: number, m: number, d: number) => duePicked(y, m, d) as unknown as Date;
 
 const stages: Stage[] = [
   { id: 1, name: 'Backlog' },
@@ -91,7 +111,7 @@ describe('computeTaskUrgency', () => {
 
   it('treats a task due later today as due today, not overdue', () => {
     // Matches the board's own highlight: past instant, same calendar day.
-    const task = fakeTask({ dueDate: nzt(2026, 8, 11, 12, 0) as unknown as Task['dueDate'] });
+    const task = fakeTask({ dueDate: duePicked(2026, 8, 11) });
     const urgency = computeTaskUrgency(task, NOW);
 
     expect(urgency.isOverdue).toBe(false);
@@ -197,6 +217,103 @@ describe('calendar day boundaries', () => {
 
     expect(ruleIn(NZ)).toContain(NZ);
     expect(ruleIn('UTC')).toContain('UTC');
+  });
+});
+
+describe('due day (the labeled calendar date)', () => {
+  it('is the day the picker stored, not the UTC date part of the instant', () => {
+    // The convention this whole block rests on, asserted rather than assumed.
+    const stored = duePicked(2026, 8, 13) as unknown as Date;
+    expect(stored.toISOString()).toBe('2026-08-12T12:00:00.000Z');
+
+    expect(dueDayFor(stored, NZ)).toBe('2026-08-13');
+    // Taking the date part of the instant is the mistake being guarded against.
+    expect(stored.toISOString().slice(0, 10)).toBe('2026-08-12');
+  });
+
+  it('holds all day, from first light to last', () => {
+    const card = fakeTask({ dueDate: duePicked(2026, 8, 13) });
+
+    for (const hour of [0, 7, 12, 23]) {
+      const urgency = computeTaskUrgency(card, nzt(2026, 8, 13, hour, 0), NZ);
+      expect(urgency.dueDay).toBe('2026-08-13');
+      expect(urgency.dueBucket).toBe(DUE_BUCKET.TODAY);
+      expect(urgency.daysOverdue).toBe(0);
+    }
+  });
+
+  it('reads one day overdue at 7:00 AM the next morning', () => {
+    const card = fakeTask({ dueDate: duePicked(2026, 8, 13) });
+
+    const urgency = computeTaskUrgency(card, nzt(2026, 8, 14, 7, 0), NZ);
+
+    expect(urgency.dueBucket).toBe(DUE_BUCKET.OVERDUE);
+    expect(urgency.daysOverdue).toBe(1);
+    expect(urgency.dueDay).toBe('2026-08-13');
+  });
+
+  it('maps a card anchored in the NZDT season to its labeled date', () => {
+    // January is +13, so the picker stores 11:00Z on the previous date.
+    const card = fakeTask({ dueDate: duePicked(2027, 1, 15, '+13:00') });
+    expect((card.dueDate as unknown as Date).toISOString()).toBe('2027-01-14T11:00:00.000Z');
+
+    expect(dueDayFor(card.dueDate, NZ)).toBe('2027-01-15');
+    expect(computeTaskUrgency(card, nzt(2027, 1, 15, 7, 0), NZ).dueBucket).toBe(DUE_BUCKET.TODAY);
+  });
+
+  it('agrees with the label the card face shows', () => {
+    // BUG-004 was reported against cards storing 2026-08-13T12:00:00.000Z and
+    // read as "due 13 August". Under the picker convention that instant is
+    // 14 Aug in NZ — which is what the board prints — so "tomorrow" on 13 Aug
+    // is correct. Deriving the day from the UTC date part would have moved
+    // every picker-written card a day early.
+    const reported = new Date('2026-08-13T12:00:00.000Z');
+
+    expect(dueDayFor(reported, NZ)).toBe('2026-08-14');
+    expect(formatDueDayLabel(reported, NZ)).toBe('Aug 14');
+    expect(
+      computeTaskUrgency(
+        fakeTask({ dueDate: reported as unknown as Task['dueDate'] }),
+        nzt(2026, 8, 13, 7, 0),
+        NZ,
+      ).dueBucket,
+    ).toBe(DUE_BUCKET.TOMORROW);
+  });
+
+  it('is null for undated and unparseable work', () => {
+    expect(dueDayFor(null, NZ)).toBeNull();
+    expect(dueDayFor('not-a-date', NZ)).toBeNull();
+    expect(computeTaskUrgency(fakeTask(), NOW, NZ).dueDay).toBeNull();
+  });
+
+  it('flags overdue for the board exactly as it does for the export', () => {
+    // The export's stated contract: it matches the board's own highlight.
+    const card = fakeTask({ dueDate: duePicked(2026, 8, 13) });
+
+    expect(isOverdueOn(card.dueDate, nzt(2026, 8, 13, 23, 59), NZ)).toBe(false);
+    expect(isDueTodayOn(card.dueDate, nzt(2026, 8, 13, 23, 59), NZ)).toBe(true);
+    expect(isOverdueOn(card.dueDate, nzt(2026, 8, 14, 0, 1), NZ)).toBe(true);
+    expect(isDueTodayOn(card.dueDate, nzt(2026, 8, 14, 0, 1), NZ)).toBe(false);
+  });
+
+  it('buckets the digest by the labeled day', () => {
+    const dueToday = fakeTask({ id: 1, dueDate: duePicked(2026, 8, 13) });
+    const dueTomorrow = fakeTask({ id: 2, dueDate: duePicked(2026, 8, 14) });
+    const dueYesterday = fakeTask({ id: 3, dueDate: duePicked(2026, 8, 12) });
+    const morning = nzt(2026, 8, 13, 7, 0);
+
+    const digest = buildBriefing({
+      tasks: annotateTasksWithUrgency([dueToday, dueTomorrow, dueYesterday], stages, morning, NZ),
+      stages,
+      subStages,
+      now: morning,
+      timezone: NZ,
+    });
+
+    expect(digest.dueToday.map((e) => e.id)).toEqual([1]);
+    expect(digest.overdue.map((e) => e.id)).toEqual([3]);
+    expect(first(digest.dueToday).dueDay).toBe('2026-08-13');
+    expect(digest.overdueRule).toContain('dueDay');
   });
 });
 
@@ -318,7 +435,7 @@ describe('buildBriefing', () => {
       status: 'in_progress',
       priority: 'high',
       tags: ['Rich'],
-      dueDate: nzt(2026, 8, 11, 12, 0) as unknown as Task['dueDate'],
+      dueDate: duePicked(2026, 8, 11),
     }),
     fakeTask({
       id: 128,
