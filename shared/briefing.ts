@@ -1,4 +1,3 @@
-import { differenceInCalendarDays, startOfDay } from 'date-fns';
 import { z } from 'zod';
 import {
   TASK_STATUS,
@@ -54,10 +53,13 @@ export const MUST_SURFACE_RANK = BRIEFING_RANK.DUE_TODAY;
 
 /**
  * Prose form of the rule below, emitted with the payload so a consumer can see
- * which calendar day boundary was used without reading this file.
+ * which calendar day boundary was used without reading this file. Names the
+ * zone actually used, because "evaluated in `timezone`" told a reader nothing
+ * about whether the boundary matched their own day.
  */
-export const OVERDUE_RULE =
-  'A task is overdue when its dueDate falls on a calendar day before the day of `now`, evaluated in `timezone`. A task due today is never overdue. Matches the board’s own overdue highlight.';
+export function overdueRuleFor(timeZone: string): string {
+  return `A task is overdue when its dueDate falls on a calendar day before the day of \`now\`, evaluated in ${timeZone}. A task due today is never overdue. Matches the board’s own overdue highlight.`;
+}
 
 export interface TaskUrgency {
   isOverdue: boolean;
@@ -97,7 +99,7 @@ export interface BriefingEntry {
 }
 
 export interface BriefingDigest {
-  /** Local calendar date the buckets were computed for (YYYY-MM-DD). */
+  /** Calendar date in `timezone` the buckets were computed for (YYYY-MM-DD). */
   generatedFor: string;
   /** The reference instant. Same value as the envelope's `exportedAt`. */
   now: string;
@@ -162,14 +164,87 @@ function isBlank(value: string | null | undefined): boolean {
   return value === null || value === undefined || value.trim().length === 0;
 }
 
+// --- Calendar days in a zone ---
+
+/**
+ * Zone every calendar-day boundary is cut in unless a caller names another.
+ * Deliberately not the host zone: the server runs in UTC, 12–13 hours behind
+ * New Zealand, so a host-zone boundary makes every NZ morning (midnight–noon)
+ * report the previous day — overdue counts one low, `dueToday` a day stale.
+ */
+export const DEFAULT_TIMEZONE = 'Pacific/Auckland';
+
+/** True when this runtime knows `timeZone`. Guards caller-supplied `?tz=`. */
+export function isValidTimezone(timeZone: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The zone calendar boundaries are evaluated in. Invalid input falls back. */
+export function resolveTimezone(requested?: string | null): string {
+  if (typeof requested === 'string' && isValidTimezone(requested)) return requested;
+  return DEFAULT_TIMEZONE;
+}
+
+// Formatters are expensive to construct and every task hits this path twice.
+const dayFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function dayFormatter(timeZone: string): Intl.DateTimeFormat {
+  const cached = dayFormatters.get(timeZone);
+  if (cached) return cached;
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  dayFormatters.set(timeZone, formatter);
+  return formatter;
+}
+
+/**
+ * The YYYY-MM-DD `instant` falls on in `timeZone`. Read back out of Intl rather
+ * than computed from a fixed offset so NZDT/NZST transitions are handled by the
+ * platform's own zone database instead of an assumed +12.
+ */
+export function zonedDayKey(instant: Date, timeZone: string): string {
+  const parts = dayFormatter(timeZone).formatToParts(instant);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? '';
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
+
+/** Whole days between the two instants' calendar days in `timeZone`. */
+export function differenceInZonedCalendarDays(
+  later: Date,
+  earlier: Date,
+  timeZone: string,
+): number {
+  return dayIndex(later, timeZone) - dayIndex(earlier, timeZone);
+}
+
+/** Calendar day as a day count, so subtracting two of them is DST-proof. */
+function dayIndex(instant: Date, timeZone: string): number {
+  const [year = 0, month = 1, day = 1] = zonedDayKey(instant, timeZone).split('-').map(Number);
+  return Math.round(Date.UTC(year, month - 1, day) / 86_400_000);
+}
+
 // --- Urgency ---
 
 /**
  * Per-task urgency relative to `now`. Calendar-day based, so a task due at any
  * time today is "today" rather than "overdue by a few hours".
  */
-export function computeTaskUrgency(task: Task, now: Date): TaskUrgency {
-  const bucketAndDays = dueBucketFor(task, now);
+export function computeTaskUrgency(
+  task: Task,
+  now: Date,
+  timeZone: string = DEFAULT_TIMEZONE,
+): TaskUrgency {
+  const bucketAndDays = dueBucketFor(task, now, timeZone);
   const { dueBucket, daysUntilDue } = bucketAndDays;
   const isOverdue = dueBucket === DUE_BUCKET.OVERDUE;
   const daysOverdue = isOverdue && daysUntilDue !== null ? -daysUntilDue : 0;
@@ -189,13 +264,14 @@ export function computeTaskUrgency(task: Task, now: Date): TaskUrgency {
 function dueBucketFor(
   task: Task,
   now: Date,
+  timeZone: string,
 ): { dueBucket: DueBucketValue; daysUntilDue: number | null } {
   if (!task.dueDate) return { dueBucket: DUE_BUCKET.NONE, daysUntilDue: null };
 
   const due = new Date(task.dueDate);
   if (Number.isNaN(due.getTime())) return { dueBucket: DUE_BUCKET.NONE, daysUntilDue: null };
 
-  const daysUntilDue = differenceInCalendarDays(startOfDay(due), startOfDay(now));
+  const daysUntilDue = differenceInZonedCalendarDays(due, now, timeZone);
 
   if (daysUntilDue < 0) return { dueBucket: DUE_BUCKET.OVERDUE, daysUntilDue };
   if (daysUntilDue === 0) return { dueBucket: DUE_BUCKET.TODAY, daysUntilDue };
@@ -229,9 +305,14 @@ function isInProgressStatus(task: Task): boolean {
 }
 
 /** Attaches `urgency` to every task without otherwise altering it. */
-export function annotateTasksWithUrgency(tasks: Task[], stages: Stage[], now: Date): ExportTask[] {
+export function annotateTasksWithUrgency(
+  tasks: Task[],
+  stages: Stage[],
+  now: Date,
+  timeZone: string = DEFAULT_TIMEZONE,
+): ExportTask[] {
   return tasks.map((task) => {
-    const urgency = computeTaskUrgency(task, now);
+    const urgency = computeTaskUrgency(task, now, timeZone);
     // Re-rank with stage context so the board's own view of "in progress" wins.
     if (urgency.dueBucket === DUE_BUCKET.OVERDUE && !task.archived) {
       const inProgress = isInProgressStageName(stageNameFor(task, stages));
@@ -297,6 +378,7 @@ export interface BuildBriefingInput {
   stages: Stage[];
   subStages: SubStage[];
   now: Date;
+  /** IANA zone the day boundaries are cut in. See `DEFAULT_TIMEZONE`. */
   timezone: string;
 }
 
@@ -329,10 +411,10 @@ export function buildBriefing({
       .sort(byUrgency);
 
   return {
-    generatedFor: localDateKey(now),
+    generatedFor: zonedDayKey(now, timezone),
     now: now.toISOString(),
     timezone,
-    overdueRule: OVERDUE_RULE,
+    overdueRule: overdueRuleFor(timezone),
     overdue: pick((_, task) => task.urgency.isOverdue),
     dueToday: pick((_, task) => task.urgency.dueBucket === DUE_BUCKET.TODAY),
     inProgress: pick((entry) => isInProgressStageName(entry.stageLabel)),
@@ -344,19 +426,6 @@ export function buildBriefing({
       (entry) => entry.stage === TASK_STATUS.BACKLOG && !isWaitingStageName(entry.stageLabel),
     ),
   };
-}
-
-/** Local-time YYYY-MM-DD, matching the calendar day the buckets were cut on. */
-function localDateKey(now: Date): string {
-  const day = startOfDay(now);
-  const month = `${day.getMonth() + 1}`.padStart(2, '0');
-  const date = `${day.getDate()}`.padStart(2, '0');
-  return `${day.getFullYear()}-${month}-${date}`;
-}
-
-/** The zone calendar boundaries are evaluated in — the host's zone. */
-export function resolveTimezone(): string {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 }
 
 // --- Validation ---

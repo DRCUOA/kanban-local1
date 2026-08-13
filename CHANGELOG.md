@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - "Export Tasks" now downloads the server-side export (so stages and sub-stages are included), falling back to an in-memory export in the same envelope shape if the API is unreachable.
 - Import accepts both the new envelope and legacy bare-array export files.
 
+### Fixed
+- `GET /api/export` no longer serves a cached snapshot: every response sends `Cache-Control: no-store, no-cache, must-revalidate` and `CDN-Cache-Control: no-store`, so two fetches of the same URL return different `exportedAt` values. A briefing agent polling the identical URL had been replayed the same 12-hour-old body until a junk query parameter forced a rebuild. (BUG-003)
+- Export day boundaries are cut in `Pacific/Auckland` rather than the server's UTC, so `generatedFor`, `daysOverdue`, `dueBucket` and the overdue/dueToday buckets are right during NZ mornings, when UTC is still on the previous date. `?tz=` accepts any IANA zone, defaulting to `Pacific/Auckland`; an unknown zone is a 400, and `overdueRule` names the zone actually used. (BUG-003)
+
 ## [1.2.1] - 2026-03-24
 
 ### Added

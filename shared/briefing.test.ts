@@ -2,18 +2,34 @@ import { describe, it, expect } from 'vitest';
 import type { Task, Stage, SubStage } from './schema';
 import {
   BRIEFING_RANK,
+  DEFAULT_TIMEZONE,
   DUE_BUCKET,
   annotateTasksWithUrgency,
   buildBriefing,
   computeTaskUrgency,
+  resolveTimezone,
   resolveSwimlane,
   briefingDigestSchema,
+  zonedDayKey,
 } from './briefing';
 
-// Local-time constructors keep the calendar-day maths unambiguous whatever the
-// host zone is; date-fns cuts day boundaries in local time.
-const NOW = new Date(2026, 7, 11, 19, 46); // 11 Aug 2026, evening
-const day = (y: number, m: number, d: number) => new Date(y, m - 1, d, 12, 0);
+const NZ = 'Pacific/Auckland';
+
+/**
+ * NZ wall-clock instants, pinned with an explicit offset rather than built from
+ * host-local constructors: the bug these tests guard is precisely a host zone
+ * leaking into the payload, so a test that inherits the host zone cannot see it.
+ * Every date below sits in NZST (+12); the hours chosen leave more than an
+ * hour's slack either side of midnight, so the +13 NZDT months would land on
+ * the same calendar day regardless.
+ */
+const nzt = (y: number, m: number, d: number, h = 12, min = 0) =>
+  new Date(
+    `${y}-${`${m}`.padStart(2, '0')}-${`${d}`.padStart(2, '0')}T${`${h}`.padStart(2, '0')}:${`${min}`.padStart(2, '0')}:00+12:00`,
+  );
+
+const NOW = nzt(2026, 8, 11, 19, 46); // 11 Aug 2026, NZ evening
+const day = (y: number, m: number, d: number) => nzt(y, m, d, 12, 0);
 
 const stages: Stage[] = [
   { id: 1, name: 'Backlog' },
@@ -75,7 +91,7 @@ describe('computeTaskUrgency', () => {
 
   it('treats a task due later today as due today, not overdue', () => {
     // Matches the board's own highlight: past instant, same calendar day.
-    const task = fakeTask({ dueDate: new Date(2026, 7, 11, 12, 0) as unknown as Task['dueDate'] });
+    const task = fakeTask({ dueDate: nzt(2026, 8, 11, 12, 0) as unknown as Task['dueDate'] });
     const urgency = computeTaskUrgency(task, NOW);
 
     expect(urgency.isOverdue).toBe(false);
@@ -109,6 +125,78 @@ describe('computeTaskUrgency', () => {
 
     expect(urgency.dueBucket).toBe(DUE_BUCKET.NONE);
     expect(urgency.isOverdue).toBe(false);
+  });
+});
+
+describe('calendar day boundaries', () => {
+  // 7:00 AM NZT on 13 Aug is still 12 Aug in UTC — the window the scheduled
+  // briefing runs in, and the window every one of these bugs lived in.
+  const NZ_MORNING = nzt(2026, 8, 13, 7, 0);
+
+  it('defaults to New Zealand rather than the host zone', () => {
+    expect(DEFAULT_TIMEZONE).toBe(NZ);
+    expect(resolveTimezone()).toBe(NZ);
+    expect(resolveTimezone(undefined)).toBe(NZ);
+  });
+
+  it('honours a caller-supplied zone and falls back on a bogus one', () => {
+    expect(resolveTimezone('America/New_York')).toBe('America/New_York');
+    expect(resolveTimezone('Middle/Earth')).toBe(NZ);
+    expect(resolveTimezone('')).toBe(NZ);
+  });
+
+  it('reads the NZ calendar day off an instant that is still yesterday in UTC', () => {
+    expect(zonedDayKey(NZ_MORNING, NZ)).toBe('2026-08-13');
+    expect(zonedDayKey(NZ_MORNING, 'UTC')).toBe('2026-08-12');
+  });
+
+  it('tracks NZDT, not a hardcoded +12', () => {
+    // 1 Jan 2027 00:30 NZDT (+13) is still 31 Dec 2026 in UTC.
+    const nzdtMidnight = new Date('2027-01-01T00:30:00+13:00');
+
+    expect(zonedDayKey(nzdtMidnight, NZ)).toBe('2027-01-01');
+    expect(zonedDayKey(nzdtMidnight, 'UTC')).toBe('2026-12-31');
+  });
+
+  it('counts a card due yesterday NZ time as one day overdue at 7:00 AM NZT', () => {
+    // Due late on 12 Aug NZ = 11:00 UTC on 12 Aug, the same UTC day as `now`.
+    // Cut in UTC this reads "due today"; cut in NZ it is yesterday's work.
+    const dueYesterdayEvening = fakeTask({
+      dueDate: nzt(2026, 8, 12, 23, 0) as unknown as Task['dueDate'],
+    });
+
+    const nz = computeTaskUrgency(dueYesterdayEvening, NZ_MORNING, NZ);
+    expect(nz.dueBucket).toBe(DUE_BUCKET.OVERDUE);
+    expect(nz.daysOverdue).toBe(1);
+    expect(nz.mustSurface).toBe(true);
+
+    const utc = computeTaskUrgency(dueYesterdayEvening, NZ_MORNING, 'UTC');
+    expect(utc.dueBucket).toBe(DUE_BUCKET.TODAY);
+    expect(utc.daysOverdue).toBe(0);
+  });
+
+  it('generates the digest for today’s NZ date, not yesterday’s UTC date', () => {
+    const digestIn = (timezone: string) =>
+      buildBriefing({
+        tasks: annotateTasksWithUrgency([], stages, NZ_MORNING, timezone),
+        stages,
+        subStages,
+        now: NZ_MORNING,
+        timezone,
+      });
+
+    expect(digestIn(NZ).generatedFor).toBe('2026-08-13');
+    expect(digestIn(NZ).timezone).toBe(NZ);
+    // The zone is a knob, not a constant — a caller asking for UTC still gets it.
+    expect(digestIn('UTC').generatedFor).toBe('2026-08-12');
+  });
+
+  it('names the zone actually used in overdueRule', () => {
+    const ruleIn = (timezone: string) =>
+      buildBriefing({ tasks: [], stages, subStages, now: NZ_MORNING, timezone }).overdueRule;
+
+    expect(ruleIn(NZ)).toContain(NZ);
+    expect(ruleIn('UTC')).toContain('UTC');
   });
 });
 
@@ -230,7 +318,7 @@ describe('buildBriefing', () => {
       status: 'in_progress',
       priority: 'high',
       tags: ['Rich'],
-      dueDate: new Date(2026, 7, 11, 12, 0) as unknown as Task['dueDate'],
+      dueDate: nzt(2026, 8, 11, 12, 0) as unknown as Task['dueDate'],
     }),
     fakeTask({
       id: 128,

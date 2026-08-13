@@ -464,6 +464,85 @@ describe('GET /api/export', () => {
     expect(text.indexOf('"briefing"')).toBeLessThan(text.indexOf('"tasks":['));
   });
 
+  // A briefing agent polling the identical URL was served the same 12-hour-old
+  // body until a junk query param forced a rebuild. Nothing in front of this
+  // route may hold a snapshot of a board that changes all day.
+  it('forbids caching the response', async () => {
+    stubBoard();
+
+    const res = await request(app).get(`${api.export.get.path}?view=briefing`);
+
+    expect(res.headers['cache-control']).toBe('no-store, no-cache, must-revalidate');
+    expect(res.headers['cdn-cache-control']).toBe('no-store');
+    expect(res.headers.pragma).toBe('no-cache');
+  });
+
+  it('forbids caching error responses too', async () => {
+    stubBoard();
+
+    const res = await request(app).get(`${api.export.get.path}?view=summary`);
+
+    expect(res.status).toBe(400);
+    expect(res.headers['cache-control']).toBe('no-store, no-cache, must-revalidate');
+  });
+
+  it('rebuilds the payload on every request to the same URL', async () => {
+    stubBoard();
+    const url = `${api.export.get.path}?view=briefing`;
+    // Only Date is faked — the real timers stay live so supertest still works.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-08-13T07:00:00+12:00'));
+      const earlier = await request(app).get(url);
+      vi.setSystemTime(new Date('2026-08-13T07:00:05+12:00'));
+      const later = await request(app).get(url);
+
+      expect(earlier.body.exportedAt).toBe('2026-08-12T19:00:00.000Z');
+      expect(later.body.exportedAt).toBe('2026-08-12T19:00:05.000Z');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('cuts the day in New Zealand, not the UTC the server runs in', async () => {
+    stubBoard();
+    // 07:00 NZT on 13 Aug — the briefing slot. In UTC it is still 12 Aug.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-08-13T07:00:00+12:00'));
+      const res = await request(app).get(`${api.export.get.path}?view=briefing`);
+
+      expect(res.body.briefing.timezone).toBe('Pacific/Auckland');
+      expect(res.body.briefing.generatedFor).toBe('2026-08-13');
+      expect(res.body.briefing.overdueRule).toContain('Pacific/Auckland');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('honours an explicit tz', async () => {
+    stubBoard();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-08-13T07:00:00+12:00'));
+      const res = await request(app).get(`${api.export.get.path}?view=briefing&tz=UTC`);
+
+      expect(res.body.briefing.timezone).toBe('UTC');
+      expect(res.body.briefing.generatedFor).toBe('2026-08-12');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('returns 400 for a tz that is not an IANA zone', async () => {
+    stubBoard();
+
+    const res = await request(app).get(`${api.export.get.path}?view=briefing&tz=Middle/Earth`);
+
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty('status', 400);
+  });
+
   it('returns 400 for an unrecognised view value', async () => {
     stubBoard();
 
