@@ -1,7 +1,7 @@
 # EPIC-04: Catch-up Replay — the board plays you the news
 
 **Epic type:** Business feature (differentiator)
-**Status:** Ready for refinement (v2 — PR #108 review feedback applied)
+**Status:** Paused — pending B-01 data-model audit and EPIC-03 (see `docs/BACKLOG.md`); v2 with PR #108 review feedback applied
 **Owner:** Product
 **Target:** TBD at refinement
 **Source:** Live "catching up and planning a day" use-case session, 14 Aug 2026; reviewed in PR #108
