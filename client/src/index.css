@@ -347,6 +347,18 @@
     @apply neo-raised;
   }
 
+  /* Sunken lane — a panel that visibly sits *inside* a raised card (used by
+     sub-stage lanes). Translucent sunken tint over the card plus an inset
+     edge, so the layering reads in both themes: page → stage card → lane →
+     task cards on top. */
+  .neo-well {
+    background: hsl(var(--bg-sunken) / 0.55);
+    border: 1px solid hsl(var(--border-subtle) / 0.7);
+    box-shadow:
+      inset 2px 2px 5px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) * 0.7)),
+      inset -2px -2px 4px rgba(var(--neo-light-edge), calc(var(--neo-light-alpha) * 0.45));
+  }
+
   /* Mobile bottom nav — elevated above page with a top edge shadow. */
   .mobile-bottom-nav {
     @apply fixed bottom-0 left-0 right-0 z-50;

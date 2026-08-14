@@ -49,71 +49,75 @@ export function DayPlanSubStage({
     <div
       ref={setNodeRef}
       className={cn(
-        'flex flex-col gap-2 p-2.5 rounded-xl transition-colors min-h-[60px]',
-        subStage.bgClass,
+        'neo-well relative overflow-hidden rounded-xl transition-colors',
         isOver && 'ring-2 ring-primary/50',
       )}
     >
-      <div className="flex items-center justify-between mb-1 px-1">
-        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {subStage.name}
-        </h3>
-        <Badge
-          variant="secondary"
-          className="text-sm font-semibold font-mono px-2 py-0.5 min-h-[24px]"
-        >
-          {tasks.length}
-        </Badge>
-      </div>
-
-      <SortableContext
-        id={subStageId}
-        items={tasks.map((t) => t.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        {viewMode === 'detail' ? (
-          <div className="flex flex-col gap-2 min-h-[40px]">
-            {tasks.length > 0 ? (
-              tasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onClick={onTaskClick}
-                  stageColor={displayStageColor}
-                  onInlineEdit={() => {}}
-                />
-              ))
-            ) : (
-              <div className="text-[10px] text-muted-foreground text-center py-3 opacity-50">
-                No tasks
-              </div>
-            )}
-          </div>
-        ) : (
-          <div
-            className={cn(
-              'gap-2 min-h-[40px]',
-              isInProgress ? 'flex flex-col' : 'flex flex-wrap content-start',
-            )}
+      {/* Admin-configured tint renders over the solid well so it stays a
+          visible panel even when the tint is a near-transparent wash. */}
+      <div aria-hidden className={cn('absolute inset-0 pointer-events-none', subStage.bgClass)} />
+      <div className="relative flex flex-col gap-2 p-2.5 min-h-[60px]">
+        <div className="flex items-center justify-between mb-1 px-1">
+          <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {subStage.name}
+          </h3>
+          <Badge
+            variant="secondary"
+            className="text-sm font-semibold font-mono px-2 py-0.5 min-h-[24px]"
           >
-            {tasks.length > 0 ? (
-              tasks.map((task) => (
-                <TaskCardSummary
-                  key={task.id}
-                  task={task}
-                  onClick={onTaskClick}
-                  stageColor={displayStageColor}
-                  isInProgress={isInProgress}
-                />
-              ))
-            ) : (
-              <div className="text-[10px] text-muted-foreground text-center py-3 w-full opacity-50">
-                No tasks
-              </div>
-            )}
-          </div>
-        )}
-      </SortableContext>
+            {tasks.length}
+          </Badge>
+        </div>
+
+        <SortableContext
+          id={subStageId}
+          items={tasks.map((t) => t.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {viewMode === 'detail' ? (
+            <div className="flex flex-col gap-2 min-h-[40px]">
+              {tasks.length > 0 ? (
+                tasks.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onClick={onTaskClick}
+                    stageColor={displayStageColor}
+                    onInlineEdit={() => {}}
+                  />
+                ))
+              ) : (
+                <div className="text-[10px] text-muted-foreground text-center py-3 opacity-50">
+                  No tasks
+                </div>
+              )}
+            </div>
+          ) : (
+            <div
+              className={cn(
+                'gap-2 min-h-[40px]',
+                isInProgress ? 'flex flex-col' : 'flex flex-wrap content-start',
+              )}
+            >
+              {tasks.length > 0 ? (
+                tasks.map((task) => (
+                  <TaskCardSummary
+                    key={task.id}
+                    task={task}
+                    onClick={onTaskClick}
+                    stageColor={displayStageColor}
+                    isInProgress={isInProgress}
+                  />
+                ))
+              ) : (
+                <div className="text-[10px] text-muted-foreground text-center py-3 w-full opacity-50">
+                  No tasks
+                </div>
+              )}
+            </div>
+          )}
+        </SortableContext>
+      </div>
     </div>
   );
 }
