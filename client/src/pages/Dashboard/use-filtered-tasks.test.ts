@@ -102,6 +102,84 @@ describe('useFilteredTasks', () => {
     expect(result.current).toHaveLength(1);
   });
 
+  it('treats a numeric query as an exact task ID lookup', () => {
+    const tasks = [
+      makeTask({ id: 16, title: 'Sixteen' }),
+      makeTask({ id: 161, title: 'One sixty one' }),
+      makeTask({ id: 1610, title: 'Mentions 161 in the title' }),
+    ];
+    const { result } = renderHook(() =>
+      useFilteredTasks({ tasks, searchQuery: '161', focusMode: false, viewMode: 'detail', stages }),
+    );
+    expect(result.current.map((t) => t.id)).toEqual([161]);
+  });
+
+  it('accepts a #-prefixed and whitespace-padded ID query', () => {
+    const tasks = [makeTask({ id: 161 }), makeTask({ id: 2 })];
+    const { result } = renderHook(() =>
+      useFilteredTasks({
+        tasks,
+        searchQuery: ' #161 ',
+        focusMode: false,
+        viewMode: 'detail',
+        stages,
+      }),
+    );
+    expect(result.current.map((t) => t.id)).toEqual([161]);
+  });
+
+  it('returns an empty board when no task has the searched ID', () => {
+    const tasks = [makeTask({ id: 1 }), makeTask({ id: 2 })];
+    const { result } = renderHook(() =>
+      useFilteredTasks({ tasks, searchQuery: '999', focusMode: false, viewMode: 'detail', stages }),
+    );
+    expect(result.current).toHaveLength(0);
+  });
+
+  it('finds an archived task by ID', () => {
+    const tasks = [makeTask({ id: 1 })];
+    const archivedTasks = [makeTask({ id: 161, title: 'Archived', archived: true })];
+    const { result } = renderHook(() =>
+      useFilteredTasks({
+        tasks,
+        archivedTasks,
+        searchQuery: '161',
+        focusMode: false,
+        viewMode: 'detail',
+        stages,
+      }),
+    );
+    expect(result.current.map((t) => t.id)).toEqual([161]);
+    expect(result.current.at(0)?.archived).toBe(true);
+  });
+
+  it('ID lookup ignores focus mode, stage and progress filters', () => {
+    const tasks = [
+      makeTask({ id: 161, title: 'Done low', stageId: 3, status: 'done', priority: 'low' }),
+    ];
+    const { result } = renderHook(() =>
+      useFilteredTasks({ tasks, searchQuery: '161', focusMode: true, viewMode: 'detail', stages }),
+    );
+    expect(result.current.map((t) => t.id)).toEqual([161]);
+  });
+
+  it('still does a text search for queries that are not purely numeric', () => {
+    const tasks = [
+      makeTask({ id: 1, title: 'Ship v161 release' }),
+      makeTask({ id: 161, title: 'Unrelated' }),
+    ];
+    const { result } = renderHook(() =>
+      useFilteredTasks({
+        tasks,
+        searchQuery: 'v161',
+        focusMode: false,
+        viewMode: 'detail',
+        stages,
+      }),
+    );
+    expect(result.current.map((t) => t.id)).toEqual([1]);
+  });
+
   it('in focus mode with summary view, returns only in_progress tasks and the highest-priority backlog task', () => {
     const tasks = [
       makeTask({ id: 1, title: 'Backlog low', stageId: 1, status: 'backlog', priority: 'low' }),

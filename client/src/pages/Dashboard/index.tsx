@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-empty-function, @typescript-eslint/no-misused-promises -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { useState } from 'react';
-import { useTasks } from '@/hooks/use-tasks';
+import { useTasks, useArchivedTasks } from '@/hooks/use-tasks';
 import { EditTaskDialog } from '@/components/EditTaskDialog';
 import { TaskHistoryModal } from '@/components/TaskHistoryModal';
 import { StageHeaders } from '@/components/StageHeaders';
@@ -20,6 +20,8 @@ export interface DashboardProps {}
 
 export default function Dashboard(_props: DashboardProps) {
   const { data: tasks, isLoading, error } = useTasks();
+  // Only used by the search-by-ID path, so a slow/failed fetch never blocks the board.
+  const { data: archivedTasks } = useArchivedTasks();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
@@ -32,7 +34,14 @@ export default function Dashboard(_props: DashboardProps) {
 
   const { data: stages = [] } = useStages();
 
-  const filteredTasks = useFilteredTasks({ tasks, searchQuery, focusMode, viewMode, stages });
+  const filteredTasks = useFilteredTasks({
+    tasks,
+    archivedTasks,
+    searchQuery,
+    focusMode,
+    viewMode,
+    stages,
+  });
   const { handleExport, handleImport } = useTaskImportExport({ tasks, stages });
 
   useKeyboardShortcuts({

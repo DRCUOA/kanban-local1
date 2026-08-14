@@ -12,11 +12,24 @@ import {
 
 export interface UseFilteredTasksOptions {
   tasks: Task[] | undefined;
+  /** Archived tasks, so an ID lookup can find a task that has left the active board. */
+  archivedTasks?: Task[] | undefined;
   searchQuery: string;
   focusMode: boolean;
   /** In focus mode, detail view shows only high/critical incomplete tasks; summary keeps the in-progress + next-backlog slice. */
   viewMode: 'detail' | 'summary';
   stages: Stage[];
+}
+
+/**
+ * A search of digits only (optionally prefixed with `#`) is an ID lookup, not a
+ * text search: `161` means "show me task 161", not "every task mentioning 161".
+ */
+function parseTaskIdQuery(searchQuery: string): number | null {
+  const match = /^#?(\d+)$/.exec(searchQuery.trim());
+  if (!match?.[1]) return null;
+  const id = Number(match[1]);
+  return Number.isSafeInteger(id) ? id : null;
 }
 
 function getTaskStatusFromStages(t: Task, stages: Stage[]): string {
@@ -28,12 +41,22 @@ function getTaskStatusFromStages(t: Task, stages: Stage[]): string {
 
 export function useFilteredTasks({
   tasks,
+  archivedTasks,
   searchQuery,
   focusMode,
   viewMode,
   stages,
 }: UseFilteredTasksOptions): Task[] {
   return useMemo(() => {
+    const taskId = parseTaskIdQuery(searchQuery);
+    if (taskId !== null) {
+      // ID lookup wins over every other filter: any stage, any progress,
+      // archived or not, and focus mode does not get to hide the result.
+      const match =
+        tasks?.find((t) => t.id === taskId) ?? archivedTasks?.find((t) => t.id === taskId);
+      return match ? [match] : [];
+    }
+
     let filtered =
       tasks?.filter(
         (t) =>
@@ -69,5 +92,5 @@ export function useFilteredTasks({
     }
 
     return filtered;
-  }, [tasks, searchQuery, focusMode, viewMode, stages]);
+  }, [tasks, archivedTasks, searchQuery, focusMode, viewMode, stages]);
 }
