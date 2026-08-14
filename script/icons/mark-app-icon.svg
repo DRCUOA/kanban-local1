@@ -12,7 +12,7 @@
         fill="#000" stroke="#000" stroke-width="20" stroke-linejoin="round" />
     </mask>
   </defs>
-  <rect width="512" height="512" fill="#eef1f6" />
+  <rect width="512" height="512" fill="#e0e4eb" />
   <g fill="#1f5fde" transform="translate(71.68 71.68) scale(0.72)">
     <g mask="url(#col-gap)">
       <path d="M318 273 L370 299 L318 325 L266 299 Z" />
