@@ -1,4 +1,5 @@
 import DOMPurify from 'dompurify';
+import { markdownToHtml } from './markdown';
 
 /**
  * Rich-text helpers for task descriptions.
@@ -6,6 +7,8 @@ import DOMPurify from 'dompurify';
  * Descriptions are stored as sanitized HTML produced by the TipTap editor.
  * Legacy tasks (and imported data) may still hold plain text, so every
  * consumer goes through these helpers to convert/sanitize consistently.
+ * Plain text is read as Markdown, so descriptions written elsewhere show up
+ * formatted rather than as raw `**` and `-` markers.
  */
 
 const ALLOWED_TAGS = [
@@ -29,6 +32,9 @@ const ALLOWED_TAGS = [
   'pre',
   'hr',
   'span',
+  // Markdown `~~strike~~` renders as <del>; TipTap reads it back as <s>.
+  'del',
+  'strike',
 ];
 
 const ALLOWED_ATTR = [
@@ -100,21 +106,14 @@ export function looksLikeRichText(value: string): boolean {
   return /<\/?[a-z][^>]*>/i.test(value);
 }
 
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-/** Convert legacy plain-text descriptions into editor-compatible HTML. */
+/**
+ * Convert legacy plain-text descriptions into editor-compatible HTML, reading
+ * any Markdown they contain. Prose without Markdown syntax comes out as the
+ * same paragraphs and line breaks it always did.
+ */
 export function plainTextToRichHtml(text: string): string {
   if (!text) return '';
-  return text
-    .split(/\n{2,}/)
-    .map((block) => `<p>${escapeHtml(block).replace(/\n/g, '<br>')}</p>`)
-    .join('');
+  return markdownToHtml(text);
 }
 
 /** Normalize any stored description (HTML or plain text) to sanitized HTML. */
@@ -129,8 +128,10 @@ export function toRichHtml(value: string | null | undefined): string {
  */
 export function richTextToPlainText(value: string | null | undefined): string {
   if (!value) return '';
-  if (!looksLikeRichText(value)) return value;
-  const withBreaks = value
+  // Plain text goes through Markdown first so text previews and search see the
+  // rendered words, not the `**` and `-` around them.
+  const html = looksLikeRichText(value) ? value : markdownToHtml(value);
+  const withBreaks = html
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/(p|div|li|h[1-6]|blockquote|pre)>/gi, '\n');
   const div = document.createElement('div');
