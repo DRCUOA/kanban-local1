@@ -1,0 +1,17 @@
+<!--
+  Kanbando favicon (SVG). Uses the mid-size mark geometry (see
+  script/icons/mark-32.svg) because browser tabs render favicons at
+  16-32px. Color follows the browser's light/dark preference.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <style>
+    path { fill: #1f5fde; }
+    @media (prefers-color-scheme: dark) {
+      path { fill: #7197f7; }
+    }
+  </style>
+  <path d="M256 62 L332 100 L332 320 L256 358 L180 320 L180 100 Z" />
+  <path d="M164 328 L240 366 L164 404 L88 366 Z" />
+  <path d="M348 328 L424 366 L348 404 L272 366 Z" />
+  <path d="M256 374 L332 412 L256 450 L180 412 Z" />
+</svg>

@@ -1,0 +1,12 @@
+<!--
+  Kanbando mark, smallest variant for 16px favicons.
+  Just the column plus the two flanking tiles; gaps sized to survive
+  rasterisation at 16px (40 units here is ~1.25px at render size).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <g fill="currentColor" color="#1f5fde">
+    <path d="M256 70 L352 118 L352 318 L256 366 L160 318 L160 118 Z" />
+    <path d="M140 348 L236 396 L140 444 L44 396 Z" />
+    <path d="M372 348 L468 396 L372 444 L276 396 Z" />
+  </g>
+</svg>

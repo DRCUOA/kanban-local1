@@ -1,0 +1,28 @@
+<!--
+  Kanbando app icon: full mark on an opaque background, inset so it
+  survives the rounded/circular masks home screens apply.
+  Source for apple-touch-icon.png, icon-192.png and icon-512.png.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <mask id="col-gap">
+      <rect width="512" height="512" fill="#fff" />
+      <path
+        d="M256 94 L308 120 L308 330 L256 356 L204 330 L204 120 Z"
+        fill="#000" stroke="#000" stroke-width="20" stroke-linejoin="round" />
+    </mask>
+  </defs>
+  <rect width="512" height="512" fill="#eef1f6" />
+  <g fill="#1f5fde" transform="translate(71.68 71.68) scale(0.72)">
+    <g mask="url(#col-gap)">
+      <path d="M318 273 L370 299 L318 325 L266 299 Z" />
+      <path d="M194 273 L246 299 L194 325 L142 299 Z" />
+      <path d="M380 304 L432 330 L380 356 L328 330 Z" />
+      <path d="M132 304 L184 330 L132 356 L80 330 Z" />
+      <path d="M318 335 L370 361 L318 387 L266 361 Z" />
+      <path d="M194 335 L246 361 L194 387 L142 361 Z" />
+      <path d="M256 366 L308 392 L256 418 L204 392 Z" />
+    </g>
+    <path d="M256 94 L308 120 L308 330 L256 356 L204 330 L204 120 Z" />
+  </g>
+</svg>

@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression -- R2 baseline: strict fixes deferred to follow-up tasks */
-import { LayoutDashboard, Search, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { AppLogo } from '@/components/AppLogo';
 
 export interface DashboardHeaderProps {
   searchQuery: string;
@@ -24,7 +25,7 @@ export function DashboardHeader({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 neo-raised rounded-lg flex items-center justify-center">
-            <LayoutDashboard className="text-primary h-5 w-5" />
+            <AppLogo className="text-primary h-6 w-6" />
           </div>
           <div>
             <h1 className="text-lg font-bold tracking-tight text-foreground leading-tight">
