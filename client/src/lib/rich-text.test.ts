@@ -20,12 +20,18 @@ describe('looksLikeRichText', () => {
 describe('plainTextToRichHtml', () => {
   it('wraps paragraphs and keeps single newlines as line breaks', () => {
     expect(plainTextToRichHtml('line one\nline two\n\npara two')).toBe(
-      '<p>line one<br>line two</p><p>para two</p>',
+      '<p>line one<br>line two</p>\n<p>para two</p>',
     );
   });
 
   it('escapes HTML in legacy plain text', () => {
     expect(plainTextToRichHtml('a <script> tag')).toBe('<p>a &lt;script&gt; tag</p>');
+  });
+
+  it('renders Markdown written outside the editor', () => {
+    expect(plainTextToRichHtml('## Plan\n\n- **ship** it')).toBe(
+      '<h2>Plan</h2>\n<ul>\n<li><strong>ship</strong> it</li>\n</ul>',
+    );
   });
 });
 
@@ -70,6 +76,12 @@ describe('toRichHtml', () => {
     expect(toRichHtml('hi\nthere')).toBe('<p>hi<br>there</p>');
     expect(toRichHtml(null)).toBe('');
   });
+
+  it('renders Markdown and keeps the result within the allowed tags', () => {
+    expect(toRichHtml('# Title\n\n~~old~~ [link](https://example.com)')).toBe(
+      '<h1>Title</h1>\n<p><del>old</del> <a href="https://example.com" target="_blank" rel="noopener noreferrer nofollow">link</a></p>',
+    );
+  });
 });
 
 describe('richTextToPlainText', () => {
@@ -79,6 +91,10 @@ describe('richTextToPlainText', () => {
 
   it('returns legacy plain text unchanged', () => {
     expect(richTextToPlainText('just text')).toBe('just text');
+  });
+
+  it('strips Markdown syntax so text previews read cleanly', () => {
+    expect(richTextToPlainText('# Plan\n\n- **ship** it')).toBe('Plan\n\nship it');
   });
 
   it('replaces file chips with their name', () => {

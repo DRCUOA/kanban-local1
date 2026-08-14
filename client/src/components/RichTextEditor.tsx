@@ -26,6 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { FileChip } from '@/lib/file-chip-extension';
 import { formatDictatedInsertion, MACOS_DICTATION_HINT } from '@/lib/dictation';
+import { looksLikeMarkdown, markdownToHtml } from '@/lib/markdown';
 import {
   toRichHtml,
   sanitizeRichText,
@@ -104,6 +105,21 @@ export function RichTextEditor({
     editorProps: {
       attributes: {
         class: 'rich-text focus:outline-none min-h-[96px] px-4 py-3',
+      },
+      // Typed Markdown is already handled by TipTap's input rules; pasted
+      // Markdown is not, so convert it here. Clipboard payloads that carry
+      // HTML come from a rich source and are left to ProseMirror.
+      handlePaste: (_view, event) => {
+        const clipboard = event.clipboardData;
+        if (!clipboard || clipboard.getData('text/html')) return false;
+        const text = clipboard.getData('text/plain');
+        if (!text || !looksLikeMarkdown(text)) return false;
+        const html = sanitizeRichText(markdownToHtml(text));
+        const ed = editorRef.current;
+        if (!html || !ed) return false;
+        event.preventDefault();
+        ed.commands.insertContent(html);
+        return true;
       },
       handleDOMEvents: {
         // Mobile virtual keyboards (notably Chrome/GBoard on Android) don't
