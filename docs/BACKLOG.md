@@ -92,14 +92,104 @@ can't displace committed work.
 
 ## Dependency spine (why this order)
 
+```plantuml
+@startuml
+title Consolidated backlog — dependency spine (why this order)
+left to right direction
+skinparam shadowing false
+skinparam rectangleRoundCorner 12
+skinparam ArrowColor #555555
+skinparam defaultTextAlignment center
+
+rectangle "**B-01 · Now**\nData-model audit\n(board #160)" as B01 #FFE082
+rectangle "**B-05 · Next**\nEPIC-03\nOne authoritative\nstate per task" as B05 #FFCC80
+rectangle "**B-06 · Next**\nAttachments UX\ndrag-drop + paste\n(board #161)" as B06 #FFFFFF
+rectangle "**B-08 · Later**\nEPIC-01\nProject layer\n(board #153)" as B08 #FFFFFF
+rectangle "**B-09 · Later**\nEPIC-04\nCatch-up Replay build" as B09 #FFFFFF
+rectangle "**B-07 · Later**\nFreshness markers\n(board #158)" as B07 #FFFFFF
+
+package "Independent — schedule in slack" #E8F5E9 {
+  rectangle "**B-02 · Now**\nDescription link fix\n(board #151)" as B02
+  rectangle "**B-04 · Next**\nSorting: due + effort\n(board #162, phase 1)" as B04
+  rectangle "**B-10 · Later**\nAI @-interaction spike\n(board #159)" as B10
+}
+
+B01 -[bold]-> B05 : findings validated,\ntriage confirmed
+B05 --> B06 : attachment extraction\nlanded first
+B05 --> B08 : owner namespace\nnormalised
+B05 --> B09 : state collapse +\nboard timezone landed
+B05 --> B07 : model stable; add\nviewed-timestamp fact
+
+B01 .[#888888].> B08 : decision output:\nowner-as-project?
+B01 .[#888888].> B09 : Q2 answer: snapshot vs\nwatermark + history
+B04 .[#888888].> B05 : owner sort deferred\ninto EPIC-03
+B07 .[#888888]. B09 : co-design one\n"what's new" language
+
+note bottom of B01
+  Cheapest item on the list (effort 1–2)
+  and the only one that de-risks
+  everything downstream.
+  Amends the epics as needed.
+end note
+
+note bottom of B09
+  B-03 (park EPIC-04) already done:
+  status "Paused", PR #114 merged.
+end note
+
+legend right
+  |= line |= meaning |
+  | solid | hard dependency — do not start before |
+  | dotted | information flow — a decision or answer travels |
+  | green box | no dependencies either way |
+endlegend
+@enduml
 ```
-B-01 audit ──┬─→ B-05 EPIC-03 ──┬─→ B-06 attachments UX
-             │                  ├─→ B-08 EPIC-01 (＋ owner-as-project decision from B-01)
-             │                  └─→ B-09 EPIC-04 build (＋ Q2 answer from B-01)
-             └─→ (amends epics as needed)
-B-02, B-04, B-10 — independent, schedule for slack
-B-07 — after model stabilizes; co-design with EPIC-04
-```
+
+### Narrative notes — the logic behind the spine
+
+1. **Everything begins with B-01 because it is the cheapest way to find out whether
+   everything else is standing on solid ground.** The audit is a one-to-two effort
+   task, yet its output determines the shape of a ~34-point epic and, through that,
+   three more work items. Doing cheap, high-information work before expensive,
+   dependent work is the whole logic of the spine.
+2. **B-05 (EPIC-03) is the trunk, not just another branch.** Every ambiguity it
+   removes — two contradictory state machines, the double-booked owner field,
+   tag-string swimlanes, the untyped due date, base64 blobs inside descriptions — is
+   a fault line that some later item would otherwise be built directly on top of.
+   Three items wait for it, each for a specific, nameable reason.
+3. **B-06 (attachments UX) waits for one specific EPIC-03 story: attachment
+   extraction.** Shipped today, every dropped file would become more base64 inside
+   the `description` text column — actively growing the single worst measured
+   problem in the model (533 KB of a 547 KB payload). The feature isn't hard;
+   building it *first* would be building the problem a bigger front door.
+4. **B-08 (EPIC-01, projects) waits for a decision, not just for code.** The audit
+   carries the question "should a project be its own entity, or should a normalised
+   owner become the project?" Until that's answered, EPIC-01 as written might be the
+   wrong epic entirely. What travels along the dotted line from B-01 is a decision,
+   not software.
+5. **B-09 (EPIC-04, the replay) waits for two different things from two different
+   places.** From B-01 it needs an *answer*: is task history trustworthy enough to
+   reconstruct past states (watermark), or must we snapshot evaluated state
+   (checkpoint table)? From B-05 it needs *landed code*: one authoritative task
+   state and an explicit board timezone — because a replay that announces "this task
+   moved" or "this became overdue" from self-contradicting fields would show wrong
+   changes, and this feature's entire hypothesis is building trust.
+6. **B-07 (freshness markers) has a soft dependency and a design constraint.** It
+   needs a new fact the model doesn't hold — *when a task was last viewed* (today's
+   `updatedAt` only tracks edits) — and new facts shouldn't be added while the model
+   is mid-rebuild. The dotted line to B-09 isn't a dependency: it says the two
+   features must share one visual language for "what's new here," so they are
+   designed together even though either could ship first.
+7. **The green box is the pressure valve.** B-02, B-04, and B-10 touch nothing on
+   the spine and nothing on the spine touches them — pick one up whenever spine work
+   is blocked or a small win is wanted. The one nuance is B-04's dotted line: the
+   *owner* sort was deliberately cut from phase 1, because sorting on a field the
+   model can't yet answer honestly would produce confidently wrong orderings; that
+   fragment ships with EPIC-03 once the owner namespace is single.
+8. **B-03 doesn't appear as a box because it's already history** — EPIC-04 marked
+   Paused, PR #114 merged; the diagram records it as a note so the spine reflects
+   only live work.
 
 ## Board hygiene actions from this consolidation
 
