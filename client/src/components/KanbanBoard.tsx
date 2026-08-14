@@ -11,6 +11,7 @@ import { KanbanDragOverlay } from './KanbanDragOverlay';
 import { ColumnResizer } from './ColumnResizer';
 import { ArchiveZone } from './ArchiveZone';
 import { DEFAULT_STAGE_COLORS } from '@shared/constants';
+import { sortTasksByDueDate } from '@shared/task-sort';
 import { cn } from '@/lib/utils';
 
 /** Narrowest a column may be dragged before it stops giving up space. */
@@ -57,6 +58,11 @@ export function KanbanBoard({
     handleDragOver,
     handleDragEnd,
   } = useKanbanDragDrop({ tasks, sortedStages, allSubStages });
+
+  // Default board order is soonest-due-first. Sorted once here rather than per
+  // column so every stage and sub-stage lane inherits the same order — the
+  // sub-stage grouping downstream preserves the order it receives.
+  const dueSortedTasks = useMemo(() => sortTasksByDueDate(activeTasks), [activeTasks]);
 
   const isHorizontal = boardLayout === 'horizontal';
   const { getWeight, setPairWeights, resetPair, resetAll, hasCustomWidths } = useColumnWeights();
@@ -155,7 +161,7 @@ export function KanbanBoard({
         >
           {sortedStages.map((stage, index) => {
             const stageColor = stageColorMap.get(stage.id) || DEFAULT_STAGE_COLORS[0];
-            const stageTasks = activeTasks.filter((t) => t.stageId === stage.id);
+            const stageTasks = dueSortedTasks.filter((t) => t.stageId === stage.id);
             const previous = index > 0 ? sortedStages[index - 1] : undefined;
             return (
               <Fragment key={stage.id}>
