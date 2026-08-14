@@ -14,60 +14,70 @@
  * onto the semantic tokens below so existing utility classes (`bg-background`,
  * `text-foreground`, …) continue to compile unchanged.
  *
- * Light mode  : cool-tinted near-white surface stack — avoids glare, avoids
- *               the muddy mid-greys that previously dominated.
+ * Light mode  : cool grey-blue page with off-white raised surfaces. The page
+ *               sits at ~90% lightness (not near-white) so cards, wells and
+ *               shadows have tonal room to separate — an all-92-to-100%
+ *               stack washes out and reads as "everything is white".
+ *               Cards stay off-white (not #fff) to avoid glare.
  * Dark mode   : deep blue-tinted near-black (NOT pitch black) with layered
  *               elevation so dialogs/popovers float clearly above the page.
  *
- * Contrast targets:
+ * Contrast targets (checked against bg-base):
  *   body text on bg-base  : ≥ 7:1   (WCAG AAA)
  *   secondary on bg-base  : ≥ 4.5:1 (WCAG AA)
  *   accent on bg-base     : ≥ 4.5:1 (WCAG AA)
+ *   status text on bg-base: ≥ 4.5:1 (WCAG AA)
  *   focus ring            : highly visible accent colour with 2px offset
  * ========================================================================== */
 
 @layer base {
   :root {
-    /* ---- Surfaces (layered from page → most-elevated) ---- */
-    --bg-base: 220 28% 96%; /* #eef1f6 — page background */
-    --bg-surface: 0 0% 100%; /* #ffffff — cards / columns */
-    --bg-elevated: 0 0% 100%; /* #ffffff — dialogs, popovers (extra shadow) */
-    --bg-sunken: 220 30% 92%; /* #e2e8f0 — inputs, pressed states */
-    --bg-subtle: 220 26% 94%; /* #e6ebf2 — subtle hover / inset */
+    /* ---- Surfaces (layered from page → most-elevated) ----
+       ~13-point lightness spread (84% → 99%) so each layer is tonally
+       distinct: sunken wells sit below the page, the page below cards,
+       cards below dialogs. */
+    --bg-base: 220 21% 90%; /* #e0e4eb — page background */
+    --bg-surface: 220 45% 97%; /* #f4f6fb — cards / columns (off-white) */
+    --bg-elevated: 220 60% 99%; /* #fbfcfe — dialogs, popovers (extra shadow) */
+    --bg-sunken: 220 18% 84%; /* #cfd4de — inputs, pressed states */
+    --bg-subtle: 220 18% 87%; /* #d8dce4 — subtle hover / inset */
 
     /* ---- Foreground ---- */
-    --fg-primary: 220 35% 13%; /* #161e2e — body text, 14.7:1 on bg-base */
-    --fg-secondary: 220 18% 28%; /* #3a4458 — secondary text, 8.5:1 */
-    --fg-muted: 220 12% 42%; /* #5e6878 — meta / placeholder, 4.9:1 */
+    --fg-primary: 220 35% 13%; /* #161d2d — body text, 13.2:1 on bg-base */
+    --fg-secondary: 220 18% 28%; /* #3b4354 — secondary text, 7.8:1 */
+    --fg-muted: 220 12% 40%; /* #5a6272 — meta / placeholder, 4.8:1 */
     --fg-on-accent: 0 0% 100%; /* text on accent fill */
 
     /* ---- Borders ---- */
-    --border-subtle: 220 18% 86%; /* #d4dae5 — default divider */
-    --border-strong: 220 14% 70%; /* #a3aebf — input outlines */
+    --border-subtle: 220 16% 79%; /* #c1c7d2 — default divider */
+    --border-strong: 220 12% 52%; /* #768093 — input outlines, 3.1:1 on base */
 
     /* ---- Accent / brand ---- */
     --accent-1: 222 76% 50%; /* #1f5fde — vivid blue */
     --accent-1-hover: 222 76% 44%; /* #1c54c4 */
     --accent-1-pressed: 222 76% 38%; /* #194ba6 */
     --accent-1-fg: 0 0% 100%;
-    --accent-1-soft: 222 80% 94%; /* tinted background for accent surfaces */
+    --accent-1-soft: 222 60% 90%; /* tinted background for accent surfaces */
 
     /* ---- Status ---- */
-    --success: 142 64% 36%; /* #21924d — 4.8:1 on bg-base */
+    --success: 145 64% 28%; /* #1a7540 — 4.5:1 on bg-base, 5.7:1 white-on-fill */
     --success-fg: 0 0% 100%;
-    --warning: 38 92% 42%; /* #cc7a05 — readable on light bg */
+    --warning: 38 92% 42%; /* #cc7a05 — used with dark warning-fg */
     --warning-fg: 220 35% 13%;
-    --danger: 358 74% 47%; /* #cd2233 — 5.7:1 on bg-base */
+    --danger: 358 72% 43%; /* #bd1f24 — 4.9:1 on bg-base, 6.2:1 white-on-fill */
     --danger-fg: 0 0% 100%;
 
     /* ---- Focus ring ---- */
     --focus-ring: 222 90% 55%; /* highly visible, accent-derived */
 
-    /* ---- Neumorphic shadow tuning (deltas above/below current surface) ---- */
+    /* ---- Neumorphic shadow tuning (deltas above/below current surface) ----
+       Neumorphism only reads if both edges are visible: the darker page
+       makes the white highlight land, and the dark edge needs enough alpha
+       to register against ~90% surfaces. */
     --neo-light-edge: 255, 255, 255; /* highlight colour (RGB triplet) */
-    --neo-light-alpha: 0.85; /* light edge strength */
+    --neo-light-alpha: 0.9; /* light edge strength */
     --neo-dark-edge: 30, 41, 59; /* shadow colour (RGB triplet — slate-800) */
-    --neo-dark-alpha: 0.1; /* dark edge strength */
+    --neo-dark-alpha: 0.18; /* dark edge strength */
 
     /* ---- Shadcn aliases (preserved for existing utility/component usage) ---- */
     --background: var(--bg-base);
