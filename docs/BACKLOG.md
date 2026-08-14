@@ -90,6 +90,48 @@ interactions, how fragile, what to replicate; output is user stories only.
 No dependencies — parallelizable whenever there's slack; deliberately last so it
 can't displace committed work.
 
+**Library question already answered (14 Aug, from board chatter suggesting `cmdk`
+or Plate JS): use neither — use `@tiptap/suggestion`.** The description field is
+already Tiptap 3 (`client/src/components/RichTextEditor.tsx`, StarterKit +
+Placeholder), which the chatter didn't account for.
+
+- **Plate JS is a Slate-based editor framework** — adopting it means replacing
+  Tiptap wholesale, migrating serialization and every consumer of description HTML
+  (`RichTextContent.tsx`, export, briefing). An enormous change to acquire a menu.
+- **`cmdk` is the wrong shape** (and not currently installed — no shadcn
+  `command.tsx`). It is built for *overlay* palettes with their own focus and input.
+  An in-editor slash menu is the inverse: the caret stays in the document, the query
+  is the text typed after the trigger, and the popup only borrows arrow keys/Enter.
+- **`@tiptap/suggestion` is the exact primitive**: configurable trigger character,
+  match/range tracking, render callbacks for a popup you supply, and correct
+  replacement of the trigger range on select. First-party, same mechanism behind
+  Notion-style slash menus; `@tiptap/extension-mention` wraps it for @-people.
+
+**Spike's real deliverable — which insert types are safe before the model is fixed.**
+The menu is not the fragile part; what it *inserts* is:
+
+| Insert type | Risk |
+|---|---|
+| Self-contained content — date, checklist, heading, code block, plain link | Safe. No ids, nothing the data model must guarantee. |
+| Entity references — `@person`, `#task`, project | Fragile. Needs a custom node with an id that survives HTML serialization, stays valid across rename/delete, and is understood by every description consumer. |
+
+`@owner` today would encode assignment as a **third** namespace inside description
+HTML, on top of the two contradictory ones EPIC-03 documents (`owner` vs swimlane
+tags) — inventing a new integrity problem inside the area being repaired. `#task`
+has the same defect: no stable permalink until EPIC-03 adds one. Hence entity
+references stay behind B-01/B-05.
+
+**Optional early subset:** a slash menu limited to self-contained content could ship
+before the model work — it proves the interaction and touches no ambiguous field.
+It overlaps B-06's territory (both are description-input UX), so pull it forward
+only as one combined piece of work, not a second pass over the same modal.
+
+**Product caution:** slash commands are a power-user idiom whose discoverability
+depends on knowing to type a character with no visible affordance. For the audience
+described in EPIC-04 — people for whom tool complexity is already the barrier — a
+hidden interface reads as "not for me." Any implementation must be an accelerator
+layered over visible buttons, never the only route to a capability.
+
 ## Dependency spine (why this order)
 
 ```plantuml
@@ -199,4 +241,7 @@ endlegend
 - [ ] #162: split — phase 1 (due/effort) is B-04; owner sort noted on EPIC-03.
 - [ ] #161: add "blocked by EPIC-03 attachment extraction" so it isn't picked up early.
 - [ ] #158: add "co-design with EPIC-04; needs interaction timestamp" note.
+- [ ] #159: record the library conclusion (`@tiptap/suggestion`, not cmdk/Plate) so
+      the board chatter doesn't re-litigate it; note entity references are gated by
+      EPIC-03.
 - [ ] Duplicate #151 email was noise — single task, no action.
