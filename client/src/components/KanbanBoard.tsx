@@ -150,7 +150,7 @@ export function KanbanBoard({
             underneath rather than eating the right-hand half of the viewport. */}
         <div
           className={cn(
-            isHorizontal ? 'flex min-h-0 flex-1 flex-row overflow-x-auto' : 'flex flex-col gap-3',
+            isHorizontal ? 'flex min-h-0 flex-1 flex-row overflow-x-auto' : 'flex flex-col gap-4',
           )}
         >
           {sortedStages.map((stage, index) => {

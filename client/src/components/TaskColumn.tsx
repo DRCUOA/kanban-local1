@@ -42,7 +42,9 @@ export function TaskColumn({
       ref={outerRef}
       style={isHorizontal ? style : undefined}
       className={cn(
-        'flex flex-col',
+        // The whole stage (header + lanes) is one raised card so stages read
+        // as separate surfaces on the page rather than a continuous sheet.
+        'flex flex-col neo-raised',
         // Horizontal: share the row proportionally (weight comes from `style`)
         // so wide/ultrawide viewports are filled instead of left blank, while
         // the min-width keeps columns readable and lets the row scroll when
@@ -50,7 +52,7 @@ export function TaskColumn({
         isHorizontal ? 'min-w-[260px] min-h-0' : 'w-full',
       )}
     >
-      <div className="flex items-center justify-between px-4 py-3">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: stageColor }} />
           <h2 className="font-display font-bold text-xs uppercase tracking-wider text-foreground">
@@ -68,10 +70,12 @@ export function TaskColumn({
       <div
         ref={setNodeRef}
         className={cn(
-          'p-3 transition-all duration-200 rounded-xl neo-container',
+          // Lives inside the stage card — no raised surface of its own, the
+          // sub-stage wells (or task cards) provide the next layer.
+          'p-3 transition-all duration-200 rounded-b-2xl',
           isEmpty ? 'min-h-[120px]' : 'min-h-[80px]',
           isHorizontal && 'flex-1 overflow-y-auto',
-          isOver && 'bg-primary/5 ring-2 ring-primary/30 scale-[1.01]',
+          isOver && 'bg-primary/5 ring-2 ring-primary/30',
         )}
       >
         {/* Always render children so SortableContext stays mounted */}
