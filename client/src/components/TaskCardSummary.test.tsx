@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { TaskCardSummary } from './TaskCardSummary';
+import { TaskSelectionContext } from './task-selection-context';
 import type { Task } from '@shared/schema';
 
 vi.mock('@dnd-kit/sortable', () => ({
@@ -88,6 +89,53 @@ describe('TaskCardSummary', () => {
 
     const hoverContent = screen.getByTestId('hover-content');
     expect(hoverContent.textContent).toContain('Summary task');
+  });
+
+  it('exposes its task id for marquee hit-testing', () => {
+    const { container } = render(
+      <TaskCardSummary task={makeTask()} onClick={vi.fn()} stageColor="#3B82F6" />,
+    );
+    expect(container.querySelector('[data-task-id="42"]')).not.toBeNull();
+  });
+
+  it('highlights itself when selected', () => {
+    const selection = { selectedTaskIds: new Set([42]), onTaskContextMenu: vi.fn() };
+    const { container } = render(
+      <TaskSelectionContext.Provider value={selection}>
+        <TaskCardSummary task={makeTask()} onClick={vi.fn()} stageColor="#3B82F6" />
+      </TaskSelectionContext.Provider>,
+    );
+
+    const card = container.querySelector('[data-task-id="42"]');
+    expect(card?.getAttribute('data-selected')).toBe('true');
+    expect(card?.className).toContain('outline-primary');
+  });
+
+  it('routes right-click to the selection context', () => {
+    const onTaskContextMenu = vi.fn();
+    const task = makeTask();
+    render(
+      <TaskSelectionContext.Provider
+        value={{ selectedTaskIds: new Set<number>(), onTaskContextMenu }}
+      >
+        <TaskCardSummary task={task} onClick={vi.fn()} stageColor="#3B82F6" />
+      </TaskSelectionContext.Provider>,
+    );
+
+    fireEvent.contextMenu(screen.getByRole('button'));
+    expect(onTaskContextMenu).toHaveBeenCalledOnce();
+    expect(onTaskContextMenu.mock.calls[0]?.[0]).toBe(task);
+  });
+
+  it('does not open the task on Shift+click (that is a selection gesture)', () => {
+    const onClick = vi.fn();
+    render(<TaskCardSummary task={makeTask()} onClick={onClick} stageColor="#3B82F6" />);
+
+    fireEvent.click(screen.getByRole('button'), { shiftKey: true });
+    expect(onClick).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button'));
+    expect(onClick).toHaveBeenCalledOnce();
   });
 
   it('scales circle size based on effort value', () => {

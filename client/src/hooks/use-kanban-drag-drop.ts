@@ -18,6 +18,30 @@ import {
 import { useUpdateTask, useArchiveTask } from '@/hooks/use-tasks';
 import { getStatusFromStageName } from '@shared/constants';
 
+/**
+ * Shift-modified presses belong to the board's marquee selection, so these
+ * sensor variants refuse to activate a drag for them. Plain presses delegate
+ * to the stock activators — normal drag-and-drop is untouched. TouchSensor
+ * needs no variant: touch events carry no Shift modifier.
+ */
+export class ShiftExemptPointerSensor extends PointerSensor {
+  static activators = PointerSensor.activators.map(
+    ({ eventName, handler }): (typeof PointerSensor.activators)[number] => ({
+      eventName,
+      handler: (event, options) => !event.nativeEvent.shiftKey && handler(event, options),
+    }),
+  );
+}
+
+export class ShiftExemptMouseSensor extends MouseSensor {
+  static activators = MouseSensor.activators.map(
+    ({ eventName, handler }): (typeof MouseSensor.activators)[number] => ({
+      eventName,
+      handler: (event, options) => !event.nativeEvent.shiftKey && handler(event, options),
+    }),
+  );
+}
+
 export interface UseKanbanDragDropParams {
   tasks: Task[];
   sortedStages: Stage[];
@@ -87,13 +111,13 @@ export function useKanbanDragDrop({ tasks, sortedStages, allSubStages }: UseKanb
   // delay = long-press to differentiate from scroll; tolerance is generous to
   // accommodate natural finger tremor on phones/tablets.
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(ShiftExemptPointerSensor, {
       activationConstraint: { delay: 200, tolerance: 8 },
     }),
     useSensor(TouchSensor, {
       activationConstraint: { delay: 250, tolerance: 8 },
     }),
-    useSensor(MouseSensor, {
+    useSensor(ShiftExemptMouseSensor, {
       activationConstraint: { distance: 8 },
     }),
   );

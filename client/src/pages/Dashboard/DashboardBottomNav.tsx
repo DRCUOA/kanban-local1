@@ -13,6 +13,7 @@ export interface DashboardBottomNavProps {
   onToggleBoardLayout: () => void;
   onArchive: () => void;
   onAdmin: () => void;
+  onShareBoard: () => void;
   onExport: () => void;
   onImport: () => void;
 }
@@ -26,6 +27,7 @@ export function DashboardBottomNav({
   onToggleBoardLayout,
   onArchive,
   onAdmin,
+  onShareBoard,
   onExport,
   onImport,
 }: DashboardBottomNavProps) {
@@ -101,6 +103,7 @@ export function DashboardBottomNav({
         <MoreActionsMenu
           onArchive={onArchive}
           onAdmin={onAdmin}
+          onShareBoard={onShareBoard}
           onExport={onExport}
           onImport={onImport}
         />

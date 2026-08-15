@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useTasks, useArchivedTasks } from '@/hooks/use-tasks';
 import { EditTaskDialog } from '@/components/EditTaskDialog';
+import { ShareDialog } from '@/components/ShareDialog';
 import { TaskHistoryModal } from '@/components/TaskHistoryModal';
 import { StageHeaders } from '@/components/StageHeaders';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
@@ -31,6 +32,7 @@ export default function Dashboard(_props: DashboardProps) {
   const [focusMode, setFocusMode] = useState(false);
   const [boardLayout, setBoardLayout] = useState<'vertical' | 'horizontal'>('vertical');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [isShareBoardOpen, setIsShareBoardOpen] = useState(false);
 
   const { data: stages = [] } = useStages();
 
@@ -137,8 +139,17 @@ export default function Dashboard(_props: DashboardProps) {
         }}
         onArchive={() => (window.location.href = ROUTES.ARCHIVE)}
         onAdmin={() => (window.location.href = ROUTES.ADMIN)}
+        onShareBoard={() => {
+          setIsShareBoardOpen(true);
+        }}
         onExport={handleExport}
         onImport={handleImport}
+      />
+
+      <ShareDialog
+        source={{ type: 'board', tasks, stages }}
+        open={isShareBoardOpen}
+        onOpenChange={setIsShareBoardOpen}
       />
 
       <EditTaskDialog

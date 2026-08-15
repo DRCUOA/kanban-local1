@@ -3,7 +3,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import type { DragEndEvent } from '@dnd-kit/core';
 import type { Task, Stage, SubStage } from '@shared/schema';
-import { useKanbanDragDrop } from './use-kanban-drag-drop';
+import {
+  ShiftExemptMouseSensor,
+  ShiftExemptPointerSensor,
+  useKanbanDragDrop,
+} from './use-kanban-drag-drop';
 
 const updateMutate = vi.fn();
 const archiveMutate = vi.fn();
@@ -170,5 +174,35 @@ describe('useKanbanDragDrop handleDragEnd', () => {
     });
 
     expect(updateMutate).toHaveBeenCalledWith({ id: 5, tags: [] });
+  });
+});
+
+describe('shift-exempt drag sensors', () => {
+  // Activator contract: return false to refuse activation, true to start a drag.
+  const options = { onActivation: undefined } as never;
+  const [pointerActivator] = ShiftExemptPointerSensor.activators;
+  const [mouseActivator] = ShiftExemptMouseSensor.activators;
+  if (!pointerActivator || !mouseActivator) throw new Error('sensor activators missing');
+
+  it('refuses pointer activation while Shift is held', () => {
+    const event = { nativeEvent: { shiftKey: true, isPrimary: true, button: 0 } } as never;
+    expect(pointerActivator.handler(event, options)).toBe(false);
+  });
+
+  it('activates a plain primary pointer press exactly like the stock sensor', () => {
+    const event = { nativeEvent: { shiftKey: false, isPrimary: true, button: 0 } } as never;
+    expect(pointerActivator.handler(event, options)).toBe(true);
+  });
+
+  it('refuses mouse activation while Shift is held', () => {
+    const event = { nativeEvent: { shiftKey: true, button: 0 } } as never;
+    expect(mouseActivator.handler(event, options)).toBe(false);
+  });
+
+  it('still delegates non-primary-button rejection to the stock mouse sensor', () => {
+    const plain = { nativeEvent: { shiftKey: false, button: 0 } } as never;
+    const rightClick = { nativeEvent: { shiftKey: false, button: 2 } } as never;
+    expect(mouseActivator.handler(plain, options)).toBe(true);
+    expect(mouseActivator.handler(rightClick, options)).toBe(false);
   });
 });

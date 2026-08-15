@@ -8,6 +8,7 @@ describe('MoreActionsMenu', () => {
   const defaults = {
     onArchive: vi.fn(),
     onAdmin: vi.fn(),
+    onShareBoard: vi.fn(),
     onExport: vi.fn(),
     onImport: vi.fn(),
   };
@@ -30,8 +31,20 @@ describe('MoreActionsMenu', () => {
 
     expect(screen.getByText('Archive')).toBeDefined();
     expect(screen.getByText('Admin')).toBeDefined();
+    expect(screen.getByText('Share Board')).toBeDefined();
     expect(screen.getByText('Export Tasks')).toBeDefined();
     expect(screen.getByText('Import Tasks')).toBeDefined();
+  });
+
+  it('calls onShareBoard and closes the menu', () => {
+    const onShareBoard = vi.fn();
+    render(<MoreActionsMenu {...defaults} onShareBoard={onShareBoard} />);
+
+    fireEvent.click(screen.getByText('More'));
+    fireEvent.click(screen.getByText('Share Board'));
+
+    expect(onShareBoard).toHaveBeenCalledOnce();
+    expect(screen.queryByText('Share Board')).toBeNull();
   });
 
   it('calls onArchive and closes the menu', () => {

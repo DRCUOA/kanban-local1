@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { richTextToPlainText } from '@/lib/rich-text';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { GripVertical } from 'lucide-react';
+import { useTaskSelection } from './task-selection-context';
 
 interface TaskCardSummaryProps {
   task: Task;
@@ -25,6 +26,8 @@ export function TaskCardSummary({
   isInProgress = false,
 }: TaskCardSummaryProps) {
   const { data: stages = [] } = useStages();
+  const { selectedTaskIds, onTaskContextMenu } = useTaskSelection();
+  const isSelected = selectedTaskIds.has(task.id);
   const warningHighlight = getTaskWarningHighlight(task, stages);
   const panelBorderColor =
     warningHighlight != null
@@ -90,6 +93,7 @@ export function TaskCardSummary({
     return (
       <div
         ref={setNodeRef}
+        data-task-id={task.id}
         style={{
           ...style,
           ...(isInProgress ? {} : { ...dragStyle, width: circleSizePx, height: circleSizePx }),
@@ -115,6 +119,8 @@ export function TaskCardSummary({
   const triggerContent = isInProgress ? (
     <div
       ref={setNodeRef}
+      data-task-id={task.id}
+      data-selected={isSelected || undefined}
       style={{
         ...style,
         ...(panelBorderColor ? { borderColor: panelBorderColor, borderWidth: '2px' } : {}),
@@ -123,14 +129,18 @@ export function TaskCardSummary({
       role="button"
       tabIndex={0}
       onClick={(e) => {
+        // Shift+click belongs to marquee selection, never opens the task.
+        if (e.shiftKey) return;
         if ((e.target as HTMLElement).closest('.drag-handle')) return;
         handleClick();
       }}
+      onContextMenu={(e) => onTaskContextMenu(task, e)}
       onTouchStart={triggerHapticFeedback}
       className={cn(
         'w-full min-h-[72px] rounded-xl flex items-start gap-2 p-3 cursor-pointer transition-transform duration-200 ease-out border-2',
         'active:scale-[0.98] focus-visible:scale-[1.02] task-summary-magnify',
         'neo-raised',
+        isSelected && 'outline outline-2 outline-offset-2 outline-primary',
       )}
     >
       <div
@@ -150,6 +160,8 @@ export function TaskCardSummary({
   ) : (
     <div
       ref={setNodeRef}
+      data-task-id={task.id}
+      data-selected={isSelected || undefined}
       style={{
         ...containerStyle,
         touchAction: 'none',
@@ -163,13 +175,20 @@ export function TaskCardSummary({
       {...listeners}
       role="button"
       tabIndex={0}
-      onClick={handleClick}
+      onClick={(e) => {
+        // Shift+click belongs to marquee selection, never opens the task.
+        if (e.shiftKey) return;
+        handleClick();
+      }}
       onTouchStart={triggerHapticFeedback}
-      onContextMenu={(e) => e.preventDefault()}
+      onContextMenu={(e) => onTaskContextMenu(task, e)}
       className={cn(
         'rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 ease-out select-none',
         'active:scale-[0.88] focus-visible:scale-[1.03] task-summary-magnify',
         stageColor ? 'neo-beveled-circle-colored' : 'neo-beveled-circle',
+        // Outline, not ring: the beveled circles set box-shadow inline, which
+        // would swallow a ring-based highlight.
+        isSelected && 'outline outline-2 outline-offset-2 outline-primary',
       )}
       title={`${task.title} (effort: ${effort}/${EFFORT_MAX})`}
     >
