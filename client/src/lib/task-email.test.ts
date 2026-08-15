@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Task } from '@shared/schema';
 import { TASK_PRIORITY, TASK_RECURRENCE, TASK_STATUS } from '@shared/constants';
-import { formatTaskAsEmail } from './task-email';
+import { formatTaskAsEmail, formatTasksAsEmail, formatTaskAsTextBlock } from './task-email';
 
 function makeTask(overrides: Partial<Task> = {}): Task {
   return {
@@ -98,5 +98,53 @@ describe('formatTaskAsEmail', () => {
 
     expect(email.text).not.toContain('mailto:');
     expect(email.html).not.toContain('mailto:');
+  });
+});
+
+describe('formatTasksAsEmail', () => {
+  it('matches the single-task format exactly for one task', () => {
+    const single = formatTaskAsEmail(makeTask(), { stageName: 'In Progress' });
+    const viaList = formatTasksAsEmail([makeTask()], { stageNameFor: () => 'In Progress' });
+
+    expect(viaList).toEqual(single);
+  });
+
+  it('shares one envelope with a rule between tasks for several tasks', () => {
+    const email = formatTasksAsEmail([
+      makeTask({ id: 1, title: 'First' }),
+      makeTask({ id: 2, title: 'Second' }),
+    ]);
+
+    expect(email.subject).toBe('Tasks from my board (2)');
+    expect(email.text).toContain('Here are 2 tasks from my board:');
+    expect(email.text.match(/^-{40}$/gm)).toHaveLength(1);
+    expect(email.text).toContain('2 tasks (#1, #2)');
+    // One greeting and one sign-off, not one per task.
+    expect(email.text.match(/^Hi,$/gm)).toHaveLength(1);
+    expect(email.text.match(/^Thanks,$/gm)).toHaveLength(1);
+    expect(email.html.match(/<hr /g)).toHaveLength(1);
+  });
+
+  it('resolves each task stage independently', () => {
+    const email = formatTasksAsEmail(
+      [makeTask({ id: 1, stageId: 1 }), makeTask({ id: 2, stageId: 2 })],
+      { stageNameFor: (task) => (task.stageId === 1 ? 'To Do' : 'Doing') },
+    );
+
+    expect(email.text).toContain('To Do');
+    expect(email.text).toContain('Doing');
+  });
+});
+
+describe('formatTaskAsTextBlock', () => {
+  it('renders title, details and description without the email envelope', () => {
+    const block = formatTaskAsTextBlock(makeTask(), { stageName: 'In Progress' });
+
+    expect(block).toContain('Design homepage');
+    expect(block).toContain('In Progress');
+    expect(block).toContain('Wireframe the hero section.');
+    expect(block).not.toContain('Hi,');
+    expect(block).not.toContain('Thanks,');
+    expect(block).not.toContain('Subject:');
   });
 });

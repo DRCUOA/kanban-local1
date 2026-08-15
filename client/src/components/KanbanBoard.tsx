@@ -1,15 +1,18 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/prefer-nullish-coalescing -- R2 baseline: strict fixes deferred to follow-up tasks */
-import { Fragment, useCallback, useMemo, useRef } from 'react';
+import { Fragment, useCallback, useMemo, useRef, useState } from 'react';
 import type { Task } from '@shared/schema';
 import { useStages, useSubStages } from '@/hooks/use-stages';
 import { useKanbanDragDrop } from '@/hooks/use-kanban-drag-drop';
 import { useColumnWeights } from '@/hooks/use-column-weights';
+import { useMarqueeSelection } from '@/hooks/use-marquee-selection';
 import { DndContext, MeasuringStrategy } from '@dnd-kit/core';
 import { TaskColumn } from './TaskColumn';
 import { KanbanColumnContent } from './KanbanColumnContent';
 import { KanbanDragOverlay } from './KanbanDragOverlay';
 import { ColumnResizer } from './ColumnResizer';
 import { ArchiveZone } from './ArchiveZone';
+import { ShareDialog } from './ShareDialog';
+import { TaskSelectionContext } from './task-selection-context';
 import { DEFAULT_STAGE_COLORS } from '@shared/constants';
 import { sortTasksByDueDate } from '@shared/task-sort';
 import { cn } from '@/lib/utils';
@@ -63,6 +66,47 @@ export function KanbanBoard({
   // column so every stage and sub-stage lane inherits the same order — the
   // sub-stage grouping downstream preserves the order it receives.
   const dueSortedTasks = useMemo(() => sortTasksByDueDate(activeTasks), [activeTasks]);
+
+  // Shift+drag marquee multi-select; right-click shares the selection.
+  const boardRef = useRef<HTMLDivElement>(null);
+  const {
+    selectedTaskIds,
+    marqueeRect,
+    isMarqueeActive,
+    onPointerDown: handleBoardPointerDown,
+    selectOnly,
+  } = useMarqueeSelection({ containerRef: boardRef, tasks: activeTasks });
+
+  const [shareTasks, setShareTasks] = useState<Task[]>([]);
+  const [isShareOpen, setIsShareOpen] = useState(false);
+
+  const handleTaskContextMenu = useCallback(
+    (task: Task, event: React.MouseEvent) => {
+      event.preventDefault();
+      // A long-press on touch devices fires contextmenu while dnd-kit is mid
+      // drag; sharing there would fight the drag. Marquee likewise.
+      if (activeId !== null || isMarqueeActive) return;
+
+      if (selectedTaskIds.has(task.id)) {
+        // Share the whole selection in reading order: stage by stage, then
+        // the board's soonest-due-first order within each stage.
+        const ordered = sortedStages.flatMap((stage) =>
+          dueSortedTasks.filter((t) => t.stageId === stage.id && selectedTaskIds.has(t.id)),
+        );
+        setShareTasks(ordered);
+      } else {
+        selectOnly(task.id);
+        setShareTasks([task]);
+      }
+      setIsShareOpen(true);
+    },
+    [activeId, isMarqueeActive, selectedTaskIds, sortedStages, dueSortedTasks, selectOnly],
+  );
+
+  const selectionContext = useMemo(
+    () => ({ selectedTaskIds, onTaskContextMenu: handleTaskContextMenu }),
+    [selectedTaskIds, handleTaskContextMenu],
+  );
 
   const isHorizontal = boardLayout === 'horizontal';
   const { getWeight, setPairWeights, resetPair, resetAll, hasCustomWidths } = useColumnWeights();
@@ -144,83 +188,108 @@ export function KanbanBoard({
         },
       }}
     >
-      <div
-        className={cn(
-          'flex flex-col pb-4',
-          // Horizontal fills the viewport height so columns scroll internally;
-          // vertical keeps its natural height and lets the page scroll.
-          isHorizontal && 'min-h-0 flex-1',
-        )}
-      >
-        {/* Columns own the full width of the board; the archive strip sits
-            underneath rather than eating the right-hand half of the viewport. */}
+      <TaskSelectionContext.Provider value={selectionContext}>
         <div
+          ref={boardRef}
+          onPointerDown={handleBoardPointerDown}
+          data-testid="kanban-board-root"
           className={cn(
-            isHorizontal ? 'flex min-h-0 flex-1 flex-row overflow-x-auto' : 'flex flex-col gap-4',
+            'flex flex-col pb-4',
+            // Horizontal fills the viewport height so columns scroll internally;
+            // vertical keeps its natural height and lets the page scroll.
+            isHorizontal && 'min-h-0 flex-1',
           )}
         >
-          {sortedStages.map((stage, index) => {
-            const stageColor = stageColorMap.get(stage.id) || DEFAULT_STAGE_COLORS[0];
-            const stageTasks = dueSortedTasks.filter((t) => t.stageId === stage.id);
-            const previous = index > 0 ? sortedStages[index - 1] : undefined;
-            return (
-              <Fragment key={stage.id}>
-                {isHorizontal && previous && (
-                  <ColumnResizer
-                    label={`Resize ${previous.name} and ${stage.name}`}
-                    onResizeStart={beginResize(previous.id, stage.id)}
-                    onResize={applyResize}
-                    onResizeEnd={endResize}
-                    onReset={() => {
-                      resetPair(previous.id, stage.id);
-                    }}
-                  />
-                )}
-                <TaskColumn
-                  id={stage.id}
-                  title={stage.name}
-                  count={stageTasks.length}
-                  stageColor={stageColor}
-                  boardLayout={boardLayout}
-                  outerRef={registerColumn(stage.id)}
-                  style={{ flexGrow: getWeight(stage.id), flexShrink: 1, flexBasis: 0 }}
-                >
-                  <KanbanColumnContent
-                    stageId={stage.id}
-                    stageName={stage.name}
-                    stageTasks={stageTasks}
-                    allSubStages={allSubStages}
+          {/* Columns own the full width of the board; the archive strip sits
+            underneath rather than eating the right-hand half of the viewport. */}
+          <div
+            className={cn(
+              isHorizontal ? 'flex min-h-0 flex-1 flex-row overflow-x-auto' : 'flex flex-col gap-4',
+            )}
+          >
+            {sortedStages.map((stage, index) => {
+              const stageColor = stageColorMap.get(stage.id) || DEFAULT_STAGE_COLORS[0];
+              const stageTasks = dueSortedTasks.filter((t) => t.stageId === stage.id);
+              const previous = index > 0 ? sortedStages[index - 1] : undefined;
+              return (
+                <Fragment key={stage.id}>
+                  {isHorizontal && previous && (
+                    <ColumnResizer
+                      label={`Resize ${previous.name} and ${stage.name}`}
+                      onResizeStart={beginResize(previous.id, stage.id)}
+                      onResize={applyResize}
+                      onResizeEnd={endResize}
+                      onReset={() => {
+                        resetPair(previous.id, stage.id);
+                      }}
+                    />
+                  )}
+                  <TaskColumn
+                    id={stage.id}
+                    title={stage.name}
+                    count={stageTasks.length}
                     stageColor={stageColor}
-                    viewMode={viewMode}
-                    onTaskClick={onTaskClick}
-                  />
-                </TaskColumn>
-              </Fragment>
-            );
-          })}
+                    boardLayout={boardLayout}
+                    outerRef={registerColumn(stage.id)}
+                    style={{ flexGrow: getWeight(stage.id), flexShrink: 1, flexBasis: 0 }}
+                  >
+                    <KanbanColumnContent
+                      stageId={stage.id}
+                      stageName={stage.name}
+                      stageTasks={stageTasks}
+                      allSubStages={allSubStages}
+                      stageColor={stageColor}
+                      viewMode={viewMode}
+                      onTaskClick={onTaskClick}
+                    />
+                  </TaskColumn>
+                </Fragment>
+              );
+            })}
+          </div>
+
+          <div className="mt-3 flex flex-shrink-0 items-center gap-3">
+            <ArchiveZone isOver={isOverArchive} />
+            {isHorizontal && hasCustomWidths && (
+              <button
+                type="button"
+                onClick={resetAll}
+                className="flex-shrink-0 rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground transition-colors neo-raised hover:text-foreground active:scale-95"
+              >
+                Reset widths
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="mt-3 flex flex-shrink-0 items-center gap-3">
-          <ArchiveZone isOver={isOverArchive} />
-          {isHorizontal && hasCustomWidths && (
-            <button
-              type="button"
-              onClick={resetAll}
-              className="flex-shrink-0 rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground transition-colors neo-raised hover:text-foreground active:scale-95"
-            >
-              Reset widths
-            </button>
-          )}
-        </div>
-      </div>
+        {marqueeRect && (
+          <div
+            aria-hidden
+            data-testid="selection-marquee"
+            className="pointer-events-none fixed z-50 rounded-sm border-2 border-primary bg-primary/10"
+            style={{
+              left: marqueeRect.left,
+              top: marqueeRect.top,
+              width: marqueeRect.width,
+              height: marqueeRect.height,
+            }}
+          />
+        )}
 
-      <KanbanDragOverlay
-        activeId={activeId}
-        activeTasks={activeTasks}
-        stageColorMap={stageColorMap}
-        sortedStages={sortedStages}
-        viewMode={viewMode}
-      />
+        <ShareDialog
+          source={{ type: 'tasks', tasks: shareTasks, stages: sortedStages }}
+          open={isShareOpen}
+          onOpenChange={setIsShareOpen}
+        />
+
+        <KanbanDragOverlay
+          activeId={activeId}
+          activeTasks={activeTasks}
+          stageColorMap={stageColorMap}
+          sortedStages={sortedStages}
+          viewMode={viewMode}
+        />
+      </TaskSelectionContext.Provider>
     </DndContext>
   );
 }

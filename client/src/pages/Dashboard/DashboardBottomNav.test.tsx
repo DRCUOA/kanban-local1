@@ -31,6 +31,7 @@ describe('DashboardBottomNav', () => {
     onToggleBoardLayout: vi.fn(),
     onArchive: vi.fn(),
     onAdmin: vi.fn(),
+    onShareBoard: vi.fn(),
     onExport: vi.fn(),
     onImport: vi.fn(),
   };

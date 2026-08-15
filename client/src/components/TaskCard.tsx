@@ -13,6 +13,7 @@ import { GripVertical, Clock, AlertCircle, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { InlineTaskEditor } from './InlineTaskEditor';
 import { RichTextContent } from './RichTextContent';
+import { useTaskSelection } from './task-selection-context';
 
 interface TaskCardProps {
   task: Task;
@@ -23,6 +24,8 @@ interface TaskCardProps {
 
 export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardProps) {
   const { data: stages = [] } = useStages();
+  const { selectedTaskIds, onTaskContextMenu } = useTaskSelection();
+  const isSelected = selectedTaskIds.has(task.id);
   const warningHighlight = getTaskWarningHighlight(task, stages);
   const borderColor =
     warningHighlight != null ? TASK_WARNING_BORDER_COLOR[warningHighlight] : stageColor;
@@ -63,20 +66,29 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
       <div
         ref={setNodeRef}
         style={style}
+        data-task-id={task.id}
         className="opacity-30 bg-primary/10 border-2 border-primary border-dashed rounded-xl h-[100px]"
       />
     );
   }
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      data-task-id={task.id}
+      data-selected={isSelected || undefined}
+    >
       <Card
         onClick={(e) => {
+          // Shift+click belongs to marquee selection, never opens the task.
+          if (e.shiftKey) return;
           if ((e.target as HTMLElement).closest('.inline-editor')) return;
           if ((e.target as HTMLElement).closest('.drag-handle')) return;
           if ('vibrate' in navigator) navigator.vibrate(5);
           onClick(task);
         }}
+        onContextMenu={(e) => onTaskContextMenu(task, e)}
         {...attributes}
         tabIndex={0}
         className={cn(
@@ -84,6 +96,9 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
           showStageOrWarningBorder && 'border-2',
           isOverdue && 'opacity-90 saturate-75',
           isDueToday && 'ring-2 ring-warning/30',
+          // Outline, not ring: it survives the inline box-shadows the cards
+          // carry and never collides with the due-today ring.
+          isSelected && 'outline outline-2 outline-offset-2 outline-primary',
         )}
         style={
           showStageOrWarningBorder && borderColor

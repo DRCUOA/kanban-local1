@@ -10,7 +10,7 @@ import {
 import { isRichTextEmpty, richTextToPlainText, toRichHtml } from '@/lib/rich-text';
 
 /**
- * Renders a task as a paste-ready email.
+ * Renders one or more tasks as a paste-ready email.
  *
  * Nothing here talks to a mail client: the caller puts the result on the
  * clipboard and the user pastes it into whichever app they like. Both a plain
@@ -21,6 +21,11 @@ import { isRichTextEmpty, richTextToPlainText, toRichHtml } from '@/lib/rich-tex
 export interface TaskEmailOptions {
   /** Stage name resolved from `task.stageId`; omitted if unknown. */
   stageName?: string | null;
+}
+
+export interface TasksEmailOptions {
+  /** Resolves each task's stage name; return null when unknown. */
+  stageNameFor?: (task: Task) => string | null | undefined;
 }
 
 export interface TaskEmail {
@@ -78,14 +83,15 @@ function buildDetails(task: Task, options: TaskEmailOptions): [string, string][]
   return rows.filter((row): row is [string, string] => row[1] !== null && row[1] !== '');
 }
 
-function buildText(task: Task, details: [string, string][], description: string): string {
+/** Title, aligned detail rows and description for one task — no envelope. */
+function buildTaskBlockLines(
+  task: Task,
+  details: [string, string][],
+  description: string,
+): string[] {
   // Pad labels so the values line up in a monospaced or plain-text client.
   const width = details.length > 0 ? Math.max(...details.map(([label]) => label.length)) + 2 : 0;
   const lines = [
-    'Hi,',
-    '',
-    'Here is a task from my board:',
-    '',
     `  ${task.title}`,
     '',
     ...details.map(([label, value]) => `  ${`${label}:`.padEnd(width)}${value}`),
@@ -95,13 +101,25 @@ function buildText(task: Task, details: [string, string][], description: string)
     lines.push('', 'Description', '-----------', description);
   }
 
-  lines.push('', 'Thanks,', '', '--', `${FOOTER} · Task #${task.id}`);
+  return lines;
+}
+
+/** Rule between tasks in a multi-task plain-text share. */
+const TEXT_SEPARATOR = '-'.repeat(40);
+
+function buildText(intro: string, footer: string, taskBlocks: string[][]): string {
+  const lines = ['Hi,', '', intro, ''];
+  taskBlocks.forEach((block, index) => {
+    if (index > 0) lines.push('', TEXT_SEPARATOR, '');
+    lines.push(...block);
+  });
+  lines.push('', 'Thanks,', '', '--', footer);
   return lines.join('\n');
 }
 
-function buildHtml(
+/** Title, detail table and description for one task — no envelope. */
+function buildTaskBlockHtml(
   task: Task,
-  subject: string,
   details: [string, string][],
   descriptionHtml: string,
 ): string {
@@ -118,32 +136,72 @@ function buildHtml(
     : '';
 
   return [
-    `<div style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.5;color:#111827;">`,
-    `<p style="margin:0 0 12px;"><strong>Subject:</strong> ${escapeHtml(subject)}</p>`,
-    `<p style="margin:0 0 12px;">Hi,</p>`,
-    `<p style="margin:0 0 12px;">Here is a task from my board:</p>`,
     `<p style="margin:0 0 8px;font-size:16px;font-weight:600;">${escapeHtml(task.title)}</p>`,
     `<table style="border-collapse:collapse;margin:0 0 4px;">${rows}</table>`,
     descriptionBlock,
+  ].join('');
+}
+
+function buildHtml(subject: string, intro: string, footer: string, taskBlocks: string[]): string {
+  return [
+    `<div style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.5;color:#111827;">`,
+    `<p style="margin:0 0 12px;"><strong>Subject:</strong> ${escapeHtml(subject)}</p>`,
+    `<p style="margin:0 0 12px;">Hi,</p>`,
+    `<p style="margin:0 0 12px;">${escapeHtml(intro)}</p>`,
+    taskBlocks.join(`<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;">`),
     `<p style="margin:16px 0 12px;">Thanks,</p>`,
-    `<p style="margin:0;color:#6b7280;font-size:12px;">${escapeHtml(`${FOOTER} · Task #${task.id}`)}</p>`,
+    `<p style="margin:0;color:#6b7280;font-size:12px;">${escapeHtml(footer)}</p>`,
     `</div>`,
   ].join('');
 }
 
-/** Build the shareable email for a task. */
-export function formatTaskAsEmail(task: Task, options: TaskEmailOptions = {}): TaskEmail {
-  const subject = `Task: ${task.title}`;
+/**
+ * One task as an indented plain-text block (title, details, description) with
+ * no email envelope — the unit the board's plain-text export is built from.
+ */
+export function formatTaskAsTextBlock(task: Task, options: TaskEmailOptions = {}): string {
   const details = buildDetails(task, options);
   const hasDescription = !isRichTextEmpty(task.description);
   const description = hasDescription ? richTextToPlainText(task.description) : '';
-  const descriptionHtml = hasDescription ? toRichHtml(task.description) : '';
+  return buildTaskBlockLines(task, details, description).join('\n');
+}
 
-  const body = buildText(task, details, description);
+/** Build the shareable email for a single task. */
+export function formatTaskAsEmail(task: Task, options: TaskEmailOptions = {}): TaskEmail {
+  return formatTasksAsEmail([task], { stageNameFor: () => options.stageName });
+}
+
+/**
+ * Build the shareable email for one or more tasks. A single task keeps the
+ * exact wording the Task View share has always produced; several tasks share
+ * one envelope with a rule between each task.
+ */
+export function formatTasksAsEmail(tasks: Task[], options: TasksEmailOptions = {}): TaskEmail {
+  const single = tasks.length === 1 ? tasks[0] : undefined;
+  const subject = single ? `Task: ${single.title}` : `Tasks from my board (${tasks.length})`;
+  const intro = single
+    ? 'Here is a task from my board:'
+    : `Here are ${tasks.length} tasks from my board:`;
+  const footer = single
+    ? `${FOOTER} · Task #${single.id}`
+    : `${FOOTER} · ${tasks.length} tasks (${tasks.map((task) => `#${task.id}`).join(', ')})`;
+
+  const textBlocks: string[][] = [];
+  const htmlBlocks: string[] = [];
+  for (const task of tasks) {
+    const details = buildDetails(task, { stageName: options.stageNameFor?.(task) ?? null });
+    const hasDescription = !isRichTextEmpty(task.description);
+    const description = hasDescription ? richTextToPlainText(task.description) : '';
+    const descriptionHtml = hasDescription ? toRichHtml(task.description) : '';
+    textBlocks.push(buildTaskBlockLines(task, details, description));
+    htmlBlocks.push(buildTaskBlockHtml(task, details, descriptionHtml));
+  }
+
+  const body = buildText(intro, footer, textBlocks);
   return {
     subject,
     body,
     text: `Subject: ${subject}\n\n${body}`,
-    html: buildHtml(task, subject, details, descriptionHtml),
+    html: buildHtml(subject, intro, footer, htmlBlocks),
   };
 }

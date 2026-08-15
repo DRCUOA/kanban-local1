@@ -15,7 +15,7 @@ import {
 
 export interface EditTaskDialogActionsProps {
   onViewHistory?: () => void;
-  /** Copies the task to the clipboard as an email; omitted when no task is loaded. */
+  /** Opens the share dialog for the task; omitted when no task is loaded. */
   onShare?: () => void;
   onDelete: () => void;
   onCancel: () => void;

@@ -3,12 +3,8 @@ import { type Task, type InsertTask, type Stage } from '@shared/schema';
 import { TASK_STATUS, TASK_PRIORITY, TASK_RECURRENCE } from '@shared/constants';
 import { apiGet } from '@/lib/api';
 import { api } from '@shared/routes';
-import {
-  buildExportBundle,
-  exportFilename,
-  tasksFromExportPayload,
-  type TaskExportBundle,
-} from '@shared/export';
+import { exportFilename, tasksFromExportPayload, type TaskExportBundle } from '@shared/export';
+import { fetchBoardBundle } from '@/lib/board-bundle';
 import { logger } from '@shared/logger';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateTask } from '@/hooks/use-tasks';
@@ -34,33 +30,21 @@ export function useTaskImportExport({ tasks, stages }: UseTaskImportExportOption
 
   const handleExport = async () => {
     try {
-      // Server-side export is authoritative: it includes stages and sub-stages,
-      // not just the tasks this board happens to have loaded.
-      downloadBundle(await apiGet<TaskExportBundle>(api.export.get.path));
-    } catch (error: unknown) {
-      logger.error('Export API failed, falling back to in-memory export:', error);
-      if (!tasks) {
+      // Server-first with in-memory fallback; shared with the Share Board
+      // dialog so both always emit the same file shape.
+      const { bundle, degraded } = await fetchBoardBundle({ tasks, stages });
+      downloadBundle(bundle);
+      if (degraded) {
         toast({
-          title: 'Export failed',
-          description: error instanceof Error ? error.message : 'Could not export tasks.',
-          variant: 'destructive',
+          title: 'Exported from this device',
+          description: 'The server export was unavailable, so stages and sub-stages were omitted.',
         });
-        return;
       }
-      // Same envelope, just built from what the board already has, so the file
-      // shape is identical whichever path produced it.
-      downloadBundle(
-        buildExportBundle({
-          tasks,
-          stages,
-          subStages: [],
-          includeArchived: false,
-          exportedAt: new Date().toISOString(),
-        }),
-      );
+    } catch (error: unknown) {
       toast({
-        title: 'Exported from this device',
-        description: 'The server export was unavailable, so stages and sub-stages were omitted.',
+        title: 'Export failed',
+        description: error instanceof Error ? error.message : 'Could not export tasks.',
+        variant: 'destructive',
       });
     }
   };
