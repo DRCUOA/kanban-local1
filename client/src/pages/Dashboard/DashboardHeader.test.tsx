@@ -7,9 +7,7 @@ import { DashboardHeader } from './DashboardHeader';
 describe('DashboardHeader', () => {
   const defaults = {
     searchQuery: '',
-    showSearch: false,
     onSearchChange: vi.fn(),
-    onToggleSearch: vi.fn(),
     onClearSearch: vi.fn(),
   };
 
@@ -18,41 +16,44 @@ describe('DashboardHeader', () => {
     expect(screen.getByRole('banner')).toBeDefined();
   });
 
-  it('does not show the search input when showSearch is false', () => {
+  it('always shows the search input, inside a search landmark', () => {
     render(<DashboardHeader {...defaults} />);
-    expect(screen.queryByTestId('input-search')).toBeNull();
-  });
-
-  it('shows the search input when showSearch is true', () => {
-    render(<DashboardHeader {...defaults} showSearch={true} />);
-    expect(screen.getByTestId('input-search')).toBeDefined();
-  });
-
-  it('calls onToggleSearch when the search icon button is clicked', () => {
-    const onToggleSearch = vi.fn();
-    render(<DashboardHeader {...defaults} onToggleSearch={onToggleSearch} />);
-
-    const firstBtn = screen.getAllByRole('button').at(0);
-    if (!firstBtn) throw new Error('Expected at least one button');
-    fireEvent.click(firstBtn);
-    expect(onToggleSearch).toHaveBeenCalledOnce();
+    const input = screen.getByTestId('input-search');
+    expect(input).toBeDefined();
+    expect(screen.getByRole('search').contains(input)).toBe(true);
+    // No search-toggle button any more: the only button is the theme toggle.
+    expect(screen.getAllByRole('button')).toHaveLength(1);
   });
 
   it('calls onSearchChange when typing in the search input', () => {
     const onSearchChange = vi.fn();
-    render(<DashboardHeader {...defaults} showSearch={true} onSearchChange={onSearchChange} />);
+    render(<DashboardHeader {...defaults} onSearchChange={onSearchChange} />);
 
     fireEvent.change(screen.getByTestId('input-search'), { target: { value: 'test' } });
     expect(onSearchChange).toHaveBeenCalledWith('test');
   });
 
-  it('calls onClearSearch when the clear button is clicked', () => {
+  it('shows a clear button only while there is a query, and it clears', () => {
     const onClearSearch = vi.fn();
-    render(<DashboardHeader {...defaults} showSearch={true} onClearSearch={onClearSearch} />);
+    const { rerender } = render(<DashboardHeader {...defaults} onClearSearch={onClearSearch} />);
+    expect(screen.queryByTestId('button-clear-search')).toBeNull();
 
-    const clearBtn = screen.getAllByRole('button').at(-1);
-    if (!clearBtn) throw new Error('Expected at least one button');
-    fireEvent.click(clearBtn);
+    rerender(<DashboardHeader {...defaults} searchQuery="solar" onClearSearch={onClearSearch} />);
+    fireEvent.click(screen.getByTestId('button-clear-search'));
     expect(onClearSearch).toHaveBeenCalledOnce();
+  });
+
+  it('Escape in the field clears a query', () => {
+    const onClearSearch = vi.fn();
+    render(<DashboardHeader {...defaults} searchQuery="solar" onClearSearch={onClearSearch} />);
+    fireEvent.keyDown(screen.getByTestId('input-search'), { key: 'Escape' });
+    expect(onClearSearch).toHaveBeenCalledOnce();
+  });
+
+  it('Escape does nothing when the field is already empty', () => {
+    const onClearSearch = vi.fn();
+    render(<DashboardHeader {...defaults} onClearSearch={onClearSearch} />);
+    fireEvent.keyDown(screen.getByTestId('input-search'), { key: 'Escape' });
+    expect(onClearSearch).not.toHaveBeenCalled();
   });
 });
