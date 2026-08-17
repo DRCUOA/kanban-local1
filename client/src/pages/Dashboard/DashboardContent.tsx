@@ -2,11 +2,9 @@
 import { type Task } from '@shared/schema';
 import { KanbanBoard } from '@/components/KanbanBoard';
 import { CreateTaskDialog } from '@/components/CreateTaskDialog';
-import { TaskWarnings } from '@/components/TaskWarnings';
 import { LayoutDashboard } from 'lucide-react';
 
 export interface DashboardContentProps {
-  tasks: Task[] | undefined;
   filteredTasks: Task[];
   focusMode: boolean;
   viewMode: 'detail' | 'summary';
@@ -16,7 +14,6 @@ export interface DashboardContentProps {
 }
 
 export function DashboardContent({
-  tasks,
   filteredTasks,
   focusMode,
   viewMode,
@@ -36,12 +33,6 @@ export function DashboardContent({
           </div>
         )}
 
-        {tasks && tasks.length > 0 && (
-          <div className="flex-shrink-0">
-            <TaskWarnings tasks={tasks} />
-          </div>
-        )}
-
         {filteredTasks && filteredTasks.length > 0 ? (
           <div className="flex-1 min-h-0 flex flex-col">
             <KanbanBoard
@@ -50,6 +41,7 @@ export function DashboardContent({
               viewMode={viewMode}
               focusMode={focusMode}
               boardLayout={boardLayout}
+              searchQuery={searchQuery}
             />
           </div>
         ) : (
