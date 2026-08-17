@@ -9,6 +9,13 @@ interface TaskColumnProps {
   count: number;
   stageColor: string;
   boardLayout?: 'vertical' | 'horizontal';
+  /**
+   * `column` (default) sits in the stage row; `strip` is a full-width band
+   * laid out like the archive zone — used for done stages, which live above
+   * the archive zone in both layouts. In the horizontal layout a strip caps
+   * its height and scrolls internally so it cannot starve the columns.
+   */
+  variant?: 'column' | 'strip';
   /** Outer element ref — the board measures column widths while resizing. */
   outerRef?: (element: HTMLDivElement | null) => void;
   /** Flex sizing supplied by the board (horizontal layout only). */
@@ -22,6 +29,7 @@ export function TaskColumn({
   count,
   stageColor,
   boardLayout = 'vertical',
+  variant = 'column',
   outerRef,
   style,
   children,
@@ -35,12 +43,16 @@ export function TaskColumn({
 
   const isEmpty = count === 0;
 
-  const isHorizontal = boardLayout === 'horizontal';
+  const isStrip = variant === 'strip';
+  // Row-member sizing only applies to real columns; a strip is always a band.
+  const isHorizontal = boardLayout === 'horizontal' && !isStrip;
+  const isBoundedStrip = isStrip && boardLayout === 'horizontal';
 
   return (
     <div
       ref={outerRef}
       style={isHorizontal ? style : undefined}
+      data-testid={isStrip ? `stage-strip-${id}` : undefined}
       className={cn(
         // The whole stage (header + lanes) is one raised card so stages read
         // as separate surfaces on the page rather than a continuous sheet.
@@ -50,9 +62,19 @@ export function TaskColumn({
         // the min-width keeps columns readable and lets the row scroll when
         // there are more stages than fit.
         isHorizontal ? 'min-w-[260px] min-h-0' : 'w-full',
+        // Bounded strip: at most ~a third of the viewport, and it gives way
+        // (scrolling inside) before the columns above it drop below a usable
+        // height; the floor keeps its header and one row of cards visible.
+        isBoundedStrip && 'max-h-[30vh] min-h-[7rem]',
       )}
     >
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
+      <div
+        className={cn(
+          'flex flex-shrink-0 items-center justify-between px-4 border-b border-border/60',
+          // A strip sits under the columns, so it stays as short as it can.
+          isStrip ? 'py-2' : 'py-3',
+        )}
+      >
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: stageColor }} />
           <h2 className="font-display font-bold text-xs uppercase tracking-wider text-foreground">
@@ -72,9 +94,10 @@ export function TaskColumn({
         className={cn(
           // Lives inside the stage card — no raised surface of its own, the
           // sub-stage wells (or task cards) provide the next layer.
-          'p-3 transition-all duration-200 rounded-b-2xl',
-          isEmpty ? 'min-h-[120px]' : 'min-h-[80px]',
-          isHorizontal && 'flex-1 overflow-y-auto',
+          'transition-all duration-200 rounded-b-2xl',
+          isStrip ? 'p-2' : 'p-3',
+          isEmpty ? 'min-h-[120px]' : isStrip ? 'min-h-[56px]' : 'min-h-[80px]',
+          (isHorizontal || isBoundedStrip) && 'flex-1 overflow-y-auto',
           isOver && 'bg-primary/5 ring-2 ring-primary/30',
         )}
       >

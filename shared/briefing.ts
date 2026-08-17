@@ -166,7 +166,8 @@ export function resolveSwimlane(task: Task, subStages: SubStage[]): string | nul
   return null;
 }
 
-function cleanLabel(name: string): string {
+/** Human-facing stage / sub-stage label: decorative emoji and padding stripped. */
+export function cleanLabel(name: string): string {
   // Stage names carry decorative emoji and stray whitespace ("Waiting ✋️ ").
   return name
     .replace(/[\p{Extended_Pictographic}️‍]/gu, '')

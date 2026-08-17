@@ -5,8 +5,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
  * rather than pixels so the board keeps filling the viewport at any width:
  * a column's share of the row is `weight / sum(weights)`.
  *
- * Weights are persisted per stage id in localStorage; an absent entry means
- * "equal share" (weight 1).
+ * Weights are persisted per column key in localStorage; an absent entry means
+ * "equal share" (weight 1). Keys are stage ids, plus a reserved string for the
+ * horizontal layout's task preview pane, which shares the row like a column.
  */
 
 const STORAGE_KEY = 'kanban-column-weights';
@@ -21,6 +22,12 @@ const MAX_WEIGHT = 8;
 const PERSIST_DELAY_MS = 250;
 
 export type ColumnWeights = Record<string, number>;
+
+/** A stage id, or a reserved name for a non-stage member of the column row. */
+export type ColumnKey = number | string;
+
+/** Column-row key of the horizontal layout's task preview pane. */
+export const PREVIEW_PANE_COLUMN_KEY = 'preview';
 
 const isBrowser = typeof window !== 'undefined';
 
@@ -50,12 +57,12 @@ function readStoredWeights(): ColumnWeights {
 }
 
 export interface UseColumnWeightsResult {
-  /** Flex weight for a stage — always a usable number. */
-  getWeight: (stageId: number) => number;
+  /** Flex weight for a column — always a usable number. */
+  getWeight: (key: ColumnKey) => number;
   /** Set both sides of a resize handle in one update. */
-  setPairWeights: (aId: number, aWeight: number, bId: number, bWeight: number) => void;
+  setPairWeights: (aKey: ColumnKey, aWeight: number, bKey: ColumnKey, bWeight: number) => void;
   /** Give two neighbouring columns an equal share of their combined space. */
-  resetPair: (aId: number, bId: number) => void;
+  resetPair: (aKey: ColumnKey, bKey: ColumnKey) => void;
   /** Drop every stored width so all columns go back to equal shares. */
   resetAll: () => void;
   /** True when at least one column has been resized away from the default. */
@@ -82,28 +89,28 @@ export function useColumnWeights(): UseColumnWeightsResult {
   }, [weights]);
 
   const getWeight = useCallback(
-    (stageId: number) => weights[String(stageId)] ?? DEFAULT_COLUMN_WEIGHT,
+    (key: ColumnKey) => weights[String(key)] ?? DEFAULT_COLUMN_WEIGHT,
     [weights],
   );
 
   const setPairWeights = useCallback(
-    (aId: number, aWeight: number, bId: number, bWeight: number) => {
+    (aKey: ColumnKey, aWeight: number, bKey: ColumnKey, bWeight: number) => {
       setWeights((prev) => ({
         ...prev,
-        [String(aId)]: clampWeight(aWeight),
-        [String(bId)]: clampWeight(bWeight),
+        [String(aKey)]: clampWeight(aWeight),
+        [String(bKey)]: clampWeight(bWeight),
       }));
     },
     [],
   );
 
-  const resetPair = useCallback((aId: number, bId: number) => {
+  const resetPair = useCallback((aKey: ColumnKey, bKey: ColumnKey) => {
     setWeights((prev) => {
       const half =
-        ((prev[String(aId)] ?? DEFAULT_COLUMN_WEIGHT) +
-          (prev[String(bId)] ?? DEFAULT_COLUMN_WEIGHT)) /
+        ((prev[String(aKey)] ?? DEFAULT_COLUMN_WEIGHT) +
+          (prev[String(bKey)] ?? DEFAULT_COLUMN_WEIGHT)) /
         2;
-      return { ...prev, [String(aId)]: clampWeight(half), [String(bId)]: clampWeight(half) };
+      return { ...prev, [String(aKey)]: clampWeight(half), [String(bKey)]: clampWeight(half) };
     });
   }, []);
 
