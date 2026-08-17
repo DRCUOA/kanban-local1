@@ -382,7 +382,6 @@ export function KanbanBoard({
                     >
                       <KanbanColumnContent
                         stageId={stage.id}
-                        stageName={stage.name}
                         stageTasks={stageTasks}
                         allSubStages={allSubStages}
                         stageColor={stageColor}
@@ -419,7 +418,6 @@ export function KanbanBoard({
                   >
                     <KanbanColumnContent
                       stageId={stage.id}
-                      stageName={stage.name}
                       stageTasks={stageTasks}
                       allSubStages={allSubStages}
                       stageColor={stageColor}
@@ -503,7 +501,6 @@ export function KanbanBoard({
           activeId={activeId}
           activeTasks={activeTasks}
           stageColorMap={stageColorMap}
-          sortedStages={sortedStages}
           viewMode={viewMode}
         />
       </TaskSelectionContext.Provider>

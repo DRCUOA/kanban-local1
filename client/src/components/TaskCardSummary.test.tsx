@@ -55,9 +55,14 @@ const makeTask = (overrides: Partial<Task> = {}): Task => ({
 });
 
 describe('TaskCardSummary', () => {
-  it('renders the task id in the circle for non-in-progress view', () => {
-    render(<TaskCardSummary task={makeTask()} onClick={vi.fn()} stageColor="#3B82F6" />);
+  it('renders the task id in a circle', () => {
+    const { container } = render(
+      <TaskCardSummary task={makeTask()} onClick={vi.fn()} stageColor="#3B82F6" />,
+    );
     expect(screen.getByText('42')).toBeDefined();
+    expect(container.querySelector('[role="button"]')?.className).toContain('rounded-full');
+    // Title lives in the hover card only — no title row on the board.
+    expect(screen.queryByText('#42')).toBeNull();
   });
 
   it('calls onClick with the task when clicked', () => {
@@ -67,21 +72,6 @@ describe('TaskCardSummary', () => {
 
     fireEvent.click(screen.getByRole('button'));
     expect(onClick).toHaveBeenCalledWith(task);
-  });
-
-  it('renders in-progress layout with title and id when isInProgress is true', () => {
-    render(
-      <TaskCardSummary
-        task={makeTask()}
-        onClick={vi.fn()}
-        stageColor="#10B981"
-        isInProgress={true}
-      />,
-    );
-
-    const titles = screen.getAllByText('Summary task');
-    expect(titles.length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('#42')).toBeDefined();
   });
 
   it('shows the task title in the hover card content', () => {

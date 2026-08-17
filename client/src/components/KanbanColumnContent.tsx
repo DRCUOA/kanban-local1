@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-empty-function, @typescript-eslint/prefer-nullish-coalescing -- R2 baseline: strict fixes deferred to follow-up tasks */
 import type { Task, SubStage } from '@shared/schema';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { isInProgressStageName } from '@shared/constants';
 import { TaskCard } from './TaskCard';
 import { TaskCardSummary } from './TaskCardSummary';
 import { DayPlanSubStage } from './DayPlanSubStage';
@@ -10,7 +9,6 @@ import { cn } from '@/lib/utils';
 
 export interface KanbanColumnContentProps {
   stageId: number;
-  stageName: string;
   stageTasks: Task[];
   allSubStages: SubStage[];
   stageColor: string;
@@ -21,7 +19,6 @@ export interface KanbanColumnContentProps {
 
 export function KanbanColumnContent({
   stageId,
-  stageName,
   stageTasks,
   allSubStages,
   stageColor,
@@ -50,13 +47,12 @@ export function KanbanColumnContent({
             stageSubStages,
             stageTasks,
             stageId,
-            stageName,
             stageColor,
             viewMode,
             layout,
             onTaskClick,
           )
-        : renderFlat(stageTasks, stageName, stageColor, viewMode, layout, onTaskClick)}
+        : renderFlat(stageTasks, stageColor, viewMode, layout, onTaskClick)}
     </SortableContext>
   );
 }
@@ -65,7 +61,6 @@ function renderWithSubStages(
   stageSubStages: { name: string; tag: string; bgClass: string; opacity: number }[],
   stageTasks: Task[],
   stageId: number,
-  stageName: string,
   stageColor: string,
   viewMode: 'detail' | 'summary',
   layout: ColumnContentLayout,
@@ -106,7 +101,6 @@ function renderWithSubStages(
           <DayPlanSubStage
             key={`${subIndex}-${subStage.tag}`}
             stageId={stageId}
-            stageName={stageName}
             subStage={subStage}
             tasks={finalTasks}
             stageColor={stageColor}
@@ -122,14 +116,11 @@ function renderWithSubStages(
 
 function renderFlat(
   stageTasks: Task[],
-  stageName: string,
   stageColor: string,
   viewMode: 'detail' | 'summary',
   layout: ColumnContentLayout,
   onTaskClick: (task: Task) => void,
 ) {
-  const inProgress = isInProgressStageName(stageName);
-
   return viewMode === 'detail' ? (
     <div
       className={cn(
@@ -148,20 +139,9 @@ function renderFlat(
       ))}
     </div>
   ) : (
-    <div
-      className={cn(
-        'min-h-[60px] gap-2',
-        inProgress ? 'flex flex-col' : 'flex flex-wrap content-start',
-      )}
-    >
+    <div className="flex min-h-[60px] flex-wrap content-start gap-2">
       {stageTasks.map((task) => (
-        <TaskCardSummary
-          key={task.id}
-          task={task}
-          onClick={onTaskClick}
-          stageColor={stageColor}
-          isInProgress={inProgress}
-        />
+        <TaskCardSummary key={task.id} task={task} onClick={onTaskClick} stageColor={stageColor} />
       ))}
     </div>
   );
