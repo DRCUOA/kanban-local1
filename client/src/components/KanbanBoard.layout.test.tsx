@@ -158,8 +158,12 @@ describe('KanbanBoard layout: preview pane (horizontal)', () => {
     const pane = screen.getByTestId('task-preview-pane');
 
     // Beside the whole stage area (columns + done strip + archive strip), not
-    // inside the column row, so it runs the full board height.
-    expect(board.lastElementChild).toBe(pane);
+    // inside the column row, so it runs the full board height. Its slot is a
+    // `display: contents` wrapper that hides the pane below the xl breakpoint.
+    const slot = screen.getByTestId('task-preview-slot');
+    expect(board.lastElementChild).toBe(slot);
+    expect(slot.lastElementChild).toBe(pane);
+    expect(slot.className).toContain('xl:contents');
     expect(stageArea.contains(pane)).toBe(false);
     expect(stageArea.contains(screen.getByTestId('stage-strip-3'))).toBe(true);
     expect(stageArea.contains(screen.getByText('Drag here to archive'))).toBe(true);
@@ -287,5 +291,90 @@ describe('KanbanBoard layout: preview pane (horizontal)', () => {
     );
     expect(previewedId()).toBeNull();
     expect(screen.getByTestId('task-preview-empty')).toBeDefined();
+  });
+});
+
+describe('KanbanBoard search reveal', () => {
+  const scrollIntoView = vi.fn();
+  beforeEach(() => {
+    scrollIntoView.mockClear();
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      writable: true,
+      value: scrollIntoView,
+    });
+  });
+
+  it('scrolls the first match into view once per query and result, in either layout', () => {
+    const matches = [makeTask(2, 2), makeTask(3, 3)];
+    const { rerender } = render(
+      <KanbanBoard tasks={matches} onTaskClick={vi.fn()} boardLayout="vertical" searchQuery="" />,
+    );
+    expect(scrollIntoView).not.toHaveBeenCalled();
+
+    rerender(
+      <KanbanBoard tasks={matches} onTaskClick={vi.fn()} boardLayout="vertical" searchQuery="ta" />,
+    );
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    const revealed = scrollIntoView.mock.instances[0] as HTMLElement;
+    expect(revealed.dataset.taskId).toBe('2');
+    expect(scrollIntoView.mock.calls[0]?.[0]).toMatchObject({
+      block: 'nearest',
+      inline: 'nearest',
+    });
+
+    // Same query, unrelated re-render: no second scroll.
+    rerender(
+      <KanbanBoard
+        tasks={[...matches]}
+        onTaskClick={vi.fn()}
+        boardLayout="vertical"
+        searchQuery="ta"
+      />,
+    );
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+
+    // Narrower query, different first match: scrolls again.
+    rerender(
+      <KanbanBoard
+        tasks={[makeTask(3, 3)]}
+        onTaskClick={vi.fn()}
+        boardLayout="vertical"
+        searchQuery="task 3"
+      />,
+    );
+    expect(scrollIntoView).toHaveBeenCalledTimes(2);
+    expect((scrollIntoView.mock.instances[1] as HTMLElement).dataset.taskId).toBe('3');
+  });
+
+  it('in the horizontal layout the match is also previewed', () => {
+    render(
+      <KanbanBoard
+        tasks={[makeTask(4, 3, 'Pay the power bill')]}
+        onTaskClick={vi.fn()}
+        boardLayout="horizontal"
+        searchQuery="#4"
+      />,
+    );
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(previewedId()).toBe('4');
+    expect(screen.getByTestId('task-preview-title').textContent).toBe('Pay the power bill');
+  });
+
+  it('does nothing without a query or without a match', () => {
+    const { rerender } = render(
+      <KanbanBoard
+        tasks={tasks}
+        onTaskClick={vi.fn()}
+        boardLayout="horizontal"
+        searchQuery="   "
+      />,
+    );
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    expect(previewedId()).toBeNull();
+    rerender(
+      <KanbanBoard tasks={[]} onTaskClick={vi.fn()} boardLayout="horizontal" searchQuery="zzz" />,
+    );
+    expect(scrollIntoView).not.toHaveBeenCalled();
   });
 });

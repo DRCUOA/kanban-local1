@@ -4,10 +4,14 @@ export default {
   darkMode: ['class'],
   content: ['./client/index.html', './client/src/**/*.{js,jsx,ts,tsx}'],
   theme: {
-    // Mobile-only: override default screens to remove large breakpoints
+    // Phone-first breakpoints (sm/md are phone sizes, not Tailwind's defaults),
+    // plus the wide-screen tiers the horizontal board layout is designed for.
     screens: {
       sm: '375px', // Small phones
       md: '414px', // Standard phones
+      lg: '768px', // Tablets and up: search moves into the header row, warnings share the chip row
+      xl: '1024px', // Laptops and up: the horizontal board shows the task preview pane
+      '2xl': '1280px', // Desktop
     },
     extend: {
       borderRadius: {

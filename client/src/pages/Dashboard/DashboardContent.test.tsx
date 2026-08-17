@@ -15,11 +15,6 @@ vi.mock('@/components/CreateTaskDialog', () => ({
     React.createElement('button', { 'data-testid': 'create-task-stub' }, 'New Task'),
 }));
 
-vi.mock('@/components/TaskWarnings', () => ({
-  TaskWarnings: ({ tasks }: { tasks: Task[] }) =>
-    React.createElement('div', { 'data-testid': 'task-warnings' }, `${tasks.length} warnings`),
-}));
-
 const makeTask = (overrides: Partial<Task> = {}): Task => ({
   id: 1,
   title: 'Test task',
@@ -42,7 +37,6 @@ const makeTask = (overrides: Partial<Task> = {}): Task => ({
 
 describe('DashboardContent', () => {
   const defaults = {
-    tasks: undefined as Task[] | undefined,
     filteredTasks: [] as Task[],
     focusMode: false,
     viewMode: 'detail' as const,
@@ -68,7 +62,7 @@ describe('DashboardContent', () => {
 
   it('renders KanbanBoard when filteredTasks has items', () => {
     const task = makeTask();
-    render(<DashboardContent {...defaults} tasks={[task]} filteredTasks={[task]} />);
+    render(<DashboardContent {...defaults} filteredTasks={[task]} />);
     expect(screen.getByTestId('kanban-board')).toBeDefined();
     expect(screen.getByText('1 tasks')).toBeDefined();
   });
@@ -81,11 +75,5 @@ describe('DashboardContent', () => {
   it('does not render the Focus Mode banner when focusMode is false', () => {
     render(<DashboardContent {...defaults} focusMode={false} />);
     expect(screen.queryByText('Focus Mode Active')).toBeNull();
-  });
-
-  it('renders TaskWarnings when tasks are present', () => {
-    const task = makeTask();
-    render(<DashboardContent {...defaults} tasks={[task]} filteredTasks={[task]} />);
-    expect(screen.getByTestId('task-warnings')).toBeDefined();
   });
 });

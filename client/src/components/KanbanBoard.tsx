@@ -32,6 +32,16 @@ const MIN_COLUMN_PX = 260;
  */
 export const HOVER_PREVIEW_DELAY_MS = 250;
 
+/** Smooth reveal scrolling unless the user has asked for reduced motion. */
+function revealScrollBehavior(): ScrollBehavior {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return 'auto';
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+  } catch {
+    return 'auto';
+  }
+}
+
 /** Task id of the card containing `target`, if any. */
 function taskIdFromEventTarget(target: EventTarget | null): number | null {
   if (!(target instanceof Element)) return null;
@@ -47,6 +57,12 @@ export interface KanbanBoardProps {
   viewMode?: 'detail' | 'summary';
   focusMode?: boolean;
   boardLayout?: 'vertical' | 'horizontal';
+  /**
+   * The live search text. `tasks` is already the filtered result; while a
+   * query is active the board scrolls the first match into view (and previews
+   * it in the horizontal layout) so a hit that sits off-screen is not missed.
+   */
+  searchQuery?: string;
 }
 
 export function KanbanBoard({
@@ -55,6 +71,7 @@ export function KanbanBoard({
   viewMode = 'detail',
   focusMode = false,
   boardLayout = 'vertical',
+  searchQuery = '',
 }: KanbanBoardProps) {
   const { data: stages = [] } = useStages();
   const { data: allSubStages = [] } = useSubStages();
@@ -239,6 +256,41 @@ export function KanbanBoard({
     },
     [isHorizontal, cancelPendingHover, onTaskClick],
   );
+
+  // Search reveal: while a query is active, bring the first match (first card
+  // in reading order — `tasks` is already the filtered set) into view, and
+  // preview it in the horizontal layout. `block: 'nearest'` makes this a no-op
+  // when the card is already visible; the key guard makes it fire once per
+  // (query, match) rather than on every unrelated re-render.
+  const lastReveal = useRef<string | null>(null);
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (query === '') {
+      lastReveal.current = null;
+      return;
+    }
+    if (activeId !== null) return;
+    const card = boardRef.current?.querySelector<HTMLElement>('[data-task-id]');
+    if (!card) return;
+    const id = Number(card.dataset.taskId);
+    // The rendered list lags the `tasks` prop by one render (drag/drop keeps
+    // its own copy); a first card that is not in the new result set is stale.
+    if (Number.isNaN(id) || !tasks.some((t) => t.id === id)) return;
+    const key = `${query} ${id}`;
+    if (lastReveal.current === key) return;
+    lastReveal.current = key;
+    if (typeof card.scrollIntoView === 'function') {
+      card.scrollIntoView({
+        block: 'nearest',
+        inline: 'nearest',
+        behavior: revealScrollBehavior(),
+      });
+    }
+    if (isHorizontal) {
+      cancelPendingHover();
+      setPreviewTaskId(id);
+    }
+  }, [searchQuery, tasks, dueSortedTasks, activeId, isHorizontal, cancelPendingHover]);
 
   // Live element refs so a resize can start from the columns' real pixel widths.
   // The callbacks are cached per column, otherwise every render would detach and
@@ -446,9 +498,12 @@ export function KanbanBoard({
 
           {/* The preview pane takes the slot the done column gave up: full
             board height, at the end of the row. It is resized against the
-            last column and keeps its own persisted weight, like a column. */}
+            last column and keeps its own persisted weight, like a column.
+            Below the `xl` breakpoint (laptop) there is no such slot — the
+            columns already scroll — so the pane and its gutter stay out of the row
+            (`display: contents` keeps them direct flex items when shown). */}
           {isHorizontal && (
-            <>
+            <div className="hidden xl:contents" data-testid="task-preview-slot">
               {lastColumnStage && (
                 <ColumnResizer
                   label={`Resize ${lastColumnStage.name} and the preview pane`}
@@ -473,7 +528,7 @@ export function KanbanBoard({
                   flexBasis: 0,
                 }}
               />
-            </>
+            </div>
           )}
         </div>
 
