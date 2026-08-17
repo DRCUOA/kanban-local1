@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
-import { Task } from '@shared/schema';
+import type { Task } from '@shared/schema';
 import { TASK_STATUS, TASK_PRIORITY } from '@shared/constants';
 import { resolveTaskStatusForWarnings } from '@shared/task-warning-highlight';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Clock } from 'lucide-react';
 import { isOverdueOn } from '@shared/briefing';
 import { differenceInDays } from 'date-fns';
@@ -11,9 +10,35 @@ import { useStages } from '@/hooks/use-stages';
 
 interface TaskWarningsProps {
   tasks: Task[];
+  className?: string;
 }
 
-export function TaskWarnings({ tasks }: TaskWarningsProps) {
+type WarningTone = 'info' | 'warning' | 'destructive';
+
+interface BoardWarning {
+  kind: 'in-progress' | 'high-priority' | 'overdue' | 'stale';
+  tone: WarningTone;
+  icon: typeof AlertCircle;
+  title: string;
+  count: number;
+  /** Full sentence — the pill shows only title + count, this is its tooltip. */
+  message: string;
+}
+
+const TONE_CLASS: Record<WarningTone, string> = {
+  destructive: 'text-danger',
+  warning: 'text-warning',
+  info: 'text-primary',
+};
+
+/**
+ * Board-level warnings as compact pills — icon, title, count — meant to sit in
+ * the stage-chip row so they cost no vertical space on a wide viewport. The
+ * full sentence is the pill's tooltip and accessible name. Colours match the
+ * task-border accents these warnings share (overdue red, high-priority gold,
+ * info blue).
+ */
+export function TaskWarnings({ tasks, className }: TaskWarningsProps) {
   const { data: stages = [] } = useStages();
 
   const activeTasks = tasks.filter((t) => !t.archived);
@@ -36,40 +61,48 @@ export function TaskWarnings({ tasks }: TaskWarningsProps) {
     return differenceInDays(new Date(), updated) >= 14;
   });
 
-  const warnings = [];
+  const warnings: BoardWarning[] = [];
 
   if (inProgressTasks.length > 3) {
     warnings.push({
-      type: 'info',
+      kind: 'in-progress',
+      tone: 'info',
       icon: AlertCircle,
       title: 'Many in progress',
+      count: inProgressTasks.length,
       message: `${inProgressTasks.length} tasks in progress. Focus on fewer.`,
     });
   }
 
   if (highPriorityBacklog.length > 0) {
     warnings.push({
-      type: 'warning',
+      kind: 'high-priority',
+      tone: 'warning',
       icon: AlertCircle,
       title: 'High-priority waiting',
+      count: highPriorityBacklog.length,
       message: `${highPriorityBacklog.length} high-priority in backlog.`,
     });
   }
 
   if (overdueTasks.length > 0) {
     warnings.push({
-      type: 'destructive',
+      kind: 'overdue',
+      tone: 'destructive',
       icon: Clock,
       title: 'Overdue',
+      count: overdueTasks.length,
       message: `${overdueTasks.length} task${overdueTasks.length > 1 ? 's' : ''} overdue.`,
     });
   }
 
   if (staleTasks.length > 0) {
     warnings.push({
-      type: 'info',
+      kind: 'stale',
+      tone: 'info',
       icon: AlertCircle,
       title: 'Stale tasks',
+      count: staleTasks.length,
       message: `${staleTasks.length} not updated in 14+ days.`,
     });
   }
@@ -77,32 +110,40 @@ export function TaskWarnings({ tasks }: TaskWarningsProps) {
   if (warnings.length === 0) return null;
 
   return (
-    <div className="space-y-1.5 mb-3">
-      {warnings.map((warning, idx) => {
+    <ul
+      aria-label="Board warnings"
+      data-testid="task-warnings"
+      // Right-aligned at the end of the chip row; when the pills have wrapped
+      // under the chips on a narrow viewport they read better as a left-aligned
+      // list than as ragged right-aligned rows.
+      className={cn('flex flex-wrap items-center gap-1.5 lg:justify-end', className)}
+    >
+      {warnings.map((warning) => {
         const Icon = warning.icon;
         return (
-          <Alert
-            key={idx}
+          <li
+            key={warning.kind}
+            title={warning.message}
+            aria-label={`${warning.title}: ${warning.message}`}
+            data-testid={`task-warning-${warning.kind}`}
             className={cn(
-              'border-l-4 py-2 px-3 rounded-lg bg-surface',
-              warning.type === 'destructive' &&
-                'border-l-[hsl(var(--toast-overdue-accent))] text-danger',
-              warning.type === 'warning' && 'border-l-[hsl(var(--warning-accent))] text-warning',
-              warning.type === 'info' && 'border-l-[hsl(var(--toast-info-accent))] text-primary',
+              'flex flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 neo-raised',
+              TONE_CLASS[warning.tone],
             )}
           >
-            <div className="flex items-center gap-2">
-              <Icon className="h-3.5 w-3.5 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <AlertTitle className="text-xs font-semibold">{warning.title}</AlertTitle>
-                <AlertDescription className="text-[10px] mt-0.5">
-                  {warning.message}
-                </AlertDescription>
-              </div>
-            </div>
-          </Alert>
+            <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span className="whitespace-nowrap font-display text-[11px] font-bold uppercase tracking-wider">
+              {warning.title}
+            </span>
+            <Badge
+              variant="secondary"
+              className="font-mono text-[10px] neo-pressed rounded-md px-1.5 py-0 min-h-0 min-w-0 h-5"
+            >
+              {warning.count}
+            </Badge>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }

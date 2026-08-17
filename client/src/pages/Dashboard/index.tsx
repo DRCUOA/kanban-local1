@@ -5,6 +5,7 @@ import { EditTaskDialog } from '@/components/EditTaskDialog';
 import { ShareDialog } from '@/components/ShareDialog';
 import { TaskHistoryModal } from '@/components/TaskHistoryModal';
 import { StageHeaders } from '@/components/StageHeaders';
+import { TaskWarnings } from '@/components/TaskWarnings';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { useBoardLayout } from '@/hooks/use-board-layout';
 import { type Task } from '@shared/schema';
@@ -28,7 +29,6 @@ export default function Dashboard(_props: DashboardProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showSearch, setShowSearch] = useState(false);
   const [viewMode, setViewMode] = useState<'detail' | 'summary'>('summary');
   const [focusMode, setFocusMode] = useState(false);
   // Persisted: Archive/Admin are full navigations, so plain state would reset
@@ -102,25 +102,23 @@ export default function Dashboard(_props: DashboardProps) {
     <div className="h-dvh overflow-hidden bg-background flex flex-col pb-bottom-nav">
       <DashboardHeader
         searchQuery={searchQuery}
-        showSearch={showSearch}
         onSearchChange={setSearchQuery}
-        onToggleSearch={() => {
-          setShowSearch(!showSearch);
-        }}
         onClearSearch={() => {
-          setShowSearch(false);
           setSearchQuery('');
         }}
       />
 
       {tasks && tasks.length > 0 && (
         <div className="px-3 pt-2">
-          <StageHeaders tasks={tasks} />
+          {/* Warnings ride in the chip row (right-aligned, wrapping under the
+              chips when narrow) instead of stacking as banners above the board. */}
+          <StageHeaders tasks={tasks}>
+            <TaskWarnings tasks={tasks} />
+          </StageHeaders>
         </div>
       )}
 
       <DashboardContent
-        tasks={tasks}
         filteredTasks={filteredTasks}
         focusMode={focusMode}
         viewMode={viewMode}
