@@ -2,7 +2,6 @@
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Task } from '@shared/schema';
-import { isInProgressStageName } from '@shared/constants';
 import { TaskCard } from './TaskCard';
 import { TaskCardSummary } from './TaskCardSummary';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +10,6 @@ import { STRIP_DETAIL_GRID_CLASS, type ColumnContentLayout } from './column-layo
 
 interface DayPlanSubStageProps {
   stageId: number;
-  stageName?: string;
   subStage: {
     name: string;
     tag: string;
@@ -28,7 +26,6 @@ interface DayPlanSubStageProps {
 
 export function DayPlanSubStage({
   stageId,
-  stageName = '',
   subStage,
   tasks,
   stageColor,
@@ -47,7 +44,6 @@ export function DayPlanSubStage({
   });
 
   const displayStageColor = stageColor || '#3B82F6';
-  const isInProgress = isInProgressStageName(stageName);
 
   return (
     <div
@@ -104,12 +100,7 @@ export function DayPlanSubStage({
               )}
             </div>
           ) : (
-            <div
-              className={cn(
-                'gap-2 min-h-[40px]',
-                isInProgress ? 'flex flex-col' : 'flex flex-wrap content-start',
-              )}
-            >
+            <div className="flex min-h-[40px] flex-wrap content-start gap-2">
               {tasks.length > 0 ? (
                 tasks.map((task) => (
                   <TaskCardSummary
@@ -117,7 +108,6 @@ export function DayPlanSubStage({
                     task={task}
                     onClick={onTaskClick}
                     stageColor={displayStageColor}
-                    isInProgress={isInProgress}
                   />
                 ))
               ) : (

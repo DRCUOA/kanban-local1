@@ -65,7 +65,6 @@ const makeTask = (overrides: Partial<Task> = {}): Task => ({
 describe('KanbanColumnContent', () => {
   const baseProps = {
     stageId: 1,
-    stageName: 'Backlog',
     stageColor: '#3B82F6',
     viewMode: 'detail' as const,
     onTaskClick: vi.fn(),

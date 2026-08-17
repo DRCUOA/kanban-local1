@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reserved `projects: []` and `scope.projectIds: null` in the envelope for the forthcoming project layer; `?projectId=` returns 400 rather than silently exporting everything.
 
 ### Changed
+- Summary view renders in-progress tasks as the same effort-sized, stage-tinted circles as every other stage. They used to get a full-width title row (a stray detail view in the middle of a summary board); the row variant, and the stage-name plumbing that selected it, are removed.
 - The search field is always visible instead of hiding behind a toggle: on tablets and wider it sits in the header row, right-aligned beside the theme toggle, so it costs no vertical space; on phones it wraps to a full-width second row. A clear (✕) button appears inside the field while there is a query, and Escape clears it. The search-toggle icon button is gone.
 - Board warnings ("Many in progress", "High-priority waiting", "Overdue", "Stale tasks") are compact pills — icon, title, count, with the full sentence as tooltip and accessible name — at the right-hand end of the stage-chip row instead of full-width banners stacked above the board. When the chips and pills no longer fit side by side the pills wrap under the chips.
 - The horizontal layout's preview pane only renders from the laptop breakpoint up (`xl`, 1024px): on narrower screens the columns already scroll and there is no spare slot for it.

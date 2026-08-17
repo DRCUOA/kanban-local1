@@ -112,6 +112,20 @@ describe('KanbanBoard layout: done strip', () => {
     },
   );
 
+  it('summary view renders in-progress tasks as circles like every other stage', () => {
+    const { container } = render(
+      <KanbanBoard tasks={tasks} onTaskClick={vi.fn()} viewMode="summary" boardLayout="vertical" />,
+    );
+    // Stage 2 is "Doing" (an in-progress name); its card is the same circle as
+    // the To Do card, not a title row.
+    const doing = getCard(container, 2);
+    const todo = getCard(container, 1);
+    expect(doing.className).toContain('rounded-full');
+    expect(doing.className).toBe(todo.className);
+    expect(doing.textContent).toBe('2');
+    expect(container.querySelector('[data-task-id="2"] p')).toBeNull();
+  });
+
   it('the vertical layout has no preview pane', () => {
     render(<KanbanBoard tasks={tasks} onTaskClick={vi.fn()} boardLayout="vertical" />);
     expect(screen.queryByTestId('task-preview-pane')).toBeNull();

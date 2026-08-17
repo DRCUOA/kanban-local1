@@ -9,22 +9,21 @@ import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { richTextToPlainText } from '@/lib/rich-text';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
-import { GripVertical } from 'lucide-react';
 import { useTaskSelection } from './task-selection-context';
 
 interface TaskCardSummaryProps {
   task: Task;
   onClick: (task: Task) => void;
   stageColor?: string;
-  isInProgress?: boolean;
 }
 
-export function TaskCardSummary({
-  task,
-  onClick,
-  stageColor,
-  isInProgress = false,
-}: TaskCardSummaryProps) {
+/**
+ * Summary-view card: an effort-sized, stage-tinted circle carrying the task id,
+ * with title/owner/description in a hover card. Every stage renders the same
+ * circle — in-progress stages used to get a title row instead, which read as
+ * a stray detail view in the middle of a summary board.
+ */
+export function TaskCardSummary({ task, onClick, stageColor }: TaskCardSummaryProps) {
   const { data: stages = [] } = useStages();
   const { selectedTaskIds, onTaskContextMenu } = useTaskSelection();
   const isSelected = selectedTaskIds.has(task.id);
@@ -88,76 +87,35 @@ export function TaskCardSummary({
   const circleFontSize = effort <= 2 ? 'text-sm' : effort <= 4 ? 'text-base' : 'text-lg';
 
   if (isDragging) {
-    const dragStyle =
-      stageColor?.startsWith('#') && !isInProgress ? getGradientStyle(stageColor) : {};
+    const dragStyle = stageColor?.startsWith('#') ? getGradientStyle(stageColor) : {};
     return (
       <div
         ref={setNodeRef}
         data-task-id={task.id}
         style={{
           ...style,
-          ...(isInProgress ? {} : { ...dragStyle, width: circleSizePx, height: circleSizePx }),
+          ...dragStyle,
+          width: circleSizePx,
+          height: circleSizePx,
           ...(panelBorderColor
             ? { borderColor: panelBorderColor, borderWidth: '2px', borderStyle: 'dashed' }
             : {}),
           opacity: 0.5,
         }}
         className={cn(
-          'border-2 border-dashed',
+          'rounded-full border-2 border-dashed',
           !panelBorderColor && 'border-muted-foreground/35',
-          isInProgress ? 'w-full min-h-[72px] rounded-xl' : 'rounded-full',
         )}
       />
     );
   }
 
-  const hasHexStageGradient = Boolean(stageColor?.startsWith('#') && !isInProgress);
+  const hasHexStageGradient = Boolean(stageColor?.startsWith('#'));
   const containerStyle = hasHexStageGradient
     ? { ...style, ...getGradientStyle(stageColor!) }
     : style;
 
-  const triggerContent = isInProgress ? (
-    <div
-      ref={setNodeRef}
-      data-task-id={task.id}
-      data-selected={isSelected || undefined}
-      style={{
-        ...style,
-        ...(panelBorderColor ? { borderColor: panelBorderColor, borderWidth: '2px' } : {}),
-      }}
-      {...attributes}
-      role="button"
-      tabIndex={0}
-      onClick={(e) => {
-        // Shift+click belongs to marquee selection, never opens the task.
-        if (e.shiftKey) return;
-        if ((e.target as HTMLElement).closest('.drag-handle')) return;
-        handleClick();
-      }}
-      onContextMenu={(e) => onTaskContextMenu(task, e)}
-      onTouchStart={triggerHapticFeedback}
-      className={cn(
-        'w-full min-h-[72px] rounded-xl flex items-start gap-2 p-3 cursor-pointer transition-transform duration-200 ease-out border-2',
-        'active:scale-[0.98] focus-visible:scale-[1.02] task-summary-magnify',
-        'neo-raised',
-        isSelected && 'outline outline-2 outline-offset-2 outline-primary',
-      )}
-    >
-      <div
-        className="drag-handle flex-shrink-0 p-1 cursor-grab active:cursor-grabbing"
-        onContextMenu={(e) => e.preventDefault()}
-        {...listeners}
-      >
-        <GripVertical className="h-4 w-4 text-muted-foreground/50" />
-      </div>
-      <div className="flex-1 min-w-0 flex flex-col justify-center pr-2">
-        <p className="text-base font-semibold leading-tight text-foreground line-clamp-2">
-          {task.title}
-        </p>
-        <span className="text-xs text-muted-foreground mt-0.5">#{task.id}</span>
-      </div>
-    </div>
-  ) : (
+  const triggerContent = (
     <div
       ref={setNodeRef}
       data-task-id={task.id}
