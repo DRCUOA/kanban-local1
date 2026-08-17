@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/prefer-nullish-coalescing -- R2 baseline: strict fixes deferred to follow-up tasks */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Task, Stage, SubStage } from '@shared/schema';
 import {
   type CollisionDetection,
@@ -16,6 +16,7 @@ import {
   rectIntersection,
 } from '@dnd-kit/core';
 import { useUpdateTask, useArchiveTask } from '@/hooks/use-tasks';
+import { overflowAncestors, withClippedDroppableRects } from '@/lib/clip-droppable-rects';
 import { getStatusFromStageName } from '@shared/constants';
 
 /**
@@ -59,11 +60,26 @@ export function useKanbanDragDrop({ tasks, sortedStages, allSubStages }: UseKanb
     setActiveTasks(tasks);
   }, [tasks]);
 
+  // Overflow ancestors per droppable node, memoised for the life of one drag
+  // (the tree is stable while dragging; only rects move). Reset on drag start
+  // so a layout switch between drags is picked up.
+  const overflowAncestorCache = useRef(new WeakMap<Element, readonly Element[]>());
+  const ancestorsOf = (element: Element): readonly Element[] => {
+    const cached = overflowAncestorCache.current.get(element);
+    if (cached) return cached;
+    const found = overflowAncestors(element);
+    overflowAncestorCache.current.set(element, found);
+    return found;
+  };
+
   // Custom collision detection: prioritize archive zone using both pointer-within
   // and rect-intersection checks, then pointerWithin for columns, then closestCenter.
   // Using pointerWithin first for archive ensures detection when the pointer is
   // directly over the zone, regardless of scroll position or dragged element size.
-  const collisionDetection: CollisionDetection = (args) => {
+  // Rects are clipped to their scroll containers first: a lane scrolled out of
+  // view inside a column must not shadow the done / archive strips beneath it.
+  const collisionDetection: CollisionDetection = (rawArgs) => {
+    const args = withClippedDroppableRects(rawArgs, ancestorsOf);
     const { droppableContainers } = args;
     const archiveContainers = droppableContainers.filter(
       (c) => c.id === 'archive' || String(c.id) === 'archive',
@@ -123,6 +139,7 @@ export function useKanbanDragDrop({ tasks, sortedStages, allSubStages }: UseKanb
   );
 
   function handleDragStart(event: DragStartEvent) {
+    overflowAncestorCache.current = new WeakMap();
     setActiveId(event.active.id as number);
     if ('vibrate' in navigator) navigator.vibrate(15);
   }

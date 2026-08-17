@@ -5,6 +5,7 @@ import { isInProgressStageName } from '@shared/constants';
 import { TaskCard } from './TaskCard';
 import { TaskCardSummary } from './TaskCardSummary';
 import { DayPlanSubStage } from './DayPlanSubStage';
+import { STRIP_DETAIL_GRID_CLASS, type ColumnContentLayout } from './column-layout';
 import { cn } from '@/lib/utils';
 
 export interface KanbanColumnContentProps {
@@ -14,6 +15,7 @@ export interface KanbanColumnContentProps {
   allSubStages: SubStage[];
   stageColor: string;
   viewMode: 'detail' | 'summary';
+  layout?: ColumnContentLayout;
   onTaskClick: (task: Task) => void;
 }
 
@@ -24,6 +26,7 @@ export function KanbanColumnContent({
   allSubStages,
   stageColor,
   viewMode,
+  layout = 'list',
   onTaskClick,
 }: KanbanColumnContentProps) {
   const stageSubStages = allSubStages
@@ -50,9 +53,10 @@ export function KanbanColumnContent({
             stageName,
             stageColor,
             viewMode,
+            layout,
             onTaskClick,
           )
-        : renderFlat(stageTasks, stageName, stageColor, viewMode, onTaskClick)}
+        : renderFlat(stageTasks, stageName, stageColor, viewMode, layout, onTaskClick)}
     </SortableContext>
   );
 }
@@ -64,6 +68,7 @@ function renderWithSubStages(
   stageName: string,
   stageColor: string,
   viewMode: 'detail' | 'summary',
+  layout: ColumnContentLayout,
   onTaskClick: (task: Task) => void,
 ) {
   const stageSubStageTags = stageSubStages.map((ss) => ss.tag);
@@ -85,7 +90,13 @@ function renderWithSubStages(
   });
 
   return (
-    <div className="flex flex-col gap-2 min-h-[60px]">
+    <div
+      className={cn(
+        'gap-2 min-h-[60px]',
+        // Wells stack in a column; across a strip they sit side by side.
+        layout === 'strip' ? 'flex flex-row flex-wrap' : 'flex flex-col',
+      )}
+    >
       {stageSubStages.map((subStage, subIndex) => {
         const subStageTasks = subStageTaskLists[subIndex] ?? [];
         const finalTasks =
@@ -100,6 +111,7 @@ function renderWithSubStages(
             tasks={finalTasks}
             stageColor={stageColor}
             viewMode={viewMode}
+            layout={layout}
             onTaskClick={onTaskClick}
           />
         );
@@ -113,12 +125,18 @@ function renderFlat(
   stageName: string,
   stageColor: string,
   viewMode: 'detail' | 'summary',
+  layout: ColumnContentLayout,
   onTaskClick: (task: Task) => void,
 ) {
   const inProgress = isInProgressStageName(stageName);
 
   return viewMode === 'detail' ? (
-    <div className="flex flex-col gap-2 min-h-[60px]">
+    <div
+      className={cn(
+        'min-h-[60px]',
+        layout === 'strip' ? STRIP_DETAIL_GRID_CLASS : 'flex flex-col gap-2',
+      )}
+    >
       {stageTasks.map((task) => (
         <TaskCard
           key={task.id}

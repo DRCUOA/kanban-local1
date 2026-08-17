@@ -7,6 +7,7 @@ import { TaskCard } from './TaskCard';
 import { TaskCardSummary } from './TaskCardSummary';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { STRIP_DETAIL_GRID_CLASS, type ColumnContentLayout } from './column-layout';
 
 interface DayPlanSubStageProps {
   stageId: number;
@@ -20,6 +21,8 @@ interface DayPlanSubStageProps {
   tasks: Task[];
   stageColor: string;
   viewMode: 'detail' | 'summary';
+  /** `strip`: the well is one of several sharing a full-width band. */
+  layout?: ColumnContentLayout;
   onTaskClick: (task: Task) => void;
 }
 
@@ -30,6 +33,7 @@ export function DayPlanSubStage({
   tasks,
   stageColor,
   viewMode,
+  layout = 'list',
   onTaskClick,
 }: DayPlanSubStageProps) {
   const subStageId = `${stageId}-${subStage.tag}`;
@@ -50,6 +54,8 @@ export function DayPlanSubStage({
       ref={setNodeRef}
       className={cn(
         'neo-well relative overflow-hidden rounded-xl transition-colors',
+        // Side by side across a strip, wrapping when the band gets narrow.
+        layout === 'strip' && 'flex-1 basis-[280px] min-w-0',
         isOver && 'ring-2 ring-primary/50',
       )}
     >
@@ -75,7 +81,12 @@ export function DayPlanSubStage({
           strategy={verticalListSortingStrategy}
         >
           {viewMode === 'detail' ? (
-            <div className="flex flex-col gap-2 min-h-[40px]">
+            <div
+              className={cn(
+                'min-h-[40px]',
+                layout === 'strip' ? STRIP_DETAIL_GRID_CLASS : 'flex flex-col gap-2',
+              )}
+            >
               {tasks.length > 0 ? (
                 tasks.map((task) => (
                   <TaskCard

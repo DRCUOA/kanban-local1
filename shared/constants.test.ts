@@ -17,6 +17,7 @@ import {
   SEED_STAGE_NAMES,
   getStatusFromStageName,
   isInProgressStageName,
+  isDoneStageName,
 } from './constants';
 
 describe('constants', () => {
@@ -173,6 +174,31 @@ describe('constants', () => {
       expect(isInProgressStageName('Done')).toBe(false);
       expect(isInProgressStageName('Backlog')).toBe(false);
       expect(isInProgressStageName('Abandoned')).toBe(false);
+    });
+  });
+
+  describe('isDoneStageName', () => {
+    it('returns true for names the board infers as done, decoration included', () => {
+      expect(isDoneStageName('Done')).toBe(true);
+      expect(isDoneStageName('Done  ✔')).toBe(true);
+      expect(isDoneStageName('Completed')).toBe(true);
+      expect(isDoneStageName('Finished')).toBe(true);
+    });
+
+    it('returns false for the working columns', () => {
+      expect(isDoneStageName('Backlog')).toBe(false);
+      expect(isDoneStageName('In Progress')).toBe(false);
+      expect(isDoneStageName('Waiting ✋️ ')).toBe(false);
+      expect(isDoneStageName('Cancelled')).toBe(false);
+    });
+
+    it('agrees with getStatusFromStageName, quirks included', () => {
+      // "Abandoned" contains "done" and is inferred DONE there too.
+      expect(isDoneStageName('Abandoned')).toBe(
+        getStatusFromStageName('Abandoned') === TASK_STATUS.DONE,
+      );
+      // "Done doing" is inferred in-progress there, so it stays a column here.
+      expect(isDoneStageName('Done doing')).toBe(false);
     });
   });
 });

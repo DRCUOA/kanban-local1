@@ -140,6 +140,16 @@ export function isInProgressStageName(stageName: string): boolean {
 }
 
 /**
+ * The board renders "done" stages as a full-width strip above the archive zone
+ * rather than as a column. Same inference (and precedence) as
+ * `getStatusFromStageName`, so a stage never counts as done here while its
+ * tasks are inferred as something else there.
+ */
+export function isDoneStageName(stageName: string): boolean {
+  return getStatusFromStageName(stageName) === TASK_STATUS.DONE;
+}
+
+/**
  * Waiting/blocked columns have no `TASK_STATUS` of their own — `getStatusFromStageName`
  * folds them into `backlog` — so they can only be recognised by name.
  */

@@ -6,6 +6,7 @@ import { ShareDialog } from '@/components/ShareDialog';
 import { TaskHistoryModal } from '@/components/TaskHistoryModal';
 import { StageHeaders } from '@/components/StageHeaders';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { useBoardLayout } from '@/hooks/use-board-layout';
 import { type Task } from '@shared/schema';
 import { ROUTES } from '@shared/constants';
 import { Loader2 } from 'lucide-react';
@@ -30,7 +31,9 @@ export default function Dashboard(_props: DashboardProps) {
   const [showSearch, setShowSearch] = useState(false);
   const [viewMode, setViewMode] = useState<'detail' | 'summary'>('summary');
   const [focusMode, setFocusMode] = useState(false);
-  const [boardLayout, setBoardLayout] = useState<'vertical' | 'horizontal'>('vertical');
+  // Persisted: Archive/Admin are full navigations, so plain state would reset
+  // the layout on every return to the board.
+  const { boardLayout, toggleBoardLayout } = useBoardLayout();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [isShareBoardOpen, setIsShareBoardOpen] = useState(false);
 
@@ -134,9 +137,7 @@ export default function Dashboard(_props: DashboardProps) {
         onToggleFocusMode={() => {
           setFocusMode(!focusMode);
         }}
-        onToggleBoardLayout={() => {
-          setBoardLayout(boardLayout === 'vertical' ? 'horizontal' : 'vertical');
-        }}
+        onToggleBoardLayout={toggleBoardLayout}
         onArchive={() => (window.location.href = ROUTES.ARCHIVE)}
         onAdmin={() => (window.location.href = ROUTES.ADMIN)}
         onShareBoard={() => {
