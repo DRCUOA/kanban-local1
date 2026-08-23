@@ -62,7 +62,7 @@ export const MUST_SURFACE_RANK = BRIEFING_RANK.DUE_TODAY;
  * the labeled day at local midnight. See `dueDayFor`.
  */
 export function overdueRuleFor(timeZone: string): string {
-  return `A task’s due day is \`dueDay\`, its labeled calendar date — do not derive a date from the \`dueDate\` instant, whose UTC date part is a day earlier. A task is overdue when \`dueDay\` falls before the day of \`now\`, evaluated in ${timeZone}. A task due today is never overdue. Matches the board’s own overdue highlight.`;
+  return `A task’s due day is \`dueDay\`, its labeled calendar date — do not derive a date from the \`dueDate\` instant, whose UTC date part is a day earlier. A task is overdue when \`dueDay\` falls before the day of \`now\`, evaluated in ${timeZone}, and the task is still open. A task due today is never overdue. A closed task — status done or abandoned, or sitting in a Done column — is never overdue, however old its due date. Matches the board’s own overdue highlight.`;
 }
 
 export interface TaskUrgency {
@@ -76,7 +76,7 @@ export interface TaskUrgency {
   isOverdue: boolean;
   /** Whole calendar days past due; 0 when not overdue. */
   daysOverdue: number;
-  /** Calendar days until due; negative when overdue, null when undated. */
+  /** Calendar days until due; negative once the due day has passed (even for a closed task), null when undated. */
   daysUntilDue: number | null;
   dueBucket: DueBucketValue;
   briefingRank: number;
@@ -275,8 +275,10 @@ export function dueDayFor(
 }
 
 /**
- * Overdue exactly as the board flags it: the labeled day is before the day of
- * `now`. A task due today is never overdue, whatever the hour.
+ * The raw date test: the labeled day is before the day of `now`. A task due
+ * today is never overdue, whatever the hour. This is the date half only —
+ * whole-task callers want `isTaskOverdueOn`, which also requires the task to
+ * still be open.
  */
 export function isOverdueOn(
   dueDate: Date | string | null | undefined,
@@ -285,6 +287,37 @@ export function isOverdueOn(
 ): boolean {
   const dueDay = dueDayFor(dueDate, timeZone);
   return dueDay !== null && dueDay < zonedDayKey(now, timeZone);
+}
+
+/** Statuses under which a task's clock has stopped. */
+const CLOSED_STATUSES: readonly string[] = [TASK_STATUS.DONE, TASK_STATUS.ABANDONED];
+
+/**
+ * True when the task's life is over: its stored `status` is done/abandoned, or
+ * the stage the board shows it in resolves to done/abandoned. Either signal
+ * closes it — the two can disagree (see `statusConflict`), and a card sitting
+ * in a Done column must not stay flagged whatever its stale status says, nor
+ * the other way round.
+ */
+export function isClosedTask(task: Task, stages: Stage[] = []): boolean {
+  if (typeof task.status === 'string' && CLOSED_STATUSES.includes(task.status)) return true;
+  const stageName = stages.find((s) => s.id === task.stageId)?.name;
+  return stageName !== undefined && CLOSED_STATUSES.includes(getStatusFromStageName(stageName));
+}
+
+/**
+ * The overdue flag for a whole task: the date test gated on the task still
+ * being open. Done beats the due date — marking a task done (or abandoning it)
+ * ends the overdue flagging on its own; the user never has to clear the due
+ * date as well.
+ */
+export function isTaskOverdueOn(
+  task: Task,
+  stages: Stage[],
+  now: Date,
+  timeZone: string = DEFAULT_TIMEZONE,
+): boolean {
+  return !isClosedTask(task, stages) && isOverdueOn(task.dueDate, now, timeZone);
 }
 
 /** True when the labeled day is the day of `now`. */
@@ -312,14 +345,25 @@ export function formatDueDayLabel(
 /**
  * Per-task urgency relative to `now`. Calendar-day based, so a task due at any
  * time today is "today" rather than "overdue by a few hours".
+ *
+ * `stages` sharpens the closed-task check with the stage the board shows;
+ * callers without stages in hand still get the stored-status half.
  */
 export function computeTaskUrgency(
   task: Task,
   now: Date,
   timeZone: string = DEFAULT_TIMEZONE,
+  stages: Stage[] = [],
 ): TaskUrgency {
   const bucketAndDays = dueBucketFor(task, now, timeZone);
-  const { dueBucket, daysUntilDue, dueDay } = bucketAndDays;
+  const { daysUntilDue, dueDay } = bucketAndDays;
+  // Done beats the due date: a closed task keeps its date facts (`dueDay`,
+  // `daysUntilDue`) but carries no due pressure, so it can never be flagged —
+  // or briefed — as overdue while only its due date is left uncleared.
+  const dueBucket =
+    bucketAndDays.dueBucket === DUE_BUCKET.OVERDUE && isClosedTask(task, stages)
+      ? DUE_BUCKET.NONE
+      : bucketAndDays.dueBucket;
   const isOverdue = dueBucket === DUE_BUCKET.OVERDUE;
   const daysOverdue = isOverdue && daysUntilDue !== null ? -daysUntilDue : 0;
 
@@ -386,7 +430,7 @@ export function annotateTasksWithUrgency(
   timeZone: string = DEFAULT_TIMEZONE,
 ): ExportTask[] {
   return tasks.map((task) => {
-    const urgency = computeTaskUrgency(task, now, timeZone);
+    const urgency = computeTaskUrgency(task, now, timeZone, stages);
     // Re-rank with stage context so the board's own view of "in progress" wins.
     if (urgency.dueBucket === DUE_BUCKET.OVERDUE && !task.archived) {
       const inProgress = isInProgressStageName(stageNameFor(task, stages));

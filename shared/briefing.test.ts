@@ -11,6 +11,8 @@ import {
   formatDueDayLabel,
   isDueTodayOn,
   isOverdueOn,
+  isTaskOverdueOn,
+  overdueRuleFor,
   resolveTimezone,
   resolveSwimlane,
   briefingDigestSchema,
@@ -145,6 +147,75 @@ describe('computeTaskUrgency', () => {
 
     expect(urgency.dueBucket).toBe(DUE_BUCKET.NONE);
     expect(urgency.isOverdue).toBe(false);
+  });
+});
+
+describe('done beats the due date', () => {
+  // The bug: a task marked done kept flagging as overdue until its due date
+  // was cleared by hand. Closing a task must end the flagging on its own.
+  const pastDue = duePicked(2026, 8, 9);
+
+  it('never flags a done task as overdue, without the due date being cleared', () => {
+    const urgency = computeTaskUrgency(fakeTask({ status: 'done', dueDate: pastDue }), NOW);
+
+    expect(urgency.isOverdue).toBe(false);
+    expect(urgency.daysOverdue).toBe(0);
+    expect(urgency.dueBucket).toBe(DUE_BUCKET.NONE);
+    expect(urgency.mustSurface).toBe(false);
+    // The date facts survive; only the due pressure is gone.
+    expect(urgency.dueDay).toBe('2026-08-09');
+    expect(urgency.daysUntilDue).toBe(-2);
+  });
+
+  it('treats abandoned work as closed the same way', () => {
+    const urgency = computeTaskUrgency(fakeTask({ status: 'abandoned', dueDate: pastDue }), NOW);
+
+    expect(urgency.isOverdue).toBe(false);
+    expect(urgency.dueBucket).toBe(DUE_BUCKET.NONE);
+  });
+
+  it('unflags a card sitting in a Done column whose stored status is stale', () => {
+    // Either signal closes the task: the board renders the stage, so a card in
+    // the Done strip must not glow overdue because `status` lags behind.
+    const task = fakeTask({ stageId: 3, status: 'in_progress', dueDate: pastDue });
+
+    expect(isTaskOverdueOn(task, stages, NOW)).toBe(false);
+    expect(first(annotateTasksWithUrgency([task], stages, NOW)).urgency.isOverdue).toBe(false);
+  });
+
+  it('keeps flagging open past-due tasks', () => {
+    expect(isTaskOverdueOn(task142, stages, NOW)).toBe(true);
+    expect(computeTaskUrgency(task142, NOW, DEFAULT_TIMEZONE, stages).isOverdue).toBe(true);
+  });
+
+  it('leaves a done task due today in the today bucket', () => {
+    // Scope guard: closing gates only the overdue flag, not the calendar.
+    const urgency = computeTaskUrgency(
+      fakeTask({ status: 'done', dueDate: duePicked(2026, 8, 11) }),
+      NOW,
+    );
+
+    expect(urgency.dueBucket).toBe(DUE_BUCKET.TODAY);
+  });
+
+  it('keeps done tasks out of the briefing overdue section', () => {
+    const digest = buildBriefing({
+      tasks: annotateTasksWithUrgency(
+        [task142, fakeTask({ id: 200, stageId: 3, status: 'done', dueDate: pastDue })],
+        stages,
+        NOW,
+      ),
+      stages,
+      subStages,
+      now: NOW,
+      timezone: NZ,
+    });
+
+    expect(digest.overdue.map((e) => e.id)).toEqual([142]);
+  });
+
+  it('states the closed-task rule for the briefing agent', () => {
+    expect(overdueRuleFor(NZ)).toContain('done or abandoned');
   });
 });
 

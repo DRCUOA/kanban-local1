@@ -1,5 +1,5 @@
 import { differenceInDays } from 'date-fns';
-import { isOverdueOn } from './briefing';
+import { isTaskOverdueOn } from './briefing';
 import { TASK_STATUS, TASK_PRIORITY, getStatusFromStageName } from './constants';
 import type { Task, Stage } from './schema';
 
@@ -27,7 +27,7 @@ export function getTaskWarningHighlight(
   // `overdue` list cannot disagree — the export's stated contract. Cutting the
   // day in the board's zone rather than the viewer's also keeps a card's
   // highlight stable when the board is opened from another timezone.
-  if (isOverdueOn(task.dueDate, new Date())) return 'overdue';
+  if (isTaskOverdueOn(task, stages, new Date())) return 'overdue';
 
   const status = resolveTaskStatusForWarnings(task, stages);
   if (

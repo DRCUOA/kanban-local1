@@ -3,7 +3,7 @@ import { TASK_STATUS, TASK_PRIORITY } from '@shared/constants';
 import { resolveTaskStatusForWarnings } from '@shared/task-warning-highlight';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Clock } from 'lucide-react';
-import { isOverdueOn } from '@shared/briefing';
+import { isTaskOverdueOn } from '@shared/briefing';
 import { differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useStages } from '@/hooks/use-stages';
@@ -53,7 +53,7 @@ export function TaskWarnings({ tasks, className }: TaskWarningsProps) {
   );
 
   // Same helper as the card highlight and the export's `overdue` list.
-  const overdueTasks = activeTasks.filter((t) => isOverdueOn(t.dueDate, new Date()));
+  const overdueTasks = activeTasks.filter((t) => isTaskOverdueOn(t, stages, new Date()));
 
   const staleTasks = activeTasks.filter((t) => {
     if (!t.updatedAt) return false;

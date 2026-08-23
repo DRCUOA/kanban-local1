@@ -83,6 +83,22 @@ describe('TaskWarnings (compact pills)', () => {
     expect(stale.getAttribute('title')).toBe('1 not updated in 14+ days.');
   });
 
+  it('does not count closed tasks as overdue, even with a past due date left set', () => {
+    const pastDue = new Date(2000, 0, 1);
+    render(
+      <TaskWarnings
+        tasks={[
+          makeTask({ id: 1, status: 'done', dueDate: pastDue }),
+          makeTask({ id: 2, status: 'abandoned', dueDate: pastDue }),
+          // In the Done column but with a stale open status — still closed.
+          makeTask({ id: 3, stageId: 3, status: 'in_progress', dueDate: pastDue }),
+        ]}
+      />,
+    );
+
+    expect(screen.queryByTestId('task-warning-overdue')).toBeNull();
+  });
+
   it('rides in the stage-chip row, after the chips', () => {
     const tasks = [makeTask({ id: 1, priority: 'high' }), makeTask({ id: 2, stageId: 3 })];
     render(
