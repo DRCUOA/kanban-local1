@@ -9,7 +9,7 @@ import {
   type TaskPriorityValue,
   type TaskStatusValue,
 } from '@shared/constants';
-import { cleanLabel, formatDueDayLabel, isDueTodayOn, isOverdueOn } from '@shared/briefing';
+import { cleanLabel, formatDueDayLabel, isDueTodayOn, isTaskOverdueOn } from '@shared/briefing';
 import { format } from 'date-fns';
 import {
   AlertCircle,
@@ -188,7 +188,7 @@ function PreviewBody({
 
   const now = new Date();
   const dueDayLabel = formatDueDayLabel(task.dueDate);
-  const isOverdue = isOverdueOn(task.dueDate, now);
+  const isOverdue = isTaskOverdueOn(task, stages, now);
   const isDueToday = isDueTodayOn(task.dueDate, now);
 
   const history: TaskHistoryEntry[] = Array.isArray(task.history) ? task.history : [];

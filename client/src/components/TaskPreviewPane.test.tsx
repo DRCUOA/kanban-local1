@@ -157,6 +157,20 @@ describe('TaskPreviewPane', () => {
     expect(due.className).toContain('text-danger');
   });
 
+  it('does not flag a done task as overdue, without the due date being cleared', () => {
+    render(
+      <TaskPreviewPane
+        task={makeTask({ status: 'done', dueDate: new Date(2000, 0, 1) })}
+        stages={stages}
+        subStages={subStages}
+        onOpen={vi.fn()}
+      />,
+    );
+    const due = screen.getByTestId('task-preview-due');
+    expect(due.textContent).not.toContain('(overdue)');
+    expect(due.className).not.toContain('text-danger');
+  });
+
   it('caps the history list and says how many earlier entries there are', () => {
     const history = Array.from({ length: 9 }, (_, i) => ({
       status: 'backlog' as const,

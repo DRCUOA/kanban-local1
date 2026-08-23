@@ -2,7 +2,7 @@
 import { Task } from '@shared/schema';
 import { TASK_PRIORITY, EFFORT_MAX } from '@shared/constants';
 import { getTaskWarningHighlight } from '@shared/task-warning-highlight';
-import { formatDueDayLabel, isDueTodayOn, isOverdueOn } from '@shared/briefing';
+import { formatDueDayLabel, isDueTodayOn, isTaskOverdueOn } from '@shared/briefing';
 import { TASK_WARNING_BORDER_COLOR } from '@/lib/task-warning-border';
 import { useStages } from '@/hooks/use-stages';
 import { useSortable } from '@dnd-kit/sortable';
@@ -58,7 +58,7 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
   // the briefing all name the same day — the label is the day the picker stored
   // at local midnight, not the UTC date part of the instant.
   const dueDayLabel = formatDueDayLabel(task.dueDate);
-  const isOverdue = isOverdueOn(task.dueDate, new Date());
+  const isOverdue = isTaskOverdueOn(task, stages, new Date());
   const isDueToday = isDueTodayOn(task.dueDate, new Date());
 
   if (isDragging) {
