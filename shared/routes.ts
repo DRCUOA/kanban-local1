@@ -75,6 +75,29 @@ export const api = {
         404: z.object({ message: z.string() }),
       },
     },
+    deleted: {
+      method: 'GET' as const,
+      path: '/api/tasks/deleted',
+      responses: {
+        200: z.array(z.custom<Task>()),
+      },
+    },
+    bin: {
+      method: 'POST' as const,
+      path: '/api/tasks/:id/bin',
+      responses: {
+        200: z.custom<Task>(),
+        404: z.object({ message: z.string() }),
+      },
+    },
+    restore: {
+      method: 'POST' as const,
+      path: '/api/tasks/:id/restore',
+      responses: {
+        200: z.custom<Task>(),
+        404: z.object({ message: z.string() }),
+      },
+    },
     history: {
       method: 'GET' as const,
       path: '/api/tasks/:id/history',

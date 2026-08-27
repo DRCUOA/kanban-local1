@@ -37,6 +37,7 @@ export function useUpdateTask() {
   });
 }
 
+/** Permanent removal — the row is gone. Reached only from the Bin's "Delete forever". */
 export function useDeleteTask() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -46,6 +47,45 @@ export function useDeleteTask() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.tasks.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.tasks.deleted.path] });
+    },
+  });
+}
+
+export function useDeletedTasks() {
+  return useQuery({
+    queryKey: [api.tasks.deleted.path],
+    queryFn: () => apiGet<Task[]>(api.tasks.deleted.path),
+  });
+}
+
+/** Soft delete — the task moves to the Bin and can be restored. */
+export function useBinTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => {
+      const url = api.tasks.bin.path.replace(':id', id.toString());
+      return apiPost<Task>(url);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.tasks.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.tasks.archived.path] });
+      queryClient.invalidateQueries({ queryKey: [api.tasks.deleted.path] });
+    },
+  });
+}
+
+export function useRestoreTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => {
+      const url = api.tasks.restore.path.replace(':id', id.toString());
+      return apiPost<Task>(url);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.tasks.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.tasks.archived.path] });
+      queryClient.invalidateQueries({ queryKey: [api.tasks.deleted.path] });
     },
   });
 }

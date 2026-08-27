@@ -10,6 +10,7 @@ const makeTask = (overrides: Partial<Task> = {}): Task => ({
   description: null,
   stageId: 1,
   archived: false,
+  deletedAt: null,
   status: 'backlog',
   priority: 'normal',
   effort: null,

@@ -33,7 +33,7 @@ class MemStorage implements IStorage {
 
   async getTasks(): Promise<Task[]> {
     return [...this.taskStore.values()]
-      .filter((t: Task) => !t.archived)
+      .filter((t: Task) => !t.archived && t.deletedAt === null)
       .sort((a: Task, b: Task) => a.id - b.id);
   }
 
@@ -85,6 +85,7 @@ class MemStorage implements IStorage {
       updatedAt: now,
       createdAt: now,
       owner: insert.owner ?? null,
+      deletedAt: null,
     };
 
     this.taskStore.set(task.id, task);
@@ -151,6 +152,28 @@ class MemStorage implements IStorage {
 
     this.taskStore.set(id, unarchived);
     return unarchived;
+  }
+
+  async getDeletedTasks(): Promise<Task[]> {
+    return [...this.taskStore.values()].filter((t) => t.deletedAt !== null);
+  }
+
+  async binTask(id: number): Promise<Task | undefined> {
+    const current = this.taskStore.get(id);
+    if (!current) return undefined;
+
+    const binned: Task = { ...current, deletedAt: new Date(), updatedAt: new Date() };
+    this.taskStore.set(id, binned);
+    return binned;
+  }
+
+  async restoreTask(id: number): Promise<Task | undefined> {
+    const current = this.taskStore.get(id);
+    if (!current) return undefined;
+
+    const restored: Task = { ...current, deletedAt: null, updatedAt: new Date() };
+    this.taskStore.set(id, restored);
+    return restored;
   }
 
   async deleteTask(id: number): Promise<void> {

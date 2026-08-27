@@ -14,11 +14,12 @@ import { TaskColumn } from './TaskColumn';
 import { KanbanColumnContent } from './KanbanColumnContent';
 import { KanbanDragOverlay } from './KanbanDragOverlay';
 import { ColumnResizer } from './ColumnResizer';
-import { ArchiveZone } from './ArchiveZone';
+import { NavDropTargets } from './NavDropTargets';
 import { ShareDialog } from './ShareDialog';
 import { TaskPreviewPane } from './TaskPreviewPane';
 import { TaskSelectionContext } from './task-selection-context';
 import { DEFAULT_STAGE_COLORS, isDoneStageName } from '@shared/constants';
+import { filingTargets } from '@/lib/filing-targets';
 import { sortTasksByDueDate } from '@shared/task-sort';
 import { cn } from '@/lib/utils';
 
@@ -78,18 +79,14 @@ export function KanbanBoard({
 
   const sortedStages = useMemo(() => [...stages].sort((a, b) => a.order - b.order), [stages]);
 
-  // Done stages leave the column row and become full-width strips above the
-  // archive zone — in both layouts, so "done" always reads as a band the way
-  // the archive strip does, and the horizontal row keeps its width for the
-  // working columns and the preview pane.
+  // Done stages are off the board entirely: they live behind the nav's Filing
+  // button, as both its submenu rows and the /filing page. The band they and
+  // the archive strip used to occupy goes back to the columns.
   const columnStages = useMemo(
     () => sortedStages.filter((stage) => !isDoneStageName(stage.name)),
     [sortedStages],
   );
-  const doneStages = useMemo(
-    () => sortedStages.filter((stage) => isDoneStageName(stage.name)),
-    [sortedStages],
-  );
+  const filingMenuTargets = useMemo(() => filingTargets(sortedStages), [sortedStages]);
   const lastColumnStage =
     columnStages.length > 0 ? columnStages[columnStages.length - 1] : undefined;
 
@@ -107,12 +104,14 @@ export function KanbanBoard({
   const {
     activeId,
     activeTasks,
-    isOverArchive,
+    activeNavId,
+    filingMenuOpen,
     sensors,
     collisionDetection,
     handleDragStart,
     handleDragOver,
     handleDragEnd,
+    handleDragCancel,
   } = useKanbanDragDrop({ tasks, sortedStages, allSubStages });
 
   // Default board order is soonest-due-first. Sorted once here rather than per
@@ -363,6 +362,7 @@ export function KanbanBoard({
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
       measuring={{
         droppable: {
           strategy: MeasuringStrategy.Always,
@@ -446,45 +446,8 @@ export function KanbanBoard({
               })}
             </div>
 
-            {/* Done stages: full-width strips, parallel to the archive strip. */}
-            {doneStages.map((stage) => {
-              const stageColor = stageColorMap.get(stage.id) || DEFAULT_STAGE_COLORS[0];
-              const stageTasks = dueSortedTasks.filter((t) => t.stageId === stage.id);
-              return (
-                <div
-                  key={stage.id}
-                  className={cn(
-                    'flex flex-col',
-                    // Horizontal: shrinkable (the strip scrolls inside) so the
-                    // columns keep their minimum height on short viewports.
-                    isHorizontal ? 'mt-3 min-h-0' : 'mt-4 flex-shrink-0',
-                  )}
-                >
-                  <TaskColumn
-                    id={stage.id}
-                    title={stage.name}
-                    count={stageTasks.length}
-                    stageColor={stageColor}
-                    boardLayout={boardLayout}
-                    variant="strip"
-                  >
-                    <KanbanColumnContent
-                      stageId={stage.id}
-                      stageTasks={stageTasks}
-                      allSubStages={allSubStages}
-                      stageColor={stageColor}
-                      viewMode={viewMode}
-                      layout="strip"
-                      onTaskClick={handleTaskClick}
-                    />
-                  </TaskColumn>
-                </div>
-              );
-            })}
-
-            <div className="mt-3 flex flex-shrink-0 items-center gap-3">
-              <ArchiveZone isOver={isOverArchive} />
-              {isHorizontal && hasCustomWidths && (
+            {isHorizontal && hasCustomWidths && (
+              <div className="mt-3 flex flex-shrink-0 items-center justify-end">
                 <button
                   type="button"
                   onClick={resetAll}
@@ -492,8 +455,8 @@ export function KanbanBoard({
                 >
                   Reset widths
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* The preview pane takes the slot the done column gave up: full
@@ -558,6 +521,16 @@ export function KanbanBoard({
           stageColorMap={stageColorMap}
           viewMode={viewMode}
         />
+
+        {/* Portalled into the bottom nav's Filing and Bin slots, but rendered
+            here so they share this DndContext. */}
+        {activeId !== null && (
+          <NavDropTargets
+            targets={filingMenuTargets}
+            filingMenuOpen={filingMenuOpen}
+            activeNavId={activeNavId}
+          />
+        )}
       </TaskSelectionContext.Provider>
     </DndContext>
   );

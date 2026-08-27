@@ -1,112 +1,100 @@
-/* eslint-disable @typescript-eslint/no-confusing-void-expression -- R2 baseline: strict fixes deferred to follow-up tasks */
-import { List, CircleDot, Focus, Columns, Rows } from 'lucide-react';
+import { useState } from 'react';
+import { Archive, CheckCircle2, FolderInput, Trash2 } from 'lucide-react';
+import { useLocation } from 'wouter';
 import { CreateTaskDialog } from '@/components/CreateTaskDialog';
+import { useNavDropSlots } from '@/components/nav-drop-slots';
+import { filingTargets } from '@/lib/filing-targets';
+import { ROUTES } from '@shared/constants';
+import { useStages } from '@/hooks/use-stages';
 import { cn } from '@/lib/utils';
-import { MoreActionsMenu } from './MoreActionsMenu';
 
-export interface DashboardBottomNavProps {
-  viewMode: 'detail' | 'summary';
-  focusMode: boolean;
-  boardLayout: 'vertical' | 'horizontal';
-  onSetViewMode: (mode: 'detail' | 'summary') => void;
-  onToggleFocusMode: () => void;
-  onToggleBoardLayout: () => void;
-  onArchive: () => void;
-  onAdmin: () => void;
-  onShareBoard: () => void;
-  onExport: () => void;
-  onImport: () => void;
-}
+/**
+ * Three targets, all of them destinations for a task: Filing on the left, Add
+ * in the middle, Bin on the right. The view toggles that used to sit here now
+ * live in the header's More menu, and the board's done/archive band is gone —
+ * Filing is where a finished task goes, by tap or by drag.
+ *
+ * Each of Filing and Bin wraps an empty slot the board portals its drop target
+ * into (see nav-drop-slots), which is why both buttons are positioned.
+ */
+export function DashboardBottomNav() {
+  const [, navigate] = useLocation();
+  const { data: stages = [] } = useStages();
+  const { setFiling, setBin } = useNavDropSlots();
+  const [filingOpen, setFilingOpen] = useState(false);
+  const targets = filingTargets(stages);
 
-export function DashboardBottomNav({
-  viewMode,
-  focusMode,
-  boardLayout,
-  onSetViewMode,
-  onToggleFocusMode,
-  onToggleBoardLayout,
-  onArchive,
-  onAdmin,
-  onShareBoard,
-  onExport,
-  onImport,
-}: DashboardBottomNavProps) {
-  const toggleNavBtn = (active: boolean) =>
-    cn(
-      'flex flex-col items-center gap-1 py-2 px-3 min-w-[4.25rem] rounded-xl transition-[color,box-shadow,background-color,transform] duration-200 active:scale-90',
-      active
-        ? cn(
-            'text-primary bg-primary/10 dark:bg-primary/15',
-            'shadow-[inset_2px_2px_6px_rgba(0,0,0,0.10),inset_-1px_-1px_4px_rgba(255,255,255,0.30)]',
-            'dark:shadow-[inset_2px_2px_8px_rgba(0,0,0,0.45),inset_-1px_-1px_2px_rgba(255,255,255,0.05)]',
-          )
-        : 'text-fg-secondary hover:text-foreground',
-    );
+  const navBtn =
+    'flex flex-col items-center gap-1 py-2 px-3 min-w-[4.25rem] rounded-xl text-fg-secondary transition-[color,box-shadow,background-color,transform] duration-200 hover:text-foreground active:scale-90';
 
   return (
     <nav className="mobile-bottom-nav">
       <div className="flex items-center justify-around px-2 py-2">
-        <button
-          type="button"
-          className={toggleNavBtn(viewMode === 'detail')}
-          aria-pressed={viewMode === 'detail'}
-          onClick={() => {
-            onSetViewMode('detail');
-          }}
-        >
-          <List className="h-5 w-5 shrink-0" aria-hidden />
-          <span className="text-[10px] font-medium">Detail</span>
-        </button>
+        <div className="relative" ref={setFiling}>
+          <button
+            type="button"
+            className={navBtn}
+            aria-haspopup="menu"
+            aria-expanded={filingOpen}
+            onClick={() => {
+              setFilingOpen(!filingOpen);
+            }}
+            data-testid="nav-filing"
+          >
+            <FolderInput className="h-5 w-5 shrink-0" aria-hidden />
+            <span className="text-[10px] font-medium">Filing</span>
+          </button>
 
-        <button
-          type="button"
-          className={toggleNavBtn(viewMode === 'summary')}
-          aria-pressed={viewMode === 'summary'}
-          onClick={() => {
-            onSetViewMode('summary');
-          }}
-        >
-          <CircleDot className="h-5 w-5 shrink-0" aria-hidden />
-          <span className="text-[10px] font-medium">Summary</span>
-        </button>
+          {filingOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-40 bg-black/20"
+                onClick={() => {
+                  setFilingOpen(false);
+                }}
+              />
+              <div
+                role="menu"
+                className="absolute bottom-full left-0 z-50 mb-2 w-52 animate-slide-up neo-raised rounded-xl p-2"
+              >
+                {targets.map((target) => (
+                  <button
+                    key={target.id}
+                    role="menuitem"
+                    className="flex w-full items-center gap-3 rounded-lg p-3 text-left text-sm transition-colors active:bg-muted/50"
+                    onClick={() => {
+                      setFilingOpen(false);
+                      navigate(target.href);
+                    }}
+                  >
+                    {target.action === 'archive' ? (
+                      <Archive className="h-4 w-4 shrink-0" aria-hidden />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
+                    )}
+                    <span className="truncate">{target.label}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
 
         <CreateTaskDialog iconOnly />
 
-        <button
-          type="button"
-          className={toggleNavBtn(focusMode)}
-          aria-pressed={focusMode}
-          onClick={onToggleFocusMode}
-        >
-          <Focus className="h-5 w-5 shrink-0" aria-hidden />
-          <span className="text-[10px] font-medium">Focus</span>
-        </button>
-
-        <button
-          type="button"
-          className={toggleNavBtn(false)}
-          onClick={onToggleBoardLayout}
-          aria-label={
-            boardLayout === 'vertical' ? 'Switch to horizontal board' : 'Switch to vertical board'
-          }
-        >
-          {boardLayout === 'vertical' ? (
-            <Columns className="h-5 w-5 shrink-0" aria-hidden />
-          ) : (
-            <Rows className="h-5 w-5 shrink-0" aria-hidden />
-          )}
-          <span className="text-[10px] font-medium">
-            {boardLayout === 'vertical' ? 'Horiz' : 'Vert'}
-          </span>
-        </button>
-
-        <MoreActionsMenu
-          onArchive={onArchive}
-          onAdmin={onAdmin}
-          onShareBoard={onShareBoard}
-          onExport={onExport}
-          onImport={onImport}
-        />
+        <div className="relative" ref={setBin}>
+          <button
+            type="button"
+            className={cn(navBtn, 'hover:text-destructive')}
+            onClick={() => {
+              navigate(ROUTES.BIN);
+            }}
+            data-testid="nav-bin"
+          >
+            <Trash2 className="h-5 w-5 shrink-0" aria-hidden />
+            <span className="text-[10px] font-medium">Bin</span>
+          </button>
+        </div>
       </div>
     </nav>
   );

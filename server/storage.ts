@@ -20,7 +20,7 @@ import {
   getStatusFromStageName,
 } from '@shared/constants';
 import { db } from './db';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, isNull, isNotNull, desc } from 'drizzle-orm';
 import { logger } from '@shared/logger';
 
 type TaskInsertExecutor = Pick<typeof db, 'insert' | 'select'>;
@@ -67,6 +67,9 @@ export interface IStorage {
   updateTask(id: number, task: Partial<InsertTask>): Promise<Task | undefined>;
   archiveTask(id: number): Promise<Task | undefined>;
   unarchiveTask(id: number): Promise<Task | undefined>;
+  getDeletedTasks(): Promise<Task[]>;
+  binTask(id: number): Promise<Task | undefined>;
+  restoreTask(id: number): Promise<Task | undefined>;
   deleteTask(id: number): Promise<void>;
   getDistinctOwners(): Promise<string[]>;
   getStages(): Promise<Stage[]>;
@@ -82,18 +85,26 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   async getTasks(): Promise<Task[]> {
-    return await db.select().from(tasks).where(eq(tasks.archived, false)).orderBy(tasks.id);
+    return await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.archived, false), isNull(tasks.deletedAt)))
+      .orderBy(tasks.id);
   }
 
   async getArchivedTasks(): Promise<Task[]> {
-    return await db.select().from(tasks).where(eq(tasks.archived, true)).orderBy(tasks.id);
+    return await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.archived, true), isNull(tasks.deletedAt)))
+      .orderBy(tasks.id);
   }
 
   async getTasksByStage(stageId: number): Promise<Task[]> {
     return await db
       .select()
       .from(tasks)
-      .where(and(eq(tasks.stageId, stageId), eq(tasks.archived, false)));
+      .where(and(eq(tasks.stageId, stageId), eq(tasks.archived, false), isNull(tasks.deletedAt)));
   }
 
   async getTaskById(id: number): Promise<Task | undefined> {
@@ -135,6 +146,61 @@ export class DatabaseStorage implements IStorage {
       .where(eq(tasks.id, id))
       .returning();
     return unarchived;
+  }
+
+  /** Bin contents, most recently binned first — the order the Bin page reads in. */
+  async getDeletedTasks(): Promise<Task[]> {
+    return await db
+      .select()
+      .from(tasks)
+      .where(isNotNull(tasks.deletedAt))
+      .orderBy(desc(tasks.deletedAt));
+  }
+
+  async binTask(id: number): Promise<Task | undefined> {
+    const [currentTask] = await db.select().from(tasks).where(eq(tasks.id, id));
+    if (!currentTask) return undefined;
+
+    const history = currentTask.history || [];
+    const historyEntry: TaskHistoryEntry = {
+      status: (currentTask.status as TaskStatus) || TASK_STATUS.BACKLOG,
+      timestamp: new Date().toISOString(),
+      note: 'Moved to Bin',
+    };
+
+    const [binned] = await db
+      .update(tasks)
+      .set({
+        deletedAt: new Date(),
+        updatedAt: new Date(),
+        history: [...history, historyEntry],
+      })
+      .where(eq(tasks.id, id))
+      .returning();
+    return binned;
+  }
+
+  async restoreTask(id: number): Promise<Task | undefined> {
+    const [currentTask] = await db.select().from(tasks).where(eq(tasks.id, id));
+    if (!currentTask) return undefined;
+
+    const history = currentTask.history || [];
+    const historyEntry: TaskHistoryEntry = {
+      status: (currentTask.status as TaskStatus) || TASK_STATUS.BACKLOG,
+      timestamp: new Date().toISOString(),
+      note: 'Restored from Bin',
+    };
+
+    const [restored] = await db
+      .update(tasks)
+      .set({
+        deletedAt: null,
+        updatedAt: new Date(),
+        history: [...history, historyEntry],
+      })
+      .where(eq(tasks.id, id))
+      .returning();
+    return restored;
   }
 
   async createTask(insertTask: InsertTask): Promise<Task> {
