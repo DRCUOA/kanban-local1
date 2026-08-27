@@ -88,6 +88,8 @@ export const ROUTES = {
   DASHBOARD: '/',
   ADMIN: '/admin',
   ARCHIVE: '/archive',
+  FILING: '/filing',
+  BIN: '/bin',
 } as const;
 
 // --- Default Stage Colors ---

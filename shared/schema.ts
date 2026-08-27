@@ -96,6 +96,9 @@ export const tasks = pgTable('tasks', {
   history: jsonb('history').$type<TaskHistoryEntry[]>(), // Status change history
   // Free-form owner label (max TASK_OWNER_MAX_LEN chars) — DB-level length enforced via VARCHAR
   owner: text('owner'),
+  // Bin (soft delete). Null = live. Set when a task is dropped on the Bin;
+  // cleared by Restore. Only "Delete forever" removes the row.
+  deletedAt: timestamp('deleted_at'),
 });
 
 /** Gmail watch cursor: one row per monitored mailbox. */
@@ -204,6 +207,8 @@ export const insertTaskSchema = createInsertSchema(tasks)
     id: true,
     createdAt: true,
     updatedAt: true,
+    // Bin state is owned by the bin/restore endpoints, never by a task write.
+    deletedAt: true,
   })
   .extend({
     title: z.string().min(1),

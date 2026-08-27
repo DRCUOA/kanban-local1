@@ -9,64 +9,61 @@ vi.mock('@/components/CreateTaskDialog', () => ({
     React.createElement('button', { 'data-testid': 'create-task-stub' }, iconOnly ? '+' : 'New'),
 }));
 
-vi.mock('./MoreActionsMenu', () => ({
-  MoreActionsMenu: (props: Record<string, () => void>) =>
-    React.createElement(
-      'button',
-      {
-        'data-testid': 'more-actions-stub',
-        onClick: props.onAdmin,
-      },
-      'More',
-    ),
+const navigate = vi.fn();
+vi.mock('wouter', () => ({
+  useLocation: () => ['/', navigate],
+}));
+
+vi.mock('@/hooks/use-stages', () => ({
+  useStages: () => ({
+    data: [
+      { id: 1, name: 'To Do', order: 1, color: null, createdAt: new Date() },
+      { id: 2, name: 'Done  ✔', order: 2, color: null, createdAt: new Date() },
+    ],
+  }),
 }));
 
 describe('DashboardBottomNav', () => {
-  const defaults = {
-    viewMode: 'detail' as const,
-    focusMode: false,
-    boardLayout: 'vertical' as const,
-    onSetViewMode: vi.fn(),
-    onToggleFocusMode: vi.fn(),
-    onToggleBoardLayout: vi.fn(),
-    onArchive: vi.fn(),
-    onAdmin: vi.fn(),
-    onShareBoard: vi.fn(),
-    onExport: vi.fn(),
-    onImport: vi.fn(),
-  };
+  it('renders exactly the three task destinations: Filing, Add, Bin', () => {
+    render(<DashboardBottomNav />);
 
-  it('renders Detail, Summary, Focus buttons and sub-components', () => {
-    render(<DashboardBottomNav {...defaults} />);
-
-    expect(screen.getByText('Detail')).toBeDefined();
-    expect(screen.getByText('Summary')).toBeDefined();
-    expect(screen.getByText('Focus')).toBeDefined();
+    expect(screen.getByTestId('nav-filing')).toBeDefined();
     expect(screen.getByTestId('create-task-stub')).toBeDefined();
-    expect(screen.getByTestId('more-actions-stub')).toBeDefined();
+    expect(screen.getByTestId('nav-bin')).toBeDefined();
+    // The view toggles moved to the header's More menu.
+    expect(screen.queryByText('Detail')).toBeNull();
+    expect(screen.queryByText('Summary')).toBeNull();
+    expect(screen.queryByText('Focus')).toBeNull();
+    expect(screen.queryByText('More')).toBeNull();
   });
 
-  it('calls onSetViewMode("detail") when Detail is clicked', () => {
-    const onSetViewMode = vi.fn();
-    render(<DashboardBottomNav {...defaults} onSetViewMode={onSetViewMode} />);
+  it('opens the filing menu with a row per done stage plus Archive', () => {
+    render(<DashboardBottomNav />);
+    expect(screen.queryByRole('menu')).toBeNull();
 
-    fireEvent.click(screen.getByText('Detail'));
-    expect(onSetViewMode).toHaveBeenCalledWith('detail');
+    fireEvent.click(screen.getByTestId('nav-filing'));
+
+    const items = screen.getAllByRole('menuitem');
+    expect(items.map((i) => i.textContent)).toEqual(['Done  ✔', 'Archive']);
   });
 
-  it('calls onSetViewMode("summary") when Summary is clicked', () => {
-    const onSetViewMode = vi.fn();
-    render(<DashboardBottomNav {...defaults} onSetViewMode={onSetViewMode} />);
+  it('navigates to the archive and closes the menu when Archive is tapped', () => {
+    navigate.mockClear();
+    render(<DashboardBottomNav />);
 
-    fireEvent.click(screen.getByText('Summary'));
-    expect(onSetViewMode).toHaveBeenCalledWith('summary');
+    fireEvent.click(screen.getByTestId('nav-filing'));
+    fireEvent.click(screen.getByText('Archive'));
+
+    expect(navigate).toHaveBeenCalledWith('/archive');
+    expect(screen.queryByRole('menu')).toBeNull();
   });
 
-  it('calls onToggleFocusMode when Focus is clicked', () => {
-    const onToggleFocusMode = vi.fn();
-    render(<DashboardBottomNav {...defaults} onToggleFocusMode={onToggleFocusMode} />);
+  it('navigates to the bin', () => {
+    navigate.mockClear();
+    render(<DashboardBottomNav />);
 
-    fireEvent.click(screen.getByText('Focus'));
-    expect(onToggleFocusMode).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByTestId('nav-bin'));
+
+    expect(navigate).toHaveBeenCalledWith('/bin');
   });
 });

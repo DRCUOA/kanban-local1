@@ -1,11 +1,11 @@
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { AppLogo } from '@/components/AppLogo';
 import { cn } from '@/lib/utils';
+import { MoreActionsMenu, type MoreActionsMenuProps } from './MoreActionsMenu';
 
-export interface DashboardHeaderProps {
+export interface DashboardHeaderProps extends MoreActionsMenuProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onClearSearch: () => void;
@@ -13,13 +13,14 @@ export interface DashboardHeaderProps {
 
 /**
  * App header with an always-visible search field. On wide viewports the field
- * sits in the title row, right-aligned beside the theme toggle, so it costs no
+ * sits in the title row, right-aligned beside the More menu, so it costs no
  * vertical space; on narrow viewports it wraps to a full-width second row.
  */
 export function DashboardHeader({
   searchQuery,
   onSearchChange,
   onClearSearch,
+  ...moreActions
 }: DashboardHeaderProps) {
   const hasQuery = searchQuery.length > 0;
 
@@ -86,8 +87,10 @@ export function DashboardHeader({
           )}
         </div>
 
+        {/* The theme toggle moved inside More along with the view toggles the
+            bottom bar gave up, so the header keeps a single overflow control. */}
         <div className="order-2 ml-auto flex items-center gap-2 lg:order-3 lg:ml-0">
-          <ThemeToggle />
+          <MoreActionsMenu {...moreActions} />
         </div>
       </div>
     </header>

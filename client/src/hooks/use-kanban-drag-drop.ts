@@ -15,9 +15,19 @@ import {
   pointerWithin,
   rectIntersection,
 } from '@dnd-kit/core';
-import { useUpdateTask, useArchiveTask } from '@/hooks/use-tasks';
+import { useUpdateTask, useArchiveTask, useBinTask } from '@/hooks/use-tasks';
 import { overflowAncestors, withClippedDroppableRects } from '@/lib/clip-droppable-rects';
 import { getStatusFromStageName } from '@shared/constants';
+import { BIN_DROPPABLE_ID, FILING_DROPPABLE_ID, isFilingId } from '@/lib/filing-targets';
+
+/** How long a drag must rest on the Filing button before its submenu appears. */
+export const FILING_HOVER_OPEN_MS = 350;
+/**
+ * Grace period before the submenu closes again. The rows sit above the button
+ * with a gap between them, so a drag crossing that gap briefly reports no
+ * filing target — closing instantly would make the menu flicker shut mid-travel.
+ */
+export const FILING_HOVER_CLOSE_MS = 260;
 
 /**
  * Shift-modified presses belong to the board's marquee selection, so these
@@ -52,9 +62,30 @@ export interface UseKanbanDragDropParams {
 export function useKanbanDragDrop({ tasks, sortedStages, allSubStages }: UseKanbanDragDropParams) {
   const updateTask = useUpdateTask();
   const archiveTask = useArchiveTask();
+  const binTask = useBinTask();
   const [activeId, setActiveId] = useState<number | null>(null);
   const [activeTasks, setActiveTasks] = useState(tasks);
-  const [isOverArchive, setIsOverArchive] = useState(false);
+  // Which nav droppable the pointer is over (`filing`, a `filing:` row, or
+  // `bin`), and whether Filing's submenu has been revealed by resting on it.
+  const [activeNavId, setActiveNavId] = useState<string | null>(null);
+  const [filingMenuOpen, setFilingMenuOpen] = useState(false);
+  const filingOpenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const filingCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearFilingTimers = () => {
+    if (filingOpenTimer.current) clearTimeout(filingOpenTimer.current);
+    if (filingCloseTimer.current) clearTimeout(filingCloseTimer.current);
+    filingOpenTimer.current = null;
+    filingCloseTimer.current = null;
+  };
+
+  const resetNavHover = () => {
+    clearFilingTimers();
+    setActiveNavId(null);
+    setFilingMenuOpen(false);
+  };
+
+  useEffect(() => clearFilingTimers, []);
 
   useEffect(() => {
     setActiveTasks(tasks);
@@ -72,32 +103,31 @@ export function useKanbanDragDrop({ tasks, sortedStages, allSubStages }: UseKanb
     return found;
   };
 
-  // Custom collision detection: prioritize archive zone using both pointer-within
-  // and rect-intersection checks, then pointerWithin for columns, then closestCenter.
-  // Using pointerWithin first for archive ensures detection when the pointer is
-  // directly over the zone, regardless of scroll position or dragged element size.
+  // Custom collision detection: the nav drop targets (Filing, its submenu rows,
+  // Bin) win outright, then pointerWithin for columns, then closestCenter. They
+  // float over the board, so without the override a column underneath could
+  // out-rank the row the pointer is actually on. Submenu rows out-rank the
+  // Filing button itself: resting on the button means "no action chosen yet".
   // Rects are clipped to their scroll containers first: a lane scrolled out of
-  // view inside a column must not shadow the done / archive strips beneath it.
+  // view inside a column must not shadow anything beneath it.
   const collisionDetection: CollisionDetection = (rawArgs) => {
     const args = withClippedDroppableRects(rawArgs, ancestorsOf);
     const { droppableContainers } = args;
-    const archiveContainers = droppableContainers.filter(
-      (c) => c.id === 'archive' || String(c.id) === 'archive',
-    );
-    if (archiveContainers.length > 0) {
-      const archivePointerCollisions = pointerWithin({
+    const navContainers = droppableContainers.filter((c) => {
+      const id = String(c.id);
+      return isFilingId(id) || id === BIN_DROPPABLE_ID;
+    });
+    if (navContainers.length > 0) {
+      const navPointerCollisions = pointerWithin({
         ...args,
-        droppableContainers: archiveContainers,
+        droppableContainers: navContainers,
       });
-      if (archivePointerCollisions.length > 0) {
-        return archivePointerCollisions;
-      }
-      const archiveRectCollisions = rectIntersection({
-        ...args,
-        droppableContainers: archiveContainers,
-      });
-      if (archiveRectCollisions.length > 0) {
-        return archiveRectCollisions;
+      if (navPointerCollisions.length > 0) {
+        return [...navPointerCollisions].sort(
+          (a, b) =>
+            (String(a.id) === FILING_DROPPABLE_ID ? 1 : 0) -
+            (String(b.id) === FILING_DROPPABLE_ID ? 1 : 0),
+        );
       }
     }
     // Sub-stage zones are nested inside stage columns, and task cards are
@@ -140,22 +170,96 @@ export function useKanbanDragDrop({ tasks, sortedStages, allSubStages }: UseKanb
 
   function handleDragStart(event: DragStartEvent) {
     overflowAncestorCache.current = new WeakMap();
+    resetNavHover();
     setActiveId(event.active.id as number);
     if ('vibrate' in navigator) navigator.vibrate(15);
   }
 
   function handleDragOver(event: DragOverEvent) {
     const { over } = event;
-    const isArchive =
-      over?.id === 'archive' ||
-      String(over?.id) === 'archive' ||
-      over?.data?.current?.type === 'archive';
-    setIsOverArchive(!!isArchive);
+    const overId = over ? String(over.id) : null;
+    const overFiling = isFilingId(overId);
+    const overNav = overFiling || overId === BIN_DROPPABLE_ID;
+    setActiveNavId(overNav ? overId : null);
+
+    if (overFiling) {
+      // Back in Filing's orbit: cancel any pending close, and start the reveal
+      // timer the first time the drag settles here.
+      if (filingCloseTimer.current) {
+        clearTimeout(filingCloseTimer.current);
+        filingCloseTimer.current = null;
+      }
+      if (!filingMenuOpen && !filingOpenTimer.current) {
+        filingOpenTimer.current = setTimeout(() => {
+          filingOpenTimer.current = null;
+          setFilingMenuOpen(true);
+        }, FILING_HOVER_OPEN_MS);
+      }
+      return;
+    }
+
+    if (filingOpenTimer.current) {
+      clearTimeout(filingOpenTimer.current);
+      filingOpenTimer.current = null;
+    }
+    if (filingMenuOpen && !filingCloseTimer.current) {
+      filingCloseTimer.current = setTimeout(() => {
+        filingCloseTimer.current = null;
+        setFilingMenuOpen(false);
+      }, FILING_HOVER_CLOSE_MS);
+    }
+  }
+
+  /** Optimistically drop `task` off the board, restoring it if the write fails. */
+  function removeFromBoard(task: Task, mutate: (id: number, onError: () => void) => void) {
+    if ('vibrate' in navigator) navigator.vibrate([10, 50, 10]);
+    setActiveTasks((prev) => prev.filter((t) => t.id !== task.id));
+    mutate(task.id, () => {
+      setActiveTasks((prev) => [...prev, task]);
+    });
+  }
+
+  /**
+   * Move `task` into `stageId`, applying the same status and sub-stage tag
+   * rules a drop on the stage's own column would. Used by the Filing submenu,
+   * which files to a stage without that column being on the board any more.
+   */
+  function moveTaskToStage(task: Task, stageId: number) {
+    const targetStage = sortedStages.find((s) => s.id === stageId);
+    if (!targetStage || task.stageId === stageId) return;
+
+    const newStatus = getStatusFromStageName(targetStage.name);
+    const targetSubStages = allSubStages.filter((ss) => ss.stageId === stageId);
+    const targetTags = targetSubStages.map((ss) => ss.tag);
+    const otherTags = allSubStages.filter((ss) => ss.stageId !== stageId).map((ss) => ss.tag);
+    const newTags = (task.tags || []).filter(
+      (tag) => !otherTags.includes(tag) || targetTags.includes(tag),
+    );
+
+    setActiveTasks((prev) =>
+      prev.map((t) =>
+        t.id === task.id
+          ? { ...t, stageId, status: newStatus, tags: newTags.length > 0 ? newTags : null }
+          : t,
+      ),
+    );
+    updateTask.mutate({
+      id: task.id,
+      stageId,
+      status: newStatus,
+      tags: newTags.length > 0 ? newTags : null,
+    });
+  }
+
+  function handleDragCancel() {
+    resetNavHover();
+    setActiveId(null);
   }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
-    setIsOverArchive(false);
+    const wasFilingMenuOpen = filingMenuOpen;
+    resetNavHover();
 
     if (!over) {
       setActiveId(null);
@@ -163,19 +267,40 @@ export function useKanbanDragDrop({ tasks, sortedStages, allSubStages }: UseKanb
     }
 
     const activeTask = activeTasks.find((t) => t.id === active.id);
+    const overDroppableId = String(over.id);
 
-    const isArchive =
-      over.id === 'archive' ||
-      String(over.id) === 'archive' ||
-      over.data?.current?.type === 'archive';
-    if (isArchive && activeTask) {
-      if ('vibrate' in navigator) navigator.vibrate([10, 50, 10]);
-      setActiveTasks((prev) => prev.filter((t) => t.id !== activeTask.id));
-      archiveTask.mutate(activeTask.id, {
-        onError: () => {
-          setActiveTasks((prev) => [...prev, activeTask]);
-        },
+    if (overDroppableId === BIN_DROPPABLE_ID && activeTask) {
+      removeFromBoard(activeTask, (id, onError) => {
+        binTask.mutate(id, { onError });
       });
+      setActiveId(null);
+      return;
+    }
+
+    // A submenu row: this is the focused action, so apply it.
+    if (over.data?.current?.type === 'filing-target' && activeTask) {
+      const { action, stageId } = over.data.current as {
+        action: 'stage' | 'archive';
+        stageId: number | null;
+      };
+      if (action === 'archive') {
+        removeFromBoard(activeTask, (id, onError) => {
+          archiveTask.mutate(id, { onError });
+        });
+      } else if (stageId !== null) {
+        moveTaskToStage(activeTask, stageId);
+      }
+      setActiveId(null);
+      return;
+    }
+
+    // Let go on the Filing button itself with no row focused — including before
+    // the submenu ever opened. Nothing is filed; the card returns to where the
+    // drag began.
+    if (
+      overDroppableId === FILING_DROPPABLE_ID ||
+      (wasFilingMenuOpen && isFilingId(overDroppableId))
+    ) {
       setActiveId(null);
       return;
     }
@@ -315,11 +440,13 @@ export function useKanbanDragDrop({ tasks, sortedStages, allSubStages }: UseKanb
   return {
     activeId,
     activeTasks,
-    isOverArchive,
+    activeNavId,
+    filingMenuOpen,
     sensors,
     collisionDetection,
     handleDragStart,
     handleDragOver,
     handleDragEnd,
+    handleDragCancel,
   };
 }

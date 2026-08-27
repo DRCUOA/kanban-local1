@@ -9,6 +9,7 @@ import type { ShareDialogSource } from './ShareDialog';
 vi.mock('@/hooks/use-tasks', () => ({
   useUpdateTask: () => ({ mutate: vi.fn() }),
   useArchiveTask: () => ({ mutate: vi.fn() }),
+  useBinTask: () => ({ mutate: vi.fn() }),
 }));
 
 vi.mock('@/hooks/use-stages', () => ({

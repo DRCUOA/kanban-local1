@@ -147,6 +147,39 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     },
   );
 
+  app.get(api.tasks.deleted.path, async (_req: Request, res: Response<Task[]>) => {
+    const deletedTasks = await storage.getDeletedTasks();
+    res.json(deletedTasks);
+  });
+
+  // Soft delete: the task leaves every board read but the row survives, so
+  // Restore is always possible. Only DELETE /api/tasks/:id destroys it.
+  app.post(
+    api.tasks.bin.path,
+    async (req: Request<IdParams>, res: Response<Task | ApiErrorResponse>) => {
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
+      const task = await storage.binTask(id);
+      if (!task) {
+        return res.status(404).json({ error: 'Task not found', status: 404 });
+      }
+      res.json(task);
+    },
+  );
+
+  app.post(
+    api.tasks.restore.path,
+    async (req: Request<IdParams>, res: Response<Task | ApiErrorResponse>) => {
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
+      const task = await storage.restoreTask(id);
+      if (!task) {
+        return res.status(404).json({ error: 'Task not found', status: 404 });
+      }
+      res.json(task);
+    },
+  );
+
   // Export endpoint — returns the whole board as a single JSON envelope.
   // Shape is defined once in shared/export.ts so the client download and this
   // route can never drift apart.

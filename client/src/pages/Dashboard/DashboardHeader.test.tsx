@@ -9,6 +9,17 @@ describe('DashboardHeader', () => {
     searchQuery: '',
     onSearchChange: vi.fn(),
     onClearSearch: vi.fn(),
+    viewMode: 'summary' as const,
+    focusMode: false,
+    boardLayout: 'vertical' as const,
+    onSetViewMode: vi.fn(),
+    onToggleFocusMode: vi.fn(),
+    onToggleBoardLayout: vi.fn(),
+    onArchive: vi.fn(),
+    onAdmin: vi.fn(),
+    onShareBoard: vi.fn(),
+    onExport: vi.fn(),
+    onImport: vi.fn(),
   };
 
   it('renders the app title area', () => {
@@ -21,8 +32,18 @@ describe('DashboardHeader', () => {
     const input = screen.getByTestId('input-search');
     expect(input).toBeDefined();
     expect(screen.getByRole('search').contains(input)).toBe(true);
-    // No search-toggle button any more: the only button is the theme toggle.
+    // No search-toggle button any more: the only button is the More menu.
     expect(screen.getAllByRole('button')).toHaveLength(1);
+  });
+
+  it('hosts the More menu, which the bottom bar handed over', () => {
+    render(<DashboardHeader {...defaults} />);
+    const more = screen.getByLabelText('More options');
+    expect(screen.getByRole('banner').contains(more)).toBe(true);
+
+    fireEvent.click(more);
+    expect(screen.getByText('Detail')).toBeDefined();
+    expect(screen.getByText('Admin')).toBeDefined();
   });
 
   it('calls onSearchChange when typing in the search input', () => {

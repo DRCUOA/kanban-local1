@@ -11,10 +11,12 @@ import {
 
 const updateMutate = vi.fn();
 const archiveMutate = vi.fn();
+const binMutate = vi.fn();
 
 vi.mock('@/hooks/use-tasks', () => ({
   useUpdateTask: () => ({ mutate: updateMutate }),
   useArchiveTask: () => ({ mutate: archiveMutate }),
+  useBinTask: () => ({ mutate: binMutate }),
 }));
 
 const makeTask = (overrides: Partial<Task> = {}): Task =>

@@ -8,6 +8,7 @@ import { KanbanBoard, HOVER_PREVIEW_DELAY_MS } from './KanbanBoard';
 vi.mock('@/hooks/use-tasks', () => ({
   useUpdateTask: () => ({ mutate: vi.fn() }),
   useArchiveTask: () => ({ mutate: vi.fn() }),
+  useBinTask: () => ({ mutate: vi.fn() }),
 }));
 
 vi.mock('@/hooks/use-stages', () => ({
@@ -78,13 +79,9 @@ function previewedId(): string | null {
   return screen.getByTestId('task-preview-pane').getAttribute('data-preview-task-id');
 }
 
-function isBefore(a: Element, b: Element): boolean {
-  return Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-}
-
-describe('KanbanBoard layout: done strip', () => {
+describe('KanbanBoard layout: done stage is off the board', () => {
   it.each(['vertical', 'horizontal'] as const)(
-    'in the %s layout the done stage is a strip between the columns and the archive zone',
+    'in the %s layout the done stage and archive strip are gone, filed behind the nav instead',
     (boardLayout) => {
       const { container } = render(
         <KanbanBoard tasks={tasks} onTaskClick={vi.fn()} boardLayout={boardLayout} />,
@@ -92,23 +89,18 @@ describe('KanbanBoard layout: done strip', () => {
       const stageArea = screen.getByTestId('kanban-stage-area');
       const columnRow = stageArea.firstElementChild;
       if (!columnRow) throw new Error('column row not rendered');
-      const strip = screen.getByTestId('stage-strip-3');
-      const archive = screen.getByText('Drag here to archive');
 
-      // Done tasks live in the strip, not in the column row.
-      expect(strip.contains(getCard(container, 3))).toBe(true);
-      expect(strip.contains(getCard(container, 4))).toBe(true);
-      expect(columnRow.contains(getCard(container, 3))).toBe(false);
+      // Neither the done strip nor the archive band is rendered any more...
+      expect(screen.queryByTestId('stage-strip-3')).toBeNull();
+      expect(screen.queryByText('Drag here to archive')).toBeNull();
+      // ...and no done card leaks into the column row.
+      expect(container.querySelector('[data-task-id="3"]')).toBeNull();
+      expect(container.querySelector('[data-task-id="4"]')).toBeNull();
+
+      // The working columns keep the space the band used to take.
       expect(columnRow.contains(getCard(container, 1))).toBe(true);
       expect(columnRow.contains(getCard(container, 2))).toBe(true);
-
-      // Order: column row → done strip → archive strip.
-      expect(isBefore(columnRow, strip)).toBe(true);
-      expect(isBefore(strip, archive)).toBe(true);
-
-      // The strip keeps the stage's header and count.
-      expect(strip.textContent).toContain('Done  ✔');
-      expect(strip.textContent).toContain('2');
+      expect(stageArea.textContent).not.toContain('Done  ✔');
     },
   );
 
@@ -157,20 +149,18 @@ describe('KanbanBoard layout: preview pane (horizontal)', () => {
     const stageArea = screen.getByTestId('kanban-stage-area');
     const pane = screen.getByTestId('task-preview-pane');
 
-    // Beside the whole stage area (columns + done strip + archive strip), not
-    // inside the column row, so it runs the full board height. Its slot is a
-    // `display: contents` wrapper that hides the pane below the xl breakpoint.
+    // Beside the whole stage area, not inside the column row, so it runs the
+    // full board height. Its slot is a `display: contents` wrapper that hides
+    // the pane below the xl breakpoint.
     const slot = screen.getByTestId('task-preview-slot');
     expect(board.lastElementChild).toBe(slot);
     expect(slot.lastElementChild).toBe(pane);
     expect(slot.className).toContain('xl:contents');
     expect(stageArea.contains(pane)).toBe(false);
-    expect(stageArea.contains(screen.getByTestId('stage-strip-3'))).toBe(true);
-    expect(stageArea.contains(screen.getByText('Drag here to archive'))).toBe(true);
     expect(screen.getByTestId('task-preview-empty')).toBeDefined();
     expect(previewedId()).toBeNull();
 
-    // Two resizers: To Do|Doing and Doing|preview — none for the done strip.
+    // Two resizers: To Do|Doing and Doing|preview.
     const resizers = screen.getAllByRole('separator');
     expect(resizers).toHaveLength(2);
     expect(screen.getByLabelText('Resize Doing and the preview pane')).toBeDefined();
@@ -229,11 +219,11 @@ describe('KanbanBoard layout: preview pane (horizontal)', () => {
     expect(previewedId()).toBeNull();
   });
 
-  it('previews a pressed card immediately, including a done-strip card', () => {
+  it('previews a pressed card immediately, with no hover delay', () => {
     const { container } = renderHorizontal();
-    pointerDown(getCard(container, 3));
-    expect(previewedId()).toBe('3');
-    expect(screen.getByTestId('task-preview-stage').textContent).toBe('Done');
+    pointerDown(getCard(container, 2));
+    expect(previewedId()).toBe('2');
+    expect(screen.getByTestId('task-preview-stage').textContent).toBe('Doing');
   });
 
   it('previews a card that receives keyboard focus', () => {
@@ -306,7 +296,7 @@ describe('KanbanBoard search reveal', () => {
   });
 
   it('scrolls the first match into view once per query and result, in either layout', () => {
-    const matches = [makeTask(2, 2), makeTask(3, 3)];
+    const matches = [makeTask(2, 2), makeTask(3, 2)];
     const { rerender } = render(
       <KanbanBoard tasks={matches} onTaskClick={vi.fn()} boardLayout="vertical" searchQuery="" />,
     );
@@ -337,7 +327,7 @@ describe('KanbanBoard search reveal', () => {
     // Narrower query, different first match: scrolls again.
     rerender(
       <KanbanBoard
-        tasks={[makeTask(3, 3)]}
+        tasks={[makeTask(3, 2)]}
         onTaskClick={vi.fn()}
         boardLayout="vertical"
         searchQuery="task 3"
@@ -350,7 +340,7 @@ describe('KanbanBoard search reveal', () => {
   it('in the horizontal layout the match is also previewed', () => {
     render(
       <KanbanBoard
-        tasks={[makeTask(4, 3, 'Pay the power bill')]}
+        tasks={[makeTask(4, 2, 'Pay the power bill')]}
         onTaskClick={vi.fn()}
         boardLayout="horizontal"
         searchQuery="#4"

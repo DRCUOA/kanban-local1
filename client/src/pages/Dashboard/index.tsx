@@ -12,6 +12,7 @@ import { type Task } from '@shared/schema';
 import { ROUTES } from '@shared/constants';
 import { Loader2 } from 'lucide-react';
 import { useStages } from '@/hooks/use-stages';
+import { NavDropSlotsProvider } from '@/components/nav-drop-slots';
 import { DashboardHeader } from './DashboardHeader';
 import { DashboardContent } from './DashboardContent';
 import { DashboardBottomNav } from './DashboardBottomNav';
@@ -95,77 +96,84 @@ export default function Dashboard(_props: DashboardProps) {
     );
   }
 
+  const moreActions = {
+    viewMode,
+    focusMode,
+    boardLayout,
+    onSetViewMode: setViewMode,
+    onToggleFocusMode: () => {
+      setFocusMode(!focusMode);
+    },
+    onToggleBoardLayout: toggleBoardLayout,
+    onArchive: () => (window.location.href = ROUTES.ARCHIVE),
+    onAdmin: () => (window.location.href = ROUTES.ADMIN),
+    onShareBoard: () => {
+      setIsShareBoardOpen(true);
+    },
+    onExport: handleExport,
+    onImport: handleImport,
+  };
+
   return (
     // App shell: pin to the viewport (dvh keeps mobile browser chrome honest)
     // so the board owns the space between header and bottom nav and scrolls
-    // inside <main> instead of pushing the archive strip under the nav.
-    <div className="h-dvh overflow-hidden bg-background flex flex-col pb-bottom-nav">
-      <DashboardHeader
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onClearSearch={() => {
-          setSearchQuery('');
-        }}
-      />
+    // inside <main> instead of running under the nav.
+    // NavDropSlotsProvider spans header→nav so the board can portal its Filing
+    // and Bin drop targets onto the nav buttons without leaving its DndContext.
+    <NavDropSlotsProvider>
+      <div className="h-dvh overflow-hidden bg-background flex flex-col pb-bottom-nav">
+        <DashboardHeader
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onClearSearch={() => {
+            setSearchQuery('');
+          }}
+          {...moreActions}
+        />
 
-      {tasks && tasks.length > 0 && (
-        <div className="px-3 pt-2">
-          {/* Warnings ride in the chip row (right-aligned, wrapping under the
+        {tasks && tasks.length > 0 && (
+          <div className="px-3 pt-2">
+            {/* Warnings ride in the chip row (right-aligned, wrapping under the
               chips when narrow) instead of stacking as banners above the board. */}
-          <StageHeaders tasks={tasks}>
-            <TaskWarnings tasks={tasks} />
-          </StageHeaders>
-        </div>
-      )}
+            <StageHeaders tasks={tasks}>
+              <TaskWarnings tasks={tasks} />
+            </StageHeaders>
+          </div>
+        )}
 
-      <DashboardContent
-        filteredTasks={filteredTasks}
-        focusMode={focusMode}
-        viewMode={viewMode}
-        boardLayout={boardLayout}
-        searchQuery={searchQuery}
-        onTaskClick={handleTaskClick}
-      />
+        <DashboardContent
+          filteredTasks={filteredTasks}
+          focusMode={focusMode}
+          viewMode={viewMode}
+          boardLayout={boardLayout}
+          searchQuery={searchQuery}
+          onTaskClick={handleTaskClick}
+        />
 
-      <DashboardBottomNav
-        viewMode={viewMode}
-        focusMode={focusMode}
-        boardLayout={boardLayout}
-        onSetViewMode={setViewMode}
-        onToggleFocusMode={() => {
-          setFocusMode(!focusMode);
-        }}
-        onToggleBoardLayout={toggleBoardLayout}
-        onArchive={() => (window.location.href = ROUTES.ARCHIVE)}
-        onAdmin={() => (window.location.href = ROUTES.ADMIN)}
-        onShareBoard={() => {
-          setIsShareBoardOpen(true);
-        }}
-        onExport={handleExport}
-        onImport={handleImport}
-      />
+        <DashboardBottomNav />
 
-      <ShareDialog
-        source={{ type: 'board', tasks, stages }}
-        open={isShareBoardOpen}
-        onOpenChange={setIsShareBoardOpen}
-      />
+        <ShareDialog
+          source={{ type: 'board', tasks, stages }}
+          open={isShareBoardOpen}
+          onOpenChange={setIsShareBoardOpen}
+        />
 
-      <EditTaskDialog
-        task={selectedTask}
-        open={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
-        onViewHistory={() => {
-          setIsEditDialogOpen(false);
-          setIsHistoryModalOpen(true);
-        }}
-      />
+        <EditTaskDialog
+          task={selectedTask}
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          onViewHistory={() => {
+            setIsEditDialogOpen(false);
+            setIsHistoryModalOpen(true);
+          }}
+        />
 
-      <TaskHistoryModal
-        task={selectedTask}
-        open={isHistoryModalOpen}
-        onOpenChange={setIsHistoryModalOpen}
-      />
-    </div>
+        <TaskHistoryModal
+          task={selectedTask}
+          open={isHistoryModalOpen}
+          onOpenChange={setIsHistoryModalOpen}
+        />
+      </div>
+    </NavDropSlotsProvider>
   );
 }
