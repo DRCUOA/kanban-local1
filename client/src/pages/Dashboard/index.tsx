@@ -8,6 +8,7 @@ import { StageHeaders } from '@/components/StageHeaders';
 import { TaskWarnings } from '@/components/TaskWarnings';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { useBoardLayout } from '@/hooks/use-board-layout';
+import { useProjectScope } from '@/hooks/use-project-scope';
 import { type Task } from '@shared/schema';
 import { ROUTES } from '@shared/constants';
 import { Loader2 } from 'lucide-react';
@@ -23,9 +24,12 @@ import { useTaskImportExport } from './use-task-import-export';
 export interface DashboardProps {}
 
 export default function Dashboard(_props: DashboardProps) {
-  const { data: tasks, isLoading, error } = useTasks();
+  // The board is scoped server-side to the selected project (header selector);
+  // stages, sub-stages and every control stay exactly as they are unscoped.
+  const { scope } = useProjectScope();
+  const { data: tasks, isLoading, error } = useTasks(scope);
   // Only used by the search-by-ID path, so a slow/failed fetch never blocks the board.
-  const { data: archivedTasks } = useArchivedTasks();
+  const { data: archivedTasks } = useArchivedTasks(scope);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);

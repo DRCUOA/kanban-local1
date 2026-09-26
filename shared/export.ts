@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Task, Stage, SubStage } from './schema';
+import type { Task, Stage, SubStage, Project } from './schema';
 import {
   annotateTasksWithUrgency,
   buildBriefing,
@@ -20,19 +20,14 @@ export const EXPORT_FORMAT_VERSION = 1;
 export const EXPORT_GENERATOR = 'kanban-local';
 
 /**
- * Message returned when a caller asks for a project-scoped export before the
- * project layer exists (see docs/epics/EPIC-01-project-layer.md).
- */
-export const PROJECT_SCOPE_UNSUPPORTED =
-  'Project-scoped export is not available yet: tasks have no project. Omit projectId to export everything.';
-
-/**
  * Self-contained export envelope. Deliberately an object rather than a bare
- * array so new sections (projects, boards, settings) can be added without
- * changing the top-level type.
+ * array so new sections (boards, settings) can be added without changing the
+ * top-level type.
  *
- * `projects` is reserved for the project layer and is always `[]` today;
- * `scope.projectIds` is `null` meaning "everything / no project dimension".
+ * `projects` always carries every project, even for a scoped export, so a
+ * file can resolve each task's `projectId`. `scope.projectIds` is `null` for
+ * an unscoped export and the list of project ids the tasks were filtered to
+ * otherwise.
  *
  * `tasks[].urgency` and `briefing` are derived, read-only views of the same
  * data — added for the daily-briefing agent, which cannot be trusted to do
@@ -45,7 +40,7 @@ export interface TaskExportBundle {
   exportedAt: string;
   scope: {
     includeArchived: boolean;
-    /** null = unscoped. Populated once tasks carry a project. */
+    /** null = unscoped; otherwise the project ids the tasks were filtered to. */
     projectIds: number[] | null;
   };
   counts: {
@@ -57,8 +52,8 @@ export interface TaskExportBundle {
   stages: Stage[];
   subStages: SubStage[];
   tasks: ExportTask[];
-  /** Reserved for the project layer; empty until projects exist. */
-  projects: unknown[];
+  /** Every project, so a scoped file still resolves each task's `projectId`. */
+  projects: Project[];
   /** Pre-bucketed briefing sections. Derived from `tasks`; never a new source. */
   briefing: BriefingDigest;
 }
@@ -80,10 +75,12 @@ export const taskExportBundleSchema = z.object({
   stages: z.array(z.custom<Stage>()),
   subStages: z.array(z.custom<SubStage>()),
   tasks: z.array(z.custom<Task>()),
-  projects: z.array(z.unknown()),
+  projects: z.array(z.custom<Project>()),
   // Optional so export files written before the briefing block still validate.
   briefing: briefingDigestSchema.optional(),
 });
+
+export const INVALID_EXPORT_PROJECT_ID = 'Invalid projectId: expected a numeric project id';
 
 /** Query params accepted by GET /api/export. */
 export const exportQuerySchema = z.object({
@@ -108,6 +105,16 @@ export const exportQuerySchema = z.object({
     .refine(isValidTimezone, { message: 'Invalid tz: expected an IANA zone like Pacific/Auckland' })
     .optional()
     .default(DEFAULT_TIMEZONE),
+  /**
+   * Scope the exported tasks to one project. The `projects` section is still
+   * complete, so the file remains self-contained.
+   */
+  projectId: z
+    .string()
+    .regex(/^\d+$/, INVALID_EXPORT_PROJECT_ID)
+    .transform(Number)
+    .pipe(z.number().int().positive(INVALID_EXPORT_PROJECT_ID))
+    .optional(),
 });
 export type ExportQuery = z.infer<typeof exportQuerySchema>;
 
@@ -136,7 +143,11 @@ export interface BuildExportBundleInput {
   tasks: Task[];
   stages: Stage[];
   subStages: SubStage[];
+  /** Every project on the board. Defaults to none (the in-memory fallback). */
+  projects?: Project[];
   includeArchived: boolean;
+  /** Project ids `tasks` were filtered to; omit (or null) for an unscoped export. */
+  projectIds?: number[] | null;
   exportedAt: string;
   /** IANA zone the due-date buckets are cut in. Defaults to `DEFAULT_TIMEZONE`. */
   timezone?: string;
@@ -150,12 +161,12 @@ export function buildExportBundle({
   tasks,
   stages,
   subStages,
+  projects = [],
   includeArchived,
+  projectIds = null,
   exportedAt,
   timezone,
 }: BuildExportBundleInput): TaskExportBundle {
-  const projects: unknown[] = [];
-
   // `exportedAt` is the single reference instant: the per-task urgency and the
   // briefing buckets are cut against it, so the envelope can never disagree
   // with itself about what "overdue" meant at export time.
@@ -169,7 +180,7 @@ export function buildExportBundle({
     exportedAt,
     scope: {
       includeArchived,
-      projectIds: null,
+      projectIds,
     },
     counts: {
       tasks: tasks.length,

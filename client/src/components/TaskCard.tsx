@@ -5,6 +5,7 @@ import { getTaskWarningHighlight } from '@shared/task-warning-highlight';
 import { formatDueDayLabel, isDueTodayOn, isTaskOverdueOn } from '@shared/briefing';
 import { TASK_WARNING_BORDER_COLOR } from '@/lib/task-warning-border';
 import { useStages } from '@/hooks/use-stages';
+import { useProjectScope } from '@/hooks/use-project-scope';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { GripVertical, Clock, AlertCircle, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { InlineTaskEditor } from './InlineTaskEditor';
+import { ProjectChip } from './ProjectChip';
 import { RichTextContent } from './RichTextContent';
 import { useTaskSelection } from './task-selection-context';
 
@@ -24,6 +26,9 @@ interface TaskCardProps {
 
 export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardProps) {
   const { data: stages = [] } = useStages();
+  // The chip only shows under "All projects"; a scoped header already says it.
+  const { showProjectOnCards, projectById } = useProjectScope();
+  const project = showProjectOnCards ? projectById(task.projectId) : null;
   const { selectedTaskIds, onTaskContextMenu } = useTaskSelection();
   const isSelected = selectedTaskIds.has(task.id);
   const warningHighlight = getTaskWarningHighlight(task, stages);
@@ -134,8 +139,9 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
             </div>
           )}
 
-          {/* Priority, Effort, Owner - compact row */}
+          {/* Project, Priority, Effort, Owner - compact row */}
           <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+            {project && <ProjectChip project={project} testId="task-card-project" />}
             {task.priority && task.priority !== TASK_PRIORITY.NORMAL && (
               <Badge
                 variant="outline"

@@ -2,7 +2,7 @@
 import type { Express, Request, Response } from 'express';
 import type { Server } from 'http';
 import { storage } from './storage';
-import { asyncHandler } from './errors';
+import { AppError, asyncHandler } from './errors';
 import { parseIdParam } from './utils';
 import { api } from '@shared/routes';
 
@@ -15,19 +15,47 @@ import type {
   InsertStage,
   SubStage,
   InsertSubStage,
+  Project,
+  ProjectSummary,
+  InsertProject,
   TaskHistoryEntry,
 } from '@shared/schema';
 import type { ApiErrorResponse, IdParams, StageIdParams } from '@shared/api-types';
 import {
   buildExportBundle,
   toBriefingExport,
-  PROJECT_SCOPE_UNSUPPORTED,
   type BriefingExport,
   type ExportQuery,
   type TaskExportBundle,
 } from '@shared/export';
+import { projectScopeToFilter } from '@shared/project-scope';
 import { logger } from '@shared/logger';
 import { registerGmailPubSubWebhook } from './webhooks/gmail-pubsub';
+
+/**
+ * Validates with a Zod schema inside an `asyncHandler` route: a failure becomes
+ * a 400 through `errorHandler` instead of the 500 a bare ZodError would be.
+ */
+function parseOrThrow<S extends z.ZodTypeAny>(schema: S, data: unknown): z.output<S> {
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    throw new AppError(400, result.error.errors[0]?.message ?? 'Validation error');
+  }
+  return result.data;
+}
+
+/**
+ * Two projects with the same name would make the header selector ambiguous,
+ * so a create or rename that collides (case-insensitively) is a 409.
+ */
+async function assertProjectNameFree(name: string, exceptId?: number): Promise<void> {
+  const wanted = name.trim().toLowerCase();
+  const existing = await storage.getProjects();
+  const clash = existing.find((p) => p.id !== exceptId && p.name.trim().toLowerCase() === wanted);
+  if (clash) {
+    throw new AppError(409, `A project named “${clash.name}” already exists`);
+  }
+}
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   registerGmailPubSubWebhook(app);
@@ -36,11 +64,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.status(200).json({ ok: true });
   });
 
-  // Task endpoints
-  app.get(api.tasks.list.path, async (_req: Request, res: Response<Task[]>) => {
-    const allTasks = await storage.getTasks();
-    res.json(allTasks);
-  });
+  // Task endpoints. `?projectId=<id>|none` scopes the list server-side — the
+  // board never fetches everything and hides the rest client-side.
+  app.get(
+    api.tasks.list.path,
+    asyncHandler(async (req: Request, res: Response<Task[] | ApiErrorResponse>) => {
+      const query = parseOrThrow(api.tasks.list.query, req.query);
+      const allTasks = await storage.getTasks(projectScopeToFilter(query.projectId));
+      res.json(allTasks);
+    }),
+  );
 
   // Distinct owners — registered before any /api/tasks/:id routes so the
   // literal "owners" segment never gets captured as an id.
@@ -116,10 +149,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     },
   );
 
-  app.get(api.tasks.archived.path, async (_req: Request, res: Response<Task[]>) => {
-    const archivedTasks = await storage.getArchivedTasks();
-    res.json(archivedTasks);
-  });
+  app.get(
+    api.tasks.archived.path,
+    asyncHandler(async (req: Request, res: Response<Task[] | ApiErrorResponse>) => {
+      const query = parseOrThrow(api.tasks.archived.query, req.query);
+      const archivedTasks = await storage.getArchivedTasks(projectScopeToFilter(query.projectId));
+      res.json(archivedTasks);
+    }),
+  );
 
   app.post(
     api.tasks.archive.path,
@@ -206,13 +243,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           Expires: '0',
         });
 
-        // The project layer does not exist yet, so a project-scoped request can
-        // only be answered with a lie. Fail loudly instead of silently returning
-        // everything. See docs/epics/EPIC-01-project-layer.md.
-        if (req.query.projectId !== undefined) {
-          return res.status(400).json({ error: PROJECT_SCOPE_UNSUPPORTED, status: 400 });
-        }
-
         let query: ExportQuery;
         try {
           query = api.export.get.query.parse(req.query);
@@ -226,18 +256,25 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           throw error;
         }
 
-        const [activeTasks, archivedTasks, allStages, allSubStages] = await Promise.all([
-          storage.getTasks(),
-          query.includeArchived ? storage.getArchivedTasks() : Promise.resolve([]),
-          storage.getStages(),
-          storage.getSubStages(),
-        ]);
+        // A scoped export filters the tasks only; projects are always listed in
+        // full so the file still resolves every task's projectId.
+        const taskFilter = query.projectId === undefined ? {} : { projectId: query.projectId };
+        const [activeTasks, archivedTasks, allStages, allSubStages, allProjects] =
+          await Promise.all([
+            storage.getTasks(taskFilter),
+            query.includeArchived ? storage.getArchivedTasks(taskFilter) : Promise.resolve([]),
+            storage.getStages(),
+            storage.getSubStages(),
+            storage.getProjects(),
+          ]);
 
         const bundle = buildExportBundle({
           tasks: [...activeTasks, ...archivedTasks],
           stages: allStages,
           subStages: allSubStages,
+          projects: allProjects,
           includeArchived: query.includeArchived,
+          projectIds: query.projectId === undefined ? null : [query.projectId],
           exportedAt: new Date().toISOString(),
           // Day boundaries are cut in the caller's zone, defaulting to New
           // Zealand — not the host's, which is UTC and a day behind all NZ
@@ -250,6 +287,64 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         res.json(query.view === 'briefing' ? toBriefingExport(bundle) : bundle);
       },
     ),
+  );
+
+  // Project endpoints. A project is a set of tasks related to a common goal;
+  // it scopes the board and never changes the stages.
+  app.get(
+    api.projects.list.path,
+    asyncHandler(async (_req: Request, res: Response<ProjectSummary[]>) => {
+      const [projectList, counts] = await Promise.all([
+        storage.getProjects(),
+        storage.getProjectTaskCounts(),
+      ]);
+      res.json(projectList.map((project) => ({ ...project, taskCount: counts[project.id] ?? 0 })));
+    }),
+  );
+
+  app.post(
+    api.projects.create.path,
+    asyncHandler(
+      async (
+        req: Request<Record<string, string>, Project | ApiErrorResponse, InsertProject>,
+        res: Response<Project | ApiErrorResponse>,
+      ) => {
+        const projectData = parseOrThrow(api.projects.create.input, req.body);
+        await assertProjectNameFree(projectData.name);
+        const project = await storage.createProject(projectData);
+        res.status(201).json(project);
+      },
+    ),
+  );
+
+  // `asyncHandler` takes the untyped Express request, so the id is read from
+  // `req.params` as a plain string and validated by `parseIdParam` as usual.
+  app.patch(
+    api.projects.update.path,
+    asyncHandler(async (req: Request, res: Response<Project | ApiErrorResponse>) => {
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
+      const updates: Partial<InsertProject> = parseOrThrow(api.projects.update.input, req.body);
+      if (updates.name !== undefined) await assertProjectNameFree(updates.name, id);
+      const updated = await storage.updateProject(id, updates);
+      if (!updated) {
+        throw new AppError(404, 'Project not found');
+      }
+      res.json(updated);
+    }),
+  );
+
+  app.delete(
+    api.projects.delete.path,
+    asyncHandler(async (req: Request, res: Response<ApiErrorResponse>) => {
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
+      const deleted = await storage.deleteProject(id);
+      if (!deleted) {
+        throw new AppError(404, 'Project not found');
+      }
+      res.status(204).send();
+    }),
   );
 
   // Stage endpoints

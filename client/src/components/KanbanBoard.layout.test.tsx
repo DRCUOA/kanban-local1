@@ -53,6 +53,7 @@ const makeTask = (id: number, stageId: number, title = `Task ${id}`): Task =>
     recurrence: 'none',
     history: null,
     owner: null,
+    projectId: null,
   }) as Task;
 
 const tasks = [makeTask(1, 1), makeTask(2, 2), makeTask(3, 3), makeTask(4, 3)];

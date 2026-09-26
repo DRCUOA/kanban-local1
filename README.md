@@ -102,11 +102,11 @@ All routes are defined declaratively in `shared/routes.ts` and registered in `se
 ### Tasks
 | Method | Path | Description |
 |---|---|---|
-| GET | `/api/tasks` | List active (non-archived) tasks |
+| GET | `/api/tasks` | List active (non-archived) tasks. `?projectId=<id>` scopes to one project, `?projectId=none` to tasks with no project |
 | POST | `/api/tasks` | Create task |
 | PATCH | `/api/tasks/:id` | Update task |
 | DELETE | `/api/tasks/:id` | Delete task |
-| GET | `/api/tasks/archived` | List archived tasks |
+| GET | `/api/tasks/archived` | List archived tasks. Accepts the same `?projectId=` scope |
 | POST | `/api/tasks/:id/archive` | Archive a task |
 | POST | `/api/tasks/:id/unarchive` | Unarchive a task |
 | GET | `/api/tasks/:id/history` | Get task status history |
@@ -128,10 +128,19 @@ All routes are defined declaratively in `shared/routes.ts` and registered in `se
 | PATCH | `/api/sub-stages/:id` | Update sub-stage |
 | DELETE | `/api/sub-stages/:id` | Delete sub-stage |
 
+### Projects
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/projects` | List all projects (active first), each with its live task count |
+| POST | `/api/projects` | Create project (`name`, optional `key`, `color`, `archived`, `order`); 409 on a duplicate name |
+| PATCH | `/api/projects/:id` | Update project (rename, recolour, archive) |
+| DELETE | `/api/projects/:id` | Delete project; its tasks stay, with no project |
+
 ### Export
 | Method | Path | Description |
 |---|---|---|
-| GET | `/api/export` | Self-contained JSON bundle: tasks, stages, sub-stages. Accepts `?includeArchived=true` |
+| GET | `/api/export` | Self-contained JSON bundle: tasks, stages, sub-stages, projects. Accepts `?includeArchived=true` |
+| GET | `/api/export?projectId=3` | Tasks scoped to one project (`scope.projectIds: [3]`); `projects` is still complete so the file resolves every `projectId` |
 | GET | `/api/export?view=briefing` | Digest only (~4 KB vs ~540 KB): the `briefing` object plus envelope metadata. For consumers whose fetch tools truncate large responses (LLM agents) |
 | GET | `/api/export?tz=Pacific/Auckland` | IANA zone the calendar day is cut in. Defaults to `Pacific/Auckland`; an unknown zone is a 400 |
 
@@ -153,6 +162,15 @@ Both are cut against `exportedAt` in `tz` (New Zealand by default, not the serve
 Four routes: Dashboard (`/`), Admin (`/admin`), Archive (`/archive`), and a 404 fallback. Dashboard and Admin are decomposed into co-located subcomponents (e.g. `DashboardHeader`, `StageSection`). 19 feature components in `components/`, 7 shared hooks in `hooks/`, and 3 API layer modules in `lib/`.
 
 See [COMPONENT_INDEX.md](COMPONENT_INDEX.md) for the full breakdown of every component, hook, utility, shared module, and server module with exports and responsibilities.
+
+### Projects
+
+A project is a set of tasks related to a common goal. Projects scope *which tasks the board shows*; they never change the stages, so one shared workflow serves every project (see [docs/epics/EPIC-01-project-layer.md](docs/epics/EPIC-01-project-layer.md)).
+
+- **Admin → Projects** creates, renames, recolours, archives and deletes projects. Deleting one releases its tasks (they stay on the board with no project).
+- As soon as one project exists a **project selector** appears in the board header: "All projects", each active project with its live task count, and "No project" for unassigned work. The choice is filtered server-side, applies to the board, Filing and Archive (not Admin), and is remembered per browser (`localStorage`) and mirrored into `?project=` so a scoped view can be shared by link. There are no accounts yet, so each person's scope is a preference their own browser keeps, not a permission boundary.
+- New tasks land in the project being viewed. The create and edit forms carry a **Project** field (hidden until a project exists).
+- Under "All projects", cards show a colour-dot **project chip** (the short key when the project has one); it disappears once the header already names the project.
 
 ### Voice dictation
 

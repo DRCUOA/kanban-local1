@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
-import type { Task, Stage, SubStage } from '@shared/schema';
+import type { Task, Stage, SubStage, Project } from '@shared/schema';
 
 // ---------------------------------------------------------------------------
 // Mock the storage module so route handlers use vi.fn() stubs instead of the
@@ -29,18 +29,19 @@ const mockStorage = vi.hoisted(() => ({
   createSubStage: vi.fn(),
   updateSubStage: vi.fn(),
   deleteSubStage: vi.fn(),
+  getProjects: vi.fn(),
+  getProjectById: vi.fn(),
+  createProject: vi.fn(),
+  updateProject: vi.fn(),
+  deleteProject: vi.fn(),
+  getProjectTaskCounts: vi.fn(),
 }));
 
 vi.mock('./storage', () => ({ storage: mockStorage }));
 
 import { createApp } from './app';
 import { api } from '@shared/routes';
-import {
-  EXPORT_FORMAT_VERSION,
-  EXPORT_GENERATOR,
-  PROJECT_SCOPE_UNSUPPORTED,
-  taskExportBundleSchema,
-} from '@shared/export';
+import { EXPORT_FORMAT_VERSION, EXPORT_GENERATOR, taskExportBundleSchema } from '@shared/export';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -67,6 +68,20 @@ function fakeTask(overrides: Partial<Task> = {}): Task {
     recurrence: 'none',
     history: [{ status: 'backlog', timestamp: NOW.toISOString() }],
     owner: null,
+    projectId: null,
+    ...overrides,
+  };
+}
+
+function fakeProject(overrides: Partial<Project> = {}): Project {
+  return {
+    id: 1,
+    name: 'Alpha',
+    key: 'ALP',
+    color: '#6366F1',
+    archived: false,
+    order: 0,
+    createdAt: NOW,
     ...overrides,
   };
 }
@@ -148,6 +163,40 @@ describe('Task routes', () => {
 
       expect(res.status).toBe(200);
       expect(res.body).toEqual([]);
+    });
+
+    it('asks storage for every task when no project scope is given', async () => {
+      mockStorage.getTasks.mockResolvedValue([]);
+
+      await request(app).get('/api/tasks');
+
+      expect(mockStorage.getTasks).toHaveBeenCalledWith({});
+    });
+
+    it('scopes the list to one project server-side via ?projectId=', async () => {
+      mockStorage.getTasks.mockResolvedValue([fakeTask({ projectId: 3 })]);
+
+      const res = await request(app).get('/api/tasks?projectId=3');
+
+      expect(res.status).toBe(200);
+      expect(mockStorage.getTasks).toHaveBeenCalledWith({ projectId: 3 });
+      expect(res.body[0].projectId).toBe(3);
+    });
+
+    it('scopes the list to unassigned tasks via ?projectId=none', async () => {
+      mockStorage.getTasks.mockResolvedValue([]);
+
+      await request(app).get('/api/tasks?projectId=none');
+
+      expect(mockStorage.getTasks).toHaveBeenCalledWith({ projectId: null });
+    });
+
+    it('returns 400 for a projectId that is neither an id nor "none"', async () => {
+      const res = await request(app).get('/api/tasks?projectId=alpha');
+
+      expect(res.status).toBe(400);
+      expect(res.body).toHaveProperty('status', 400);
+      expect(mockStorage.getTasks).not.toHaveBeenCalled();
     });
   });
 
@@ -263,6 +312,16 @@ describe('Task routes', () => {
 
       expect(res.status).toBe(200);
       expect(res.body).toEqual([]);
+    });
+
+    it('applies the same project scope as the live list', async () => {
+      mockStorage.getArchivedTasks.mockResolvedValue([]);
+
+      await request(app).get('/api/tasks/archived?projectId=2');
+      expect(mockStorage.getArchivedTasks).toHaveBeenCalledWith({ projectId: 2 });
+
+      const res = await request(app).get('/api/tasks/archived?projectId=nope');
+      expect(res.status).toBe(400);
     });
   });
 
@@ -390,6 +449,7 @@ describe('GET /api/export', () => {
     mockStorage.getArchivedTasks.mockResolvedValue([fakeTask({ id: 9, archived: true })]);
     mockStorage.getStages.mockResolvedValue([fakeStage()]);
     mockStorage.getSubStages.mockResolvedValue([fakeSubStage()]);
+    mockStorage.getProjects.mockResolvedValue([]);
   }
 
   it('returns 200 with a JSON object envelope, not a bare array', async () => {
@@ -562,22 +622,39 @@ describe('GET /api/export', () => {
     expect(res.body).toHaveProperty('status', 400);
   });
 
-  // Forward-compat guard: see docs/epics/EPIC-01-project-layer.md. Until tasks
-  // carry a project, a projectId filter must fail rather than quietly return
-  // the whole board.
-  it('returns 400 when asked for a project-scoped export', async () => {
+  it('scopes the tasks to one project via ?projectId= and says so in scope', async () => {
+    stubBoard();
+    mockStorage.getProjects.mockResolvedValue([fakeProject({ id: 1 }), fakeProject({ id: 2 })]);
+    mockStorage.getTasks.mockResolvedValue([fakeTask({ projectId: 1 })]);
+
+    const res = await request(app).get(`${api.export.get.path}?projectId=1&includeArchived=true`);
+
+    expect(res.status).toBe(200);
+    expect(mockStorage.getTasks).toHaveBeenCalledWith({ projectId: 1 });
+    expect(mockStorage.getArchivedTasks).toHaveBeenCalledWith({ projectId: 1 });
+    expect(res.body.scope.projectIds).toEqual([1]);
+    // Every project still ships, so a scoped file resolves any projectId.
+    expect(res.body.projects).toHaveLength(2);
+    expect(res.body.counts.projects).toBe(2);
+    expect(taskExportBundleSchema.safeParse(res.body).success).toBe(true);
+  });
+
+  it('returns 400 for a projectId that is not a numeric id', async () => {
     stubBoard();
 
-    const res = await request(app).get(`${api.export.get.path}?projectId=1`);
-
-    expect(res.status).toBe(400);
-    expect(res.body.error).toBe(PROJECT_SCOPE_UNSUPPORTED);
+    for (const value of ['none', 'alpha', '0']) {
+      const res = await request(app).get(`${api.export.get.path}?projectId=${value}`);
+      expect(res.status).toBe(400);
+      expect(res.body).toHaveProperty('status', 400);
+    }
+    expect(mockStorage.getTasks).not.toHaveBeenCalled();
   });
 
   it('returns a JSON 500 when a query fails, rather than hanging', async () => {
     mockStorage.getTasks.mockRejectedValue(new Error('relation "tasks" does not exist'));
     mockStorage.getStages.mockResolvedValue([]);
     mockStorage.getSubStages.mockResolvedValue([]);
+    mockStorage.getProjects.mockResolvedValue([]);
 
     const res = await request(app).get(api.export.get.path);
 
@@ -585,13 +662,184 @@ describe('GET /api/export', () => {
     expect(res.body).toHaveProperty('status', 500);
   });
 
-  it('reserves an empty projects section and an unscoped projectIds', async () => {
+  it('lists every project and leaves projectIds null for an unscoped export', async () => {
     stubBoard();
+    mockStorage.getProjects.mockResolvedValue([fakeProject()]);
 
     const res = await request(app).get(api.export.get.path);
 
-    expect(res.body.projects).toEqual([]);
+    expect(mockStorage.getTasks).toHaveBeenCalledWith({});
+    expect(res.body.projects).toHaveLength(1);
+    expect(res.body.projects[0].name).toBe('Alpha');
     expect(res.body.scope.projectIds).toBeNull();
+  });
+});
+
+// ===========================================================================
+// Project routes
+// ===========================================================================
+
+describe('Project routes', () => {
+  describe('GET /api/projects', () => {
+    it('returns every project with its live task count', async () => {
+      mockStorage.getProjects.mockResolvedValue([
+        fakeProject({ id: 1, name: 'Alpha' }),
+        fakeProject({ id: 2, name: 'Beta' }),
+      ]);
+      mockStorage.getProjectTaskCounts.mockResolvedValue({ 1: 4 });
+
+      const res = await request(app).get(api.projects.list.path);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveLength(2);
+      expect(res.body[0]).toMatchObject({ id: 1, name: 'Alpha', taskCount: 4 });
+      expect(res.body[1]).toMatchObject({ id: 2, name: 'Beta', taskCount: 0 });
+    });
+
+    it('returns an empty array when there are no projects', async () => {
+      mockStorage.getProjects.mockResolvedValue([]);
+      mockStorage.getProjectTaskCounts.mockResolvedValue({});
+
+      const res = await request(app).get(api.projects.list.path);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual([]);
+    });
+  });
+
+  describe('POST /api/projects', () => {
+    it('returns 201 with the created project', async () => {
+      mockStorage.getProjects.mockResolvedValue([]);
+      mockStorage.createProject.mockResolvedValue(fakeProject({ name: 'Alpha', key: 'ALP' }));
+
+      const res = await request(app)
+        .post(api.projects.list.path)
+        .send({ name: 'Alpha', key: 'alp', color: '#6366F1' });
+
+      expect(res.status).toBe(201);
+      expect(res.body.name).toBe('Alpha');
+      // The key is normalised to upper case before it reaches storage.
+      expect(mockStorage.createProject).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Alpha', key: 'ALP', color: '#6366F1' }),
+      );
+    });
+
+    it('returns 400 when the name is missing or blank', async () => {
+      mockStorage.getProjects.mockResolvedValue([]);
+
+      const missing = await request(app).post(api.projects.list.path).send({});
+      expect(missing.status).toBe(400);
+      expect(missing.body).toHaveProperty('status', 400);
+
+      const blank = await request(app).post(api.projects.list.path).send({ name: '   ' });
+      expect(blank.status).toBe(400);
+      expect(mockStorage.createProject).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 for a colour that is not a hex code', async () => {
+      mockStorage.getProjects.mockResolvedValue([]);
+
+      const res = await request(app)
+        .post(api.projects.list.path)
+        .send({ name: 'Alpha', color: 'blue' });
+
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 409 when a project with that name already exists, ignoring case', async () => {
+      mockStorage.getProjects.mockResolvedValue([fakeProject({ id: 7, name: 'Alpha' })]);
+
+      const res = await request(app).post(api.projects.list.path).send({ name: 'alpha ' });
+
+      expect(res.status).toBe(409);
+      expect(res.body).toHaveProperty('status', 409);
+      expect(mockStorage.createProject).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('PATCH /api/projects/:id', () => {
+    it('returns 200 with the updated project', async () => {
+      mockStorage.getProjects.mockResolvedValue([fakeProject({ id: 1, name: 'Alpha' })]);
+      mockStorage.updateProject.mockResolvedValue(fakeProject({ id: 1, name: 'Alpha 2' }));
+
+      const res = await request(app).patch('/api/projects/1').send({ name: 'Alpha 2' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.name).toBe('Alpha 2');
+      expect(mockStorage.updateProject).toHaveBeenCalledWith(1, { name: 'Alpha 2' });
+    });
+
+    it('lets a project keep its own name on a rename that only changes case', async () => {
+      mockStorage.getProjects.mockResolvedValue([fakeProject({ id: 1, name: 'alpha' })]);
+      mockStorage.updateProject.mockResolvedValue(fakeProject({ id: 1, name: 'Alpha' }));
+
+      const res = await request(app).patch('/api/projects/1').send({ name: 'Alpha' });
+
+      expect(res.status).toBe(200);
+    });
+
+    it('archives a project without touching its name', async () => {
+      mockStorage.updateProject.mockResolvedValue(fakeProject({ id: 1, archived: true }));
+
+      const res = await request(app).patch('/api/projects/1').send({ archived: true });
+
+      expect(res.status).toBe(200);
+      expect(res.body.archived).toBe(true);
+      expect(mockStorage.getProjects).not.toHaveBeenCalled();
+    });
+
+    it('returns 409 when renaming onto another project', async () => {
+      mockStorage.getProjects.mockResolvedValue([
+        fakeProject({ id: 1, name: 'Alpha' }),
+        fakeProject({ id: 2, name: 'Beta' }),
+      ]);
+
+      const res = await request(app).patch('/api/projects/1').send({ name: 'BETA' });
+
+      expect(res.status).toBe(409);
+      expect(mockStorage.updateProject).not.toHaveBeenCalled();
+    });
+
+    it('returns 404 when the project does not exist', async () => {
+      mockStorage.updateProject.mockResolvedValue(undefined);
+
+      const res = await request(app).patch('/api/projects/999').send({ color: '#EF4444' });
+
+      expect(res.status).toBe(404);
+      expect(res.body).toHaveProperty('error', 'Project not found');
+    });
+
+    it('returns 400 for a non-numeric ID', async () => {
+      const res = await request(app).patch('/api/projects/abc').send({ name: 'X' });
+
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe('DELETE /api/projects/:id', () => {
+    it('returns 204 on success', async () => {
+      mockStorage.deleteProject.mockResolvedValue(true);
+
+      const res = await request(app).delete('/api/projects/1');
+
+      expect(res.status).toBe(204);
+      expect(mockStorage.deleteProject).toHaveBeenCalledWith(1);
+    });
+
+    it('returns 404 when the project does not exist', async () => {
+      mockStorage.deleteProject.mockResolvedValue(false);
+
+      const res = await request(app).delete('/api/projects/999');
+
+      expect(res.status).toBe(404);
+      expect(res.body).toHaveProperty('error', 'Project not found');
+    });
+
+    it('returns 400 for a non-numeric ID', async () => {
+      const res = await request(app).delete('/api/projects/abc');
+
+      expect(res.status).toBe(400);
+    });
   });
 });
 

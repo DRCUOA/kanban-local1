@@ -28,7 +28,9 @@ export function AdminHeader({ onBack }: AdminHeaderProps) {
             <h1 className="text-lg font-bold tracking-tight text-foreground leading-tight">
               Admin
             </h1>
-            <p className="text-[10px] text-muted-foreground leading-tight">Manage Stages</p>
+            <p className="text-[10px] text-muted-foreground leading-tight">
+              Manage Projects &amp; Stages
+            </p>
           </div>
         </div>
         <ThemeToggle />

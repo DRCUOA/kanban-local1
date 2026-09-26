@@ -3,16 +3,20 @@ import {
   tasks,
   stages,
   subStages,
+  projects,
   inboundEmailProcessing,
   type Task,
   type Stage,
   type SubStage,
+  type Project,
   type InsertTask,
   type InsertStage,
   type InsertSubStage,
+  type InsertProject,
   type TaskHistoryEntry,
   type TaskStatus,
 } from '@shared/schema';
+import type { TaskProjectFilter } from '@shared/project-scope';
 import {
   TASK_STATUS,
   TASK_PRIORITY,
@@ -58,9 +62,21 @@ async function insertTaskWithExecutor(
   return task!;
 }
 
+/**
+ * Live-board task reads honour an optional project filter: `projectId` absent
+ * returns every task, `null` only unassigned tasks, a number only that
+ * project's. See `projectScopeToFilter` in shared/project-scope.ts.
+ */
+function projectCondition(filter: TaskProjectFilter | undefined) {
+  if (filter?.projectId === undefined) return undefined;
+  return filter.projectId === null
+    ? isNull(tasks.projectId)
+    : eq(tasks.projectId, filter.projectId);
+}
+
 export interface IStorage {
-  getTasks(): Promise<Task[]>;
-  getArchivedTasks(): Promise<Task[]>;
+  getTasks(filter?: TaskProjectFilter): Promise<Task[]>;
+  getArchivedTasks(filter?: TaskProjectFilter): Promise<Task[]>;
   getTasksByStage(stageId: number): Promise<Task[]>;
   getTaskById(id: number): Promise<Task | undefined>;
   createTask(task: InsertTask): Promise<Task>;
@@ -81,22 +97,31 @@ export interface IStorage {
   createSubStage(subStage: InsertSubStage): Promise<SubStage>;
   updateSubStage(id: number, subStage: Partial<InsertSubStage>): Promise<SubStage | undefined>;
   deleteSubStage(id: number): Promise<void>;
+  /** Every project, active ones first, then by order and name. */
+  getProjects(): Promise<Project[]>;
+  getProjectById(id: number): Promise<Project | undefined>;
+  createProject(project: InsertProject): Promise<Project>;
+  updateProject(id: number, project: Partial<InsertProject>): Promise<Project | undefined>;
+  /** Releases the project's tasks (projectId → null). False when no such project. */
+  deleteProject(id: number): Promise<boolean>;
+  /** Live (unarchived, unbinned) task count per project id; projects with none are absent. */
+  getProjectTaskCounts(): Promise<Record<number, number>>;
 }
 
 export class DatabaseStorage implements IStorage {
-  async getTasks(): Promise<Task[]> {
+  async getTasks(filter?: TaskProjectFilter): Promise<Task[]> {
     return await db
       .select()
       .from(tasks)
-      .where(and(eq(tasks.archived, false), isNull(tasks.deletedAt)))
+      .where(and(eq(tasks.archived, false), isNull(tasks.deletedAt), projectCondition(filter)))
       .orderBy(tasks.id);
   }
 
-  async getArchivedTasks(): Promise<Task[]> {
+  async getArchivedTasks(filter?: TaskProjectFilter): Promise<Task[]> {
     return await db
       .select()
       .from(tasks)
-      .where(and(eq(tasks.archived, true), isNull(tasks.deletedAt)))
+      .where(and(eq(tasks.archived, true), isNull(tasks.deletedAt), projectCondition(filter)))
       .orderBy(tasks.id);
   }
 
@@ -364,6 +389,72 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSubStage(id: number): Promise<void> {
     await db.delete(subStages).where(eq(subStages.id, id));
+  }
+
+  async getProjects(): Promise<Project[]> {
+    return await db
+      .select()
+      .from(projects)
+      .orderBy(projects.archived, projects.order, sql`lower(${projects.name})`);
+  }
+
+  async getProjectById(id: number): Promise<Project | undefined> {
+    const [project] = await db.select().from(projects).where(eq(projects.id, id));
+    return project;
+  }
+
+  async createProject(insertProject: InsertProject): Promise<Project> {
+    const [project] = await db
+      .insert(projects)
+      .values({
+        name: insertProject.name,
+        key: insertProject.key ?? null,
+        color: insertProject.color ?? null,
+        archived: insertProject.archived ?? false,
+        order: insertProject.order ?? 0,
+      })
+      .returning();
+    return project!;
+  }
+
+  async updateProject(id: number, updates: Partial<InsertProject>): Promise<Project | undefined> {
+    // Only the keys the caller sent; Drizzle refuses an empty SET, so a no-op
+    // patch just reads the row back.
+    const values: Partial<typeof projects.$inferInsert> = {};
+    if (updates.name !== undefined) values.name = updates.name;
+    if (updates.key !== undefined) values.key = updates.key;
+    if (updates.color !== undefined) values.color = updates.color;
+    if (updates.archived !== undefined) values.archived = updates.archived;
+    if (updates.order !== undefined) values.order = updates.order;
+    if (Object.keys(values).length === 0) return this.getProjectById(id);
+
+    const [updated] = await db.update(projects).set(values).where(eq(projects.id, id)).returning();
+    return updated;
+  }
+
+  async deleteProject(id: number): Promise<boolean> {
+    // The FK is ON DELETE SET NULL too; doing it here keeps the contract true
+    // whatever a given database's constraint says.
+    await db.update(tasks).set({ projectId: null }).where(eq(tasks.projectId, id));
+    const deleted = await db
+      .delete(projects)
+      .where(eq(projects.id, id))
+      .returning({ id: projects.id });
+    return deleted.length > 0;
+  }
+
+  async getProjectTaskCounts(): Promise<Record<number, number>> {
+    const rows = await db
+      .select({ projectId: tasks.projectId, count: sql<number>`count(*)`.mapWith(Number) })
+      .from(tasks)
+      .where(and(isNotNull(tasks.projectId), eq(tasks.archived, false), isNull(tasks.deletedAt)))
+      .groupBy(tasks.projectId);
+
+    const counts: Record<number, number> = {};
+    for (const row of rows) {
+      if (row.projectId != null) counts[row.projectId] = row.count;
+    }
+    return counts;
   }
 }
 

@@ -2,6 +2,7 @@ import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { AppLogo } from '@/components/AppLogo';
+import { ProjectSelector } from '@/components/ProjectSelector';
 import { cn } from '@/lib/utils';
 import { MoreActionsMenu, type MoreActionsMenuProps } from './MoreActionsMenu';
 
@@ -88,8 +89,10 @@ export function DashboardHeader({
         </div>
 
         {/* The theme toggle moved inside More along with the view toggles the
-            bottom bar gave up, so the header keeps a single overflow control. */}
+            bottom bar gave up, so the header keeps a single overflow control.
+            The project selector (hidden until a project exists) sits beside it. */}
         <div className="order-2 ml-auto flex items-center gap-2 lg:order-3 lg:ml-0">
+          <ProjectSelector />
           <MoreActionsMenu {...moreActions} />
         </div>
       </div>

@@ -8,6 +8,7 @@ import { fetchBoardBundle } from '@/lib/board-bundle';
 import { logger } from '@shared/logger';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateTask } from '@/hooks/use-tasks';
+import { useProjectScope } from '@/hooks/use-project-scope';
 
 export interface UseTaskImportExportOptions {
   tasks: Task[] | undefined;
@@ -17,6 +18,7 @@ export interface UseTaskImportExportOptions {
 export function useTaskImportExport({ tasks, stages }: UseTaskImportExportOptions) {
   const { toast } = useToast();
   const createTask = useCreateTask();
+  const { scope, projects } = useProjectScope();
 
   const downloadBundle = (bundle: TaskExportBundle) => {
     const dataBlob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
@@ -106,6 +108,15 @@ export function useTaskImportExport({ tasks, stages }: UseTaskImportExportOption
           let errorCount = 0;
           const errors: string[] = [];
 
+          // A task keeps its project when this board has it; otherwise it lands
+          // in the project being viewed, or in none under an unscoped view.
+          const knownProjectIds = new Set(projects.map((p) => p.id));
+          const fallbackProjectId = typeof scope === 'number' ? scope : null;
+          const resolveProjectId = (candidate: unknown): number | null =>
+            typeof candidate === 'number' && knownProjectIds.has(candidate)
+              ? candidate
+              : fallbackProjectId;
+
           // Imported records are unvalidated JSON; each field is defaulted below.
           for (const taskData of imported as any[]) {
             try {
@@ -113,6 +124,7 @@ export function useTaskImportExport({ tasks, stages }: UseTaskImportExportOption
                 title: taskData.title || 'Untitled Task',
                 description: taskData.description || '',
                 stageId: taskData.stageId || stagesData[0]!.id,
+                projectId: resolveProjectId(taskData.projectId),
                 status: taskData.status || TASK_STATUS.BACKLOG,
                 priority: taskData.priority || TASK_PRIORITY.NORMAL,
                 effort: taskData.effort || undefined,

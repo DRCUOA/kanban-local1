@@ -9,7 +9,7 @@ describe('AdminHeader', () => {
     render(<AdminHeader onBack={vi.fn()} />);
 
     expect(screen.getByText('Admin')).toBeDefined();
-    expect(screen.getByText('Manage Stages')).toBeDefined();
+    expect(screen.getByText('Manage Projects & Stages')).toBeDefined();
   });
 
   it('calls onBack when the back button is clicked', () => {

@@ -1,4 +1,4 @@
-import type { Task, Stage, SubStage, TaskHistoryEntry } from './schema';
+import type { Task, Stage, SubStage, Project, ProjectSummary, TaskHistoryEntry } from './schema';
 
 /** Standard error response shape returned by all API endpoints on failure */
 export interface ApiErrorResponse {
@@ -29,3 +29,7 @@ export type StageResponse = Stage;
 // --- SubStage endpoint response types ---
 export type SubStageListResponse = SubStage[];
 export type SubStageResponse = SubStage;
+
+// --- Project endpoint response types ---
+export type ProjectListResponse = ProjectSummary[];
+export type ProjectResponse = Project;

@@ -82,6 +82,14 @@ export const EFFORT_MAX = 5;
 // Free-form owner label, capped at this length at every layer (DB, API, UI).
 export const TASK_OWNER_MAX_LEN = 15;
 
+// --- Projects ---
+// A project is a set of tasks related to a common goal. It scopes which tasks
+// the board shows; it never changes the stages the board is made of.
+export const PROJECT_NAME_MAX_LEN = 60;
+// Optional short code shown on task chips where the full name would not fit.
+export const PROJECT_KEY_MAX_LEN = 6;
+export const DEFAULT_PROJECT_COLOR = '#6366F1';
+
 // --- Client Routes ---
 
 export const ROUTES = {

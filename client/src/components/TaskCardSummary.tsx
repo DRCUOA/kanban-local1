@@ -4,6 +4,7 @@ import { EFFORT_MAX } from '@shared/constants';
 import { getTaskWarningHighlight } from '@shared/task-warning-highlight';
 import { TASK_WARNING_BORDER_COLOR } from '@/lib/task-warning-border';
 import { useStages } from '@/hooks/use-stages';
+import { useProjectScope } from '@/hooks/use-project-scope';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
@@ -25,6 +26,8 @@ interface TaskCardSummaryProps {
  */
 export function TaskCardSummary({ task, onClick, stageColor }: TaskCardSummaryProps) {
   const { data: stages = [] } = useStages();
+  const { showProjectOnCards, projectById } = useProjectScope();
+  const project = showProjectOnCards ? projectById(task.projectId) : null;
   const { selectedTaskIds, onTaskContextMenu } = useTaskSelection();
   const isSelected = selectedTaskIds.has(task.id);
   const warningHighlight = getTaskWarningHighlight(task, stages);
@@ -164,6 +167,11 @@ export function TaskCardSummary({ task, onClick, stageColor }: TaskCardSummaryPr
       <HoverCardContent>
         <div className="space-y-2">
           <p className="text-base font-semibold leading-tight text-foreground">{task.title}</p>
+          {project && (
+            <p className="text-xs text-muted-foreground" data-testid="task-summary-project">
+              Project: <span className="font-medium text-foreground">{project.name}</span>
+            </p>
+          )}
           {task.owner && (
             <p className="text-xs text-muted-foreground" data-testid="task-summary-owner">
               Owner: <span className="font-medium text-foreground">{task.owner}</span>

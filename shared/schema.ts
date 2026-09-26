@@ -18,6 +18,8 @@ import {
   EFFORT_MIN,
   EFFORT_MAX,
   TASK_OWNER_MAX_LEN,
+  PROJECT_NAME_MAX_LEN,
+  PROJECT_KEY_MAX_LEN,
 } from './constants';
 
 export const stages = pgTable('stages', {
@@ -25,6 +27,24 @@ export const stages = pgTable('stages', {
   name: text('name').notNull(),
   order: integer('order').notNull(),
   color: text('color'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+/**
+ * A project is a set of tasks related to a common goal. Projects scope which
+ * tasks the board shows; stages and sub-stages stay global (filter, don't fork —
+ * see docs/epics/EPIC-01-project-layer.md). A task with no project is
+ * "unassigned" and shows under the "All projects" and "No project" scopes.
+ */
+export const projects = pgTable('projects', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  // Optional short code (e.g. "ALPHA") for chips where the name would not fit.
+  key: text('key'),
+  color: text('color'),
+  // Archived projects keep their tasks but leave the pickers.
+  archived: boolean('archived').notNull().default(false),
+  order: integer('order').notNull().default(0),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -82,6 +102,9 @@ export const tasks = pgTable('tasks', {
   stageId: integer('stage_id')
     .notNull()
     .references(() => stages.id),
+  // Null = no project. Deleting a project releases its tasks rather than
+  // taking them with it.
+  projectId: integer('project_id').references(() => projects.id, { onDelete: 'set null' }),
   archived: boolean('archived').notNull().default(false),
   // Enhanced fields
   status: text('status').default(TASK_STATUS.BACKLOG),
@@ -154,6 +177,10 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     fields: [tasks.stageId],
     references: [stages.id],
   }),
+  project: one(projects, {
+    fields: [tasks.projectId],
+    references: [projects.id],
+  }),
   parentTask: one(tasks, {
     fields: [tasks.parentTaskId],
     references: [tasks.id],
@@ -176,6 +203,10 @@ export const subStagesRelations = relations(subStages, ({ one }) => ({
   }),
 }));
 
+export const projectsRelations = relations(projects, ({ many }) => ({
+  tasks: many(tasks),
+}));
+
 export const insertStageSchema = createInsertSchema(stages)
   .omit({
     id: true,
@@ -187,6 +218,35 @@ export const insertStageSchema = createInsertSchema(stages)
       .regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/)
       .optional()
       .nullable(),
+  });
+
+const hexColorSchema = z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/);
+
+export const insertProjectSchema = createInsertSchema(projects)
+  .omit({
+    id: true,
+    createdAt: true,
+  })
+  .extend({
+    name: z
+      .string()
+      .trim()
+      .min(1, 'Project name is required')
+      .max(PROJECT_NAME_MAX_LEN, `Project name must be ${PROJECT_NAME_MAX_LEN} characters or less`),
+    key: z
+      .string()
+      .trim()
+      .max(PROJECT_KEY_MAX_LEN, `Project key must be ${PROJECT_KEY_MAX_LEN} characters or less`)
+      .optional()
+      .nullable()
+      .transform((v) => {
+        if (v == null) return v;
+        const upper = v.toUpperCase();
+        return upper.length === 0 ? null : upper;
+      }),
+    color: hexColorSchema.optional().nullable(),
+    archived: z.boolean().optional(),
+    order: z.number().int().optional(),
   });
 
 export const insertSubStageSchema = createInsertSchema(subStages)
@@ -214,6 +274,7 @@ export const insertTaskSchema = createInsertSchema(tasks)
     title: z.string().min(1),
     description: z.string().optional().nullable(),
     stageId: z.number(),
+    projectId: z.number().int().positive().optional().nullable(),
     archived: z.boolean().optional(),
     status: taskStatusEnum.optional(),
     priority: taskPriorityEnum.optional(),
@@ -247,6 +308,10 @@ export const insertTaskSchema = createInsertSchema(tasks)
 export type Stage = typeof stages.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
 export type SubStage = typeof subStages.$inferSelect;
+export type Project = typeof projects.$inferSelect;
+/** A project plus how many live (unarchived, unbinned) tasks it holds. */
+export type ProjectSummary = Project & { taskCount: number };
 export type InsertStage = z.infer<typeof insertStageSchema>;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type InsertSubStage = z.infer<typeof insertSubStageSchema>;
+export type InsertProject = z.infer<typeof insertProjectSchema>;
