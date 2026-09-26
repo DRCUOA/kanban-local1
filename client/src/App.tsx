@@ -4,6 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { ProjectScopeProvider } from '@/hooks/use-project-scope';
 import { ROUTES } from '@shared/constants';
 import Dashboard from '@/pages/Dashboard';
 import Admin from '@/pages/Admin';
@@ -31,7 +32,11 @@ function App() {
       <ErrorBoundary>
         <TooltipProvider>
           <Toaster />
-          <Router />
+          {/* Every page reads the project scope: the board and Filing/Archive
+              honour it, Admin manages the projects it points at. */}
+          <ProjectScopeProvider>
+            <Router />
+          </ProjectScopeProvider>
         </TooltipProvider>
       </ErrorBoundary>
     </QueryClientProvider>

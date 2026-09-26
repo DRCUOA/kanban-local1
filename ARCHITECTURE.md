@@ -32,7 +32,7 @@ kanban-local1 is a local-first Kanban board application built as a single-proces
                              │ pg
 ┌────────────────────────────┴────────────────────────────┐
 │  PostgreSQL                                             │
-│  Tables: stages, sub_stages, tasks                      │
+│  Tables: projects, stages, sub_stages, tasks            │
 │  Schema: shared/schema.ts (Drizzle)                     │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -61,7 +61,7 @@ kanban-local1/
 
 ## Shared Modules (`shared/`)
 
-Shared modules are the single source of truth for types, constants, API contracts, and logging. Both client and server import from here — nothing is redefined on either side. Six modules: `schema.ts` (Drizzle tables, Zod schemas, TS types), `routes.ts` (declarative API contracts), `constants.ts` (enums, labels, helpers), `api-types.ts` (error/response types), `export.ts` (export envelope + builder, used by `GET /api/export` and the client download), and `logger.ts` (log-level-gated logger — all application logging routes through this, no direct `console.log`).
+Shared modules are the single source of truth for types, constants, API contracts, and logging. Both client and server import from here — nothing is redefined on either side. Seven modules: `schema.ts` (Drizzle tables, Zod schemas, TS types), `routes.ts` (declarative API contracts), `constants.ts` (enums, labels, helpers), `api-types.ts` (error/response types), `export.ts` (export envelope + builder, used by `GET /api/export` and the client download), `project-scope.ts` (the `all` / `none` / `<id>` project-scope tokens the header, the URL and `?projectId=` all read and write), and `logger.ts` (log-level-gated logger — all application logging routes through this, no direct `console.log`).
 
 ### Export envelope
 
@@ -71,12 +71,12 @@ Shared modules are the single source of truth for types, constants, API contract
 |---|---|
 | `formatVersion` | Bump only on breaking envelope changes |
 | `generator`, `exportedAt` | Provenance |
-| `scope` | `{ includeArchived, projectIds }`; `projectIds` is `null` until tasks carry a project |
+| `scope` | `{ includeArchived, projectIds }`; `projectIds` is `null` for an unscoped export, otherwise the project ids the tasks were filtered to |
 | `counts` | `tasks`, `stages`, `subStages`, `projects` |
 | `stages`, `subStages`, `tasks` | Payload — makes the export self-contained |
-| `projects` | Reserved for the project layer, always `[]` today |
+| `projects` | Every project, even for a scoped export, so the file resolves each task's `projectId` |
 
-Query params: `includeArchived=true|false` (default `false`). `projectId` is rejected with 400 until the project layer exists, so a scoped request can never be silently answered with the whole board. Import accepts both this envelope and legacy bare-array files via `tasksFromExportPayload`.
+Query params: `includeArchived=true|false` (default `false`) and `projectId=<id>`, which scopes the exported tasks to one project; a non-numeric value is a 400. Import accepts both this envelope and legacy bare-array files via `tasksFromExportPayload`.
 
 See [COMPONENT_INDEX.md — Shared Modules](COMPONENT_INDEX.md#shared-modules-shared) for the full export listing.
 
@@ -92,9 +92,11 @@ App
 │   └── ErrorBoundary
 │       └── TooltipProvider
 │           ├── Toaster
-│           └── Router (wouter)
+│           └── ProjectScopeProvider (project scope: localStorage + ?project=)
+│             └── Router (wouter)
 │               ├── Dashboard (/)
 │               │   ├── DashboardHeader
+│               │   │   ├── ProjectSelector (hidden until a project exists)
 │               │   │   ├── FocusModeToggle
 │               │   │   └── MoreActionsMenu
 │               │   ├── DashboardContent
@@ -107,12 +109,13 @@ App
 │               │   │       │   └── ArchiveZone
 │               │   │       └── KanbanDragOverlay
 │               │   ├── DashboardBottomNav
-│               │   ├── CreateTaskDialog
+│               │   ├── CreateTaskDialog (ProjectSelect)
 │               │   └── EditTaskDialog
-│               │       ├── EditTaskFormFields
+│               │       ├── EditTaskFormFields (ProjectSelect)
 │               │       └── EditTaskDialogActions
 │               ├── Admin (/admin)
 │               │   ├── AdminHeader
+│               │   ├── ProjectSection
 │               │   ├── StageSection
 │               │   └── SubStageSection
 │               ├── Archive (/archive)
@@ -133,7 +136,7 @@ See [COMPONENT_INDEX.md — Server Modules](COMPONENT_INDEX.md#server-modules-se
 
 ### Request Lifecycle
 
-1. Client hook (e.g. `useTasks()`) calls `apiGet("/api/tasks")`.
+1. Client hook (e.g. `useTasks(scope)`) calls `apiGet("/api/tasks")`, with `?projectId=` appended when the board is scoped to a project.
 2. Express route handler in `server/routes.ts` receives the request.
 3. Route params are validated via `parseIdParam`. Request bodies are validated against Zod schemas from `shared/routes.ts`.
 4. `DatabaseStorage` method executes the Drizzle query against PostgreSQL.
@@ -196,7 +199,21 @@ interface ApiErrorResponse {
 
 ## Database Schema
 
-Three tables defined in `shared/schema.ts`:
+The board tables defined in `shared/schema.ts` (the Gmail pipeline adds `gmail_watch_cursor` and `inbound_email_processing`):
+
+### projects
+
+A project is a set of tasks related to a common goal. It scopes which tasks the board shows and never changes the stages (filter, don't fork — see `docs/epics/EPIC-01-project-layer.md`).
+
+| Column | Type | Notes |
+|---|---|---|
+| id | serial PK | |
+| name | text | Not null; unique case-insensitively at the API (409) |
+| key | text | Optional short code shown on chips, upper-cased |
+| color | text | Hex colour, nullable |
+| archived | boolean | Default false; archived projects keep their tasks but leave the pickers |
+| order | integer | Default 0 |
+| created_at | timestamp | Default now |
 
 ### stages
 
@@ -229,6 +246,7 @@ Three tables defined in `shared/schema.ts`:
 | title | text | Not null |
 | description | text | Nullable |
 | stage_id | integer FK → stages | |
+| project_id | integer FK → projects | Nullable — null is "no project". `ON DELETE SET NULL`; indexed with `stage_id` |
 | archived | boolean | Default false |
 | status | text | `backlog` / `in_progress` / `done` / `abandoned` |
 | priority | text | `low` / `normal` / `high` / `critical` |
@@ -266,6 +284,9 @@ kanban-local1/
 │       │   ├── EditTaskDialog.tsx
 │       │   ├── EditTaskDialogActions.tsx
 │       │   ├── EditTaskFormFields.tsx
+│       │   ├── ProjectChip.tsx
+│       │   ├── ProjectSelect.tsx
+│       │   ├── ProjectSelector.tsx
 │       │   ├── InlineTaskEditor.tsx
 │       │   ├── ArchiveZone.tsx
 │       │   ├── ColorPicker.tsx
@@ -278,6 +299,8 @@ kanban-local1/
 │       │   ├── use-stages.ts
 │       │   ├── use-tasks.ts
 │       │   ├── use-edit-task-form.ts
+│       │   ├── use-projects.ts
+│       │   ├── use-project-scope.tsx
 │       │   ├── use-kanban-drag-drop.ts
 │       │   ├── use-keyboard-shortcuts.ts
 │       │   ├── use-mobile.tsx
@@ -292,6 +315,7 @@ kanban-local1/
 │           ├── Admin/
 │           │   ├── index.tsx
 │           │   ├── AdminHeader.tsx
+│           │   ├── ProjectSection.tsx
 │           │   ├── StageSection.tsx
 │           │   └── SubStageSection.tsx
 │           └── Dashboard/
@@ -320,6 +344,7 @@ kanban-local1/
 │   ├── routes.ts                 # Declarative API route contracts
 │   ├── constants.ts              # Enums, labels, routes, colours
 │   ├── api-types.ts              # API response/error types
+│   ├── project-scope.ts          # Project scope tokens shared by header, URL and API
 │   └── logger.ts                 # Structured logger
 │
 ├── migrations/                   # Drizzle SQL migrations

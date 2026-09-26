@@ -3,12 +3,16 @@ import {
   insertTaskSchema,
   insertStageSchema,
   insertSubStageSchema,
+  insertProjectSchema,
   type Task,
   type Stage,
   type SubStage,
+  type Project,
+  type ProjectSummary,
   type TaskHistoryEntry,
 } from './schema';
 import { exportQuerySchema, taskExportBundleSchema } from './export';
+import { taskListQuerySchema } from './project-scope';
 
 export const api = {
   health: {
@@ -22,8 +26,11 @@ export const api = {
     list: {
       method: 'GET' as const,
       path: '/api/tasks',
+      /** `?projectId=<id>|none` scopes the list; absent returns every task. */
+      query: taskListQuerySchema,
       responses: {
         200: z.array(z.custom<Task>()),
+        400: z.object({ error: z.string(), status: z.number() }),
       },
     },
     create: {
@@ -55,8 +62,10 @@ export const api = {
     archived: {
       method: 'GET' as const,
       path: '/api/tasks/archived',
+      query: taskListQuerySchema,
       responses: {
         200: z.array(z.custom<Task>()),
+        400: z.object({ error: z.string(), status: z.number() }),
       },
     },
     archive: {
@@ -111,6 +120,45 @@ export const api = {
       path: '/api/tasks/owners',
       responses: {
         200: z.array(z.string()),
+      },
+    },
+  },
+  projects: {
+    /** Every project, archived ones last, each with its live task count. */
+    list: {
+      method: 'GET' as const,
+      path: '/api/projects',
+      responses: {
+        200: z.array(z.custom<ProjectSummary>()),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/projects',
+      input: insertProjectSchema,
+      responses: {
+        201: z.custom<Project>(),
+        400: z.object({ error: z.string(), status: z.number() }),
+        409: z.object({ error: z.string(), status: z.number() }),
+      },
+    },
+    update: {
+      method: 'PATCH' as const,
+      path: '/api/projects/:id',
+      input: insertProjectSchema.partial(),
+      responses: {
+        200: z.custom<Project>(),
+        404: z.object({ error: z.string(), status: z.number() }),
+        409: z.object({ error: z.string(), status: z.number() }),
+      },
+    },
+    /** Deleting a project releases its tasks (their `projectId` becomes null). */
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/projects/:id',
+      responses: {
+        204: z.void(),
+        404: z.object({ error: z.string(), status: z.number() }),
       },
     },
   },

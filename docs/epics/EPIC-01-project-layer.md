@@ -1,9 +1,19 @@
 # EPIC-01: Project scoping for tasks
 
 **Epic type:** Enabler + business feature
-**Status:** Ready for refinement
+**Status:** Implemented — 26 Sep 2026 (see [Implementation notes](#implementation-notes))
 **Owner:** Product
 **Target:** 2 sprints (≈21 pts)
+
+## Implementation notes
+
+Shipped on the product owner's request ahead of the B-01 audit ordering in `docs/BACKLOG.md`, with the working definition *a project is a set of tasks related to a common goal*. Decisions recorded against the open questions and stories:
+
+- **Open question 1 — `project_id` stays nullable.** Null is "no project". Every existing task is visible under "All projects" and "No project" with no backfill and no broken deploy window, deleting a project releases its tasks (`ON DELETE SET NULL`, also done explicitly in storage), and no seeded "General" project competes with real work streams (risk R1). The three-step expand/backfill/contract rollout was therefore not needed.
+- **Open question 2 — subtasks do not inherit a project.** Emailed-in child tasks are created without one, like their parent; re-pointing is a normal edit.
+- **Story 4 selector visibility.** With null meaning "no project", even a single project gives a real choice (All / that project / No project), so the selector shows as soon as one project exists rather than at two.
+- **Story 8 alias mapping** is not built: emailed-in tasks land unassigned (visible without filtering, as the first criterion asks). Mapping an inbound alias to a project needs configuration that does not exist yet and is left as the follow-up.
+- Scope tokens (`all` / `none` / `<id>`) live in `shared/project-scope.ts` and are read the same way by the header (`?project=`, `localStorage`) and the API (`?projectId=`).
 
 ## Epic hypothesis statement
 

@@ -4,7 +4,8 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { TaskCardSummary } from './TaskCardSummary';
 import { TaskSelectionContext } from './task-selection-context';
-import type { Task } from '@shared/schema';
+import { ProjectScopeContext, type ProjectScopeContextValue } from '@/hooks/use-project-scope';
+import type { ProjectSummary, Task } from '@shared/schema';
 
 vi.mock('@dnd-kit/sortable', () => ({
   useSortable: () => ({
@@ -52,6 +53,7 @@ const makeTask = (overrides: Partial<Task> = {}): Task => ({
   recurrence: 'none',
   history: null,
   owner: null,
+  projectId: null,
   ...overrides,
 });
 
@@ -80,6 +82,55 @@ describe('TaskCardSummary', () => {
 
     const hoverContent = screen.getByTestId('hover-content');
     expect(hoverContent.textContent).toContain('Summary task');
+  });
+
+  describe('project line in the hover card', () => {
+    const alpha: ProjectSummary = {
+      id: 7,
+      name: 'Alpha',
+      key: 'ALP',
+      color: '#6366F1',
+      archived: false,
+      order: 0,
+      createdAt: new Date(),
+      taskCount: 1,
+    };
+    const scopeValue = (scope: ProjectScopeContextValue['scope']): ProjectScopeContextValue => ({
+      scope,
+      setScope: vi.fn(),
+      projects: [alpha],
+      activeProjects: [alpha],
+      currentProject: scope === 7 ? alpha : null,
+      showProjectOnCards: scope === 'all',
+      projectById: (id) => (id === 7 ? alpha : null),
+    });
+
+    it('names the project under the All projects scope', () => {
+      render(
+        <ProjectScopeContext.Provider value={scopeValue('all')}>
+          <TaskCardSummary task={makeTask({ projectId: 7 })} onClick={vi.fn()} />
+        </ProjectScopeContext.Provider>,
+      );
+      expect(screen.getByTestId('task-summary-project').textContent).toContain('Alpha');
+    });
+
+    it('drops it when the board is already scoped to that project', () => {
+      render(
+        <ProjectScopeContext.Provider value={scopeValue(7)}>
+          <TaskCardSummary task={makeTask({ projectId: 7 })} onClick={vi.fn()} />
+        </ProjectScopeContext.Provider>,
+      );
+      expect(screen.queryByTestId('task-summary-project')).toBeNull();
+    });
+
+    it('shows nothing for a task with no project', () => {
+      render(
+        <ProjectScopeContext.Provider value={scopeValue('all')}>
+          <TaskCardSummary task={makeTask()} onClick={vi.fn()} />
+        </ProjectScopeContext.Provider>,
+      );
+      expect(screen.queryByTestId('task-summary-project')).toBeNull();
+    });
   });
 
   it('exposes its task id for marquee hit-testing', () => {

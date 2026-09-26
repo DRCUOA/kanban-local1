@@ -62,6 +62,7 @@ const makeTask = (id: number, stageId: number, dueOffsetDays: number): Task =>
     recurrence: 'none',
     history: null,
     owner: null,
+    projectId: null,
   }) as Task;
 
 /** Cards get deterministic client rects, stacked vertically 100px apart. */

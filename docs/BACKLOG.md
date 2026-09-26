@@ -74,10 +74,14 @@ tracks mutations), which shouldn't be added mid-model-flux; and it's a sibling o
 EPIC-04's awareness thesis — design them together so the board has one coherent
 "what's new/what's touched" language, not two competing ones.
 
-**B-08 — EPIC-01: Project scoping** · 2 sprints (~21 pts)
-After B-05, and shaped by B-01's owner-as-project recommendation — that answer
-either confirms EPIC-01 as written or collapses it into the owner namespace.
-Do not start EPIC-01 implementation before that decision is recorded.
+**B-08 — EPIC-01: Project scoping** · 2 sprints (~21 pts) · **Shipped 26 Sep 2026**
+Pulled forward on the product owner's request, ahead of B-01: a project is a set
+of tasks related to a common goal, kept as its own entity rather than collapsed
+into the owner namespace (a person works on several projects; a project has
+several people). `project_id` is nullable — null is "no project" — so nothing was
+backfilled and deleting a project releases its tasks. Decisions are recorded in the
+epic's *Implementation notes*. Still open from the epic: inbound-alias → project
+mapping (story 8), and any owner-namespace consequences B-01 surfaces.
 
 **B-09 — EPIC-04: Catch-up Replay — implementation planning, then build**
 Resumes when B-01 answers Q2 and B-05's state/timezone stories have landed.

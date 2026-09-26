@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Task, Stage, SubStage } from './schema';
+import type { Task, Stage, SubStage, Project } from './schema';
 import {
   buildExportBundle,
   exportFilename,
@@ -12,6 +12,7 @@ import {
 const task = { id: 1, title: 'A' } as unknown as Task;
 const stage = { id: 1, name: 'Backlog' } as unknown as Stage;
 const subStage = { id: 1, tag: 'day-plan-am' } as unknown as SubStage;
+const project = { id: 3, name: 'Alpha', key: 'ALP' } as unknown as Project;
 
 describe('buildExportBundle', () => {
   it('produces a valid envelope with counts derived from the payload', () => {
@@ -28,6 +29,23 @@ describe('buildExportBundle', () => {
     expect(bundle.counts).toEqual({ tasks: 1, stages: 1, subStages: 1, projects: 0 });
     expect(bundle.scope).toEqual({ includeArchived: true, projectIds: null });
     expect(bundle.projects).toEqual([]);
+  });
+
+  it('carries every project and names the project ids a scoped export was cut to', () => {
+    const bundle = buildExportBundle({
+      tasks: [{ ...task, projectId: 3 } as unknown as Task],
+      stages: [stage],
+      subStages: [subStage],
+      projects: [project],
+      includeArchived: false,
+      projectIds: [3],
+      exportedAt: '2026-08-11T09:00:00.000Z',
+    });
+
+    expect(taskExportBundleSchema.safeParse(bundle).success).toBe(true);
+    expect(bundle.projects).toEqual([project]);
+    expect(bundle.counts.projects).toBe(1);
+    expect(bundle.scope.projectIds).toEqual([3]);
   });
 
   it('annotates every task with urgency and attaches a briefing digest', () => {
@@ -141,6 +159,17 @@ describe('exportQuerySchema', () => {
     // Better a 400 than a silent fallback: a briefing cut in the wrong zone
     // looks correct and is a day out.
     expect(exportQuerySchema.safeParse({ tz: 'Middle/Earth' }).success).toBe(false);
+  });
+
+  it('reads projectId as a positive integer and leaves it undefined when absent', () => {
+    expect(exportQuerySchema.parse({}).projectId).toBeUndefined();
+    expect(exportQuerySchema.parse({ projectId: '12' }).projectId).toBe(12);
+  });
+
+  it('rejects a projectId that is not a numeric id', () => {
+    expect(exportQuerySchema.safeParse({ projectId: 'none' }).success).toBe(false);
+    expect(exportQuerySchema.safeParse({ projectId: '0' }).success).toBe(false);
+    expect(exportQuerySchema.safeParse({ projectId: 'alpha' }).success).toBe(false);
   });
 });
 

@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useProjectScope } from '@/hooks/use-project-scope';
+import { ProjectChip } from './ProjectChip';
 import { RichTextContent } from './RichTextContent';
 import { isRichTextEmpty } from '@/lib/rich-text';
 import { cn } from '@/lib/utils';
@@ -177,6 +179,9 @@ function PreviewBody({
 }) {
   const stage = stages.find((s) => s.id === task.stageId);
   const subStage = resolveSubStage(task, subStages);
+  // The full view always names the project; only the cards drop it when scoped.
+  const { projectById } = useProjectScope();
+  const project = projectById(task.projectId);
   const subStageTags = new Set(subStages.map((s) => s.tag));
   const tags = (Array.isArray(task.tags) ? task.tags : []).filter(
     (tag) => typeof tag === 'string' && tag.length > 0 && !subStageTags.has(tag),
@@ -242,6 +247,14 @@ function PreviewBody({
             <Badge variant="secondary" className="h-6 min-h-0 px-2 py-0 text-xs font-normal">
               Effort {task.effort}/{EFFORT_MAX}
             </Badge>
+          )}
+          {project && (
+            <ProjectChip
+              project={project}
+              full
+              className="h-6 max-w-[180px] px-2"
+              testId="task-preview-project"
+            />
           )}
           {task.owner && (
             <Badge

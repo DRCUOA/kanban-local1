@@ -5,12 +5,15 @@ import type {
   Task,
   Stage,
   SubStage,
+  Project,
   InsertTask,
   InsertStage,
   InsertSubStage,
+  InsertProject,
   TaskHistoryEntry,
   TaskStatus,
 } from '@shared/schema';
+import type { TaskProjectFilter } from '@shared/project-scope';
 import {
   TASK_STATUS,
   TASK_PRIORITY,
@@ -23,23 +26,30 @@ import {
 // Mirrors the semantics of DatabaseStorage without requiring a database.
 // ---------------------------------------------------------------------------
 
+function matchesProjectFilter(task: Task, filter: TaskProjectFilter | undefined): boolean {
+  if (filter?.projectId === undefined) return true;
+  return task.projectId === filter.projectId;
+}
+
 class MemStorage implements IStorage {
   private taskSeq = 0;
   private stageSeq = 0;
   private subStageSeq = 0;
+  private projectSeq = 0;
   private taskStore = new Map<number, Task>();
   private stageStore = new Map<number, Stage>();
   private subStageStore = new Map<number, SubStage>();
+  private projectStore = new Map<number, Project>();
 
-  async getTasks(): Promise<Task[]> {
+  async getTasks(filter?: TaskProjectFilter): Promise<Task[]> {
     return [...this.taskStore.values()]
-      .filter((t: Task) => !t.archived && t.deletedAt === null)
+      .filter((t: Task) => !t.archived && t.deletedAt === null && matchesProjectFilter(t, filter))
       .sort((a: Task, b: Task) => a.id - b.id);
   }
 
-  async getArchivedTasks(): Promise<Task[]> {
+  async getArchivedTasks(filter?: TaskProjectFilter): Promise<Task[]> {
     return [...this.taskStore.values()]
-      .filter((t: Task) => t.archived)
+      .filter((t: Task) => t.archived && matchesProjectFilter(t, filter))
       .sort((a: Task, b: Task) => a.id - b.id);
   }
 
@@ -73,6 +83,7 @@ class MemStorage implements IStorage {
       title: insert.title,
       description: insert.description ?? null,
       stageId: insert.stageId,
+      projectId: insert.projectId ?? null,
       archived: insert.archived ?? false,
       status: initialStatus,
       priority: insert.priority ?? TASK_PRIORITY.NORMAL,
@@ -262,6 +273,64 @@ class MemStorage implements IStorage {
   async deleteSubStage(id: number): Promise<void> {
     this.subStageStore.delete(id);
   }
+
+  async getProjects(): Promise<Project[]> {
+    return [...this.projectStore.values()].sort(
+      (a, b) =>
+        Number(a.archived) - Number(b.archived) ||
+        a.order - b.order ||
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
+    );
+  }
+
+  async getProjectById(id: number): Promise<Project | undefined> {
+    return this.projectStore.get(id);
+  }
+
+  async createProject(insert: InsertProject): Promise<Project> {
+    const project: Project = {
+      id: ++this.projectSeq,
+      name: insert.name,
+      key: insert.key ?? null,
+      color: insert.color ?? null,
+      archived: insert.archived ?? false,
+      order: insert.order ?? 0,
+      createdAt: new Date(),
+    };
+    this.projectStore.set(project.id, project);
+    return project;
+  }
+
+  async updateProject(id: number, updates: Partial<InsertProject>): Promise<Project | undefined> {
+    const current = this.projectStore.get(id);
+    if (!current) return undefined;
+    const updated: Project = { ...current };
+    if (updates.name !== undefined) updated.name = updates.name;
+    if (updates.key !== undefined) updated.key = updates.key;
+    if (updates.color !== undefined) updated.color = updates.color;
+    if (updates.archived !== undefined) updated.archived = updates.archived;
+    if (updates.order !== undefined) updated.order = updates.order;
+    this.projectStore.set(id, updated);
+    return updated;
+  }
+
+  async deleteProject(id: number): Promise<boolean> {
+    if (!this.projectStore.has(id)) return false;
+    for (const [taskId, task] of this.taskStore) {
+      if (task.projectId === id) this.taskStore.set(taskId, { ...task, projectId: null });
+    }
+    this.projectStore.delete(id);
+    return true;
+  }
+
+  async getProjectTaskCounts(): Promise<Record<number, number>> {
+    const counts: Record<number, number> = {};
+    for (const task of this.taskStore.values()) {
+      if (task.projectId === null || task.archived || task.deletedAt !== null) continue;
+      counts[task.projectId] = (counts[task.projectId] ?? 0) + 1;
+    }
+    return counts;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -291,6 +360,10 @@ function makeTaskInput(stageId: number, overrides: Partial<InsertTask> = {}): In
   return { title: 'Test task', stageId, ...overrides };
 }
 
+function makeProjectInput(overrides: Partial<InsertProject> = {}): InsertProject {
+  return { name: 'Alpha', ...overrides };
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -300,6 +373,151 @@ describe('IStorage contract', () => {
 
   beforeEach(() => {
     storage = new MemStorage();
+  });
+
+  // ===== Projects =====
+
+  describe('Project CRUD', () => {
+    it('creates a project with an id and safe defaults', async () => {
+      const project = await storage.createProject(makeProjectInput({ name: 'Alpha' }));
+
+      expect(project.id).toBeGreaterThan(0);
+      expect(project.name).toBe('Alpha');
+      expect(project.key).toBeNull();
+      expect(project.color).toBeNull();
+      expect(project.archived).toBe(false);
+      expect(project.order).toBe(0);
+      expect(project.createdAt).toBeInstanceOf(Date);
+    });
+
+    it('keeps the key and colour it is given', async () => {
+      const project = await storage.createProject(
+        makeProjectInput({ key: 'ALP', color: '#6366F1' }),
+      );
+
+      expect(project.key).toBe('ALP');
+      expect(project.color).toBe('#6366F1');
+    });
+
+    it('lists active projects before archived ones, then by order and name', async () => {
+      await storage.createProject(makeProjectInput({ name: 'Zulu', order: 0 }));
+      await storage.createProject(makeProjectInput({ name: 'Old', archived: true }));
+      await storage.createProject(makeProjectInput({ name: 'Bravo', order: 1 }));
+      await storage.createProject(makeProjectInput({ name: 'alpha', order: 0 }));
+
+      const names = (await storage.getProjects()).map((p) => p.name);
+
+      expect(names).toEqual(['alpha', 'Zulu', 'Bravo', 'Old']);
+    });
+
+    it('renames, recolours and archives a project in place', async () => {
+      const project = await storage.createProject(makeProjectInput());
+
+      const updated = await storage.updateProject(project.id, {
+        name: 'Alpha 2',
+        color: '#EF4444',
+        archived: true,
+      });
+
+      expect(updated).toBeDefined();
+      expect(updated!.name).toBe('Alpha 2');
+      expect(updated!.color).toBe('#EF4444');
+      expect(updated!.archived).toBe(true);
+      expect(await storage.getProjectById(project.id)).toEqual(updated);
+    });
+
+    it('returns undefined when updating a missing project', async () => {
+      expect(await storage.updateProject(999, { name: 'Ghost' })).toBeUndefined();
+    });
+
+    it('deletes a project and releases its tasks instead of taking them with it', async () => {
+      const stage = await storage.createStage(makeStageInput());
+      const project = await storage.createProject(makeProjectInput());
+      const inProject = await storage.createTask(
+        makeTaskInput(stage.id, { projectId: project.id }),
+      );
+      const elsewhere = await storage.createTask(makeTaskInput(stage.id));
+
+      expect(await storage.deleteProject(project.id)).toBe(true);
+
+      expect(await storage.getProjectById(project.id)).toBeUndefined();
+      expect((await storage.getTaskById(inProject.id))!.projectId).toBeNull();
+      expect((await storage.getTaskById(elsewhere.id))!.projectId).toBeNull();
+      expect(await storage.getTasks()).toHaveLength(2);
+    });
+
+    it('reports false when deleting a project that does not exist', async () => {
+      expect(await storage.deleteProject(999)).toBe(false);
+    });
+
+    it('counts only live tasks per project', async () => {
+      const stage = await storage.createStage(makeStageInput());
+      const alpha = await storage.createProject(makeProjectInput({ name: 'Alpha' }));
+      const beta = await storage.createProject(makeProjectInput({ name: 'Beta' }));
+      await storage.createTask(makeTaskInput(stage.id, { projectId: alpha.id }));
+      await storage.createTask(makeTaskInput(stage.id, { projectId: alpha.id }));
+      const archived = await storage.createTask(makeTaskInput(stage.id, { projectId: alpha.id }));
+      await storage.archiveTask(archived.id);
+      const binned = await storage.createTask(makeTaskInput(stage.id, { projectId: alpha.id }));
+      await storage.binTask(binned.id);
+      await storage.createTask(makeTaskInput(stage.id));
+
+      const counts = await storage.getProjectTaskCounts();
+
+      expect(counts[alpha.id]).toBe(2);
+      expect(counts[beta.id]).toBeUndefined();
+    });
+  });
+
+  describe('Task project scoping', () => {
+    it('stores a task with no project by default', async () => {
+      const stage = await storage.createStage(makeStageInput());
+      const task = await storage.createTask(makeTaskInput(stage.id));
+
+      expect(task.projectId).toBeNull();
+    });
+
+    it('filters live tasks to one project, to unassigned only, or not at all', async () => {
+      const stage = await storage.createStage(makeStageInput());
+      const alpha = await storage.createProject(makeProjectInput({ name: 'Alpha' }));
+      const beta = await storage.createProject(makeProjectInput({ name: 'Beta' }));
+      const a = await storage.createTask(makeTaskInput(stage.id, { projectId: alpha.id }));
+      const b = await storage.createTask(makeTaskInput(stage.id, { projectId: beta.id }));
+      const loose = await storage.createTask(makeTaskInput(stage.id));
+
+      expect((await storage.getTasks()).map((t) => t.id)).toEqual([a.id, b.id, loose.id]);
+      expect((await storage.getTasks({})).map((t) => t.id)).toEqual([a.id, b.id, loose.id]);
+      expect((await storage.getTasks({ projectId: alpha.id })).map((t) => t.id)).toEqual([a.id]);
+      expect((await storage.getTasks({ projectId: null })).map((t) => t.id)).toEqual([loose.id]);
+    });
+
+    it('applies the same filter to archived tasks', async () => {
+      const stage = await storage.createStage(makeStageInput());
+      const alpha = await storage.createProject(makeProjectInput({ name: 'Alpha' }));
+      const a = await storage.createTask(makeTaskInput(stage.id, { projectId: alpha.id }));
+      const loose = await storage.createTask(makeTaskInput(stage.id));
+      await storage.archiveTask(a.id);
+      await storage.archiveTask(loose.id);
+
+      expect((await storage.getArchivedTasks({ projectId: alpha.id })).map((t) => t.id)).toEqual([
+        a.id,
+      ]);
+      expect((await storage.getArchivedTasks({ projectId: null })).map((t) => t.id)).toEqual([
+        loose.id,
+      ]);
+    });
+
+    it('moves a task between projects and back to none', async () => {
+      const stage = await storage.createStage(makeStageInput());
+      const alpha = await storage.createProject(makeProjectInput({ name: 'Alpha' }));
+      const task = await storage.createTask(makeTaskInput(stage.id));
+
+      const moved = await storage.updateTask(task.id, { projectId: alpha.id });
+      expect(moved!.projectId).toBe(alpha.id);
+
+      const released = await storage.updateTask(task.id, { projectId: null });
+      expect(released!.projectId).toBeNull();
+    });
   });
 
   // ===== Stage CRUD =====

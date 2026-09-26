@@ -84,6 +84,7 @@ function fakeTask(overrides: Partial<Task> = {}): Task {
     dueDate: null,
     tags: null,
     owner: null,
+    projectId: null,
     ...overrides,
   } as unknown as Task;
 }

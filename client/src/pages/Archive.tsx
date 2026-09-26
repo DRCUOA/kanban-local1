@@ -12,12 +12,22 @@ import { useLocation } from 'wouter';
 import { ROUTES } from '@shared/constants';
 import { useToast } from '@/hooks/use-toast';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { ProjectChip } from '@/components/ProjectChip';
+import { useProjectScope } from '@/hooks/use-project-scope';
 import { richTextToPlainText } from '@/lib/rich-text';
+import { PROJECT_SCOPE_NONE } from '@shared/project-scope';
 
 export default function Archive() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const { data: archivedTasks, isLoading, error } = useArchivedTasks();
+  // The board's project scope applies here too (EPIC-01 story 4).
+  const { scope, currentProject, showProjectOnCards, projectById } = useProjectScope();
+  const { data: archivedTasks, isLoading, error } = useArchivedTasks(scope);
+  const scopeLabel = currentProject
+    ? currentProject.name
+    : scope === PROJECT_SCOPE_NONE
+      ? 'No project'
+      : null;
   const unarchiveTask = useUnarchiveTask();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -101,7 +111,9 @@ export default function Archive() {
               <h1 className="text-lg font-bold tracking-tight text-foreground leading-tight">
                 Archive
               </h1>
-              <p className="text-[10px] text-muted-foreground leading-tight">Archived Tasks</p>
+              <p className="text-[10px] text-muted-foreground leading-tight">
+                Archived Tasks{scopeLabel && ` · ${scopeLabel}`}
+              </p>
             </div>
           </div>
           <ThemeToggle />
@@ -152,52 +164,56 @@ export default function Archive() {
         <div className="px-3 py-4">
           {filteredTasks && filteredTasks.length > 0 ? (
             <div className="space-y-2">
-              {filteredTasks.map((task) => (
-                <Card
-                  key={task.id}
-                  className="cursor-pointer transition-all duration-200 active:scale-[0.98] rounded-xl"
-                  onClick={() => {
-                    handleTaskClick(task);
-                  }}
-                >
-                  <CardHeader className="p-3 pb-1">
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-sm font-semibold leading-tight pr-4 flex-1">
-                        {task.title}
-                      </CardTitle>
-                      <Badge
-                        variant="secondary"
-                        className="text-[10px] font-normal neo-pressed rounded-lg px-1.5 py-0 shrink-0 touch-target-sm min-h-0 min-w-0 h-5"
-                      >
-                        #{task.id}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-3 pt-1">
-                    {task.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                        {richTextToPlainText(task.description)}
-                      </p>
-                    )}
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-[10px] text-muted-foreground">
-                        {new Date(task.createdAt || new Date()).toLocaleDateString()}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleUnarchive(task);
-                        }}
-                        className="text-xs rounded-xl h-9 active:scale-95 transition-transform"
-                      >
-                        Restore
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+              {filteredTasks.map((task) => {
+                const project = showProjectOnCards ? projectById(task.projectId) : null;
+                return (
+                  <Card
+                    key={task.id}
+                    className="cursor-pointer transition-all duration-200 active:scale-[0.98] rounded-xl"
+                    onClick={() => {
+                      handleTaskClick(task);
+                    }}
+                  >
+                    <CardHeader className="p-3 pb-1">
+                      <div className="flex items-start justify-between">
+                        <CardTitle className="text-sm font-semibold leading-tight pr-4 flex-1">
+                          {task.title}
+                        </CardTitle>
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] font-normal neo-pressed rounded-lg px-1.5 py-0 shrink-0 touch-target-sm min-h-0 min-w-0 h-5"
+                        >
+                          #{task.id}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-3 pt-1">
+                      {task.description && (
+                        <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                          {richTextToPlainText(task.description)}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                          {project && <ProjectChip project={project} />}
+                          {new Date(task.createdAt || new Date()).toLocaleDateString()}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUnarchive(task);
+                          }}
+                          className="text-xs rounded-xl h-9 active:scale-95 transition-transform"
+                        >
+                          Restore
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center text-center p-8 neo-container rounded-2xl mx-2 mt-4">

@@ -15,6 +15,7 @@ import {
 import { useCreateTask } from '@/hooks/use-tasks';
 import { useToast } from '@/hooks/use-toast';
 import { useStages } from '@/hooks/use-stages';
+import { useProjectScope } from '@/hooks/use-project-scope';
 import {
   Dialog,
   DialogContent,
@@ -40,7 +41,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Select,
   SelectContent,
@@ -49,6 +50,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { OwnerSelector } from './OwnerSelector';
+import { ProjectSelect } from './ProjectSelect';
 
 interface CreateTaskDialogProps {
   iconOnly?: boolean;
@@ -61,6 +63,9 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
   const createTask = useCreateTask();
 
   const { data: stages = [] } = useStages();
+  // A new task lands in the project being viewed; unscoped views leave it unassigned.
+  const { scope, projects } = useProjectScope();
+  const defaultProjectId = typeof scope === 'number' ? scope : null;
 
   const defaultStageId = stages[0]?.id || 1;
 
@@ -70,12 +75,19 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
       title: '',
       description: '',
       stageId: defaultStageId,
+      projectId: defaultProjectId,
       status: TASK_STATUS.BACKLOG,
       priority: TASK_PRIORITY.NORMAL,
       recurrence: TASK_RECURRENCE.NONE,
       owner: null,
     },
   });
+
+  // The dialog mounts once and the scope can change underneath it, so the
+  // project default is refreshed each time it opens.
+  useEffect(() => {
+    if (open) form.setValue('projectId', defaultProjectId);
+  }, [open, defaultProjectId]);
 
   const onSubmit = (data: InsertTask) => {
     const selectedStage = stages.find((s: any) => s.id === data.stageId);
@@ -93,6 +105,7 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
           setOpen(false);
           form.reset({
             stageId: defaultStageId,
+            projectId: defaultProjectId,
             title: '',
             description: '',
             status: TASK_STATUS.BACKLOG,
@@ -195,6 +208,25 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
                 </FormItem>
               )}
             />
+            {projects.length > 0 && (
+              <FormField
+                control={form.control}
+                name="projectId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Project</FormLabel>
+                    <FormControl>
+                      <ProjectSelect
+                        value={field.value}
+                        onChange={(next) => field.onChange(next)}
+                        data-testid="select-task-project"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <FormField
               control={form.control}
               name="description"

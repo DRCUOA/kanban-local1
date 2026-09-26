@@ -5,6 +5,7 @@ import type { Control } from 'react-hook-form';
 import type { InsertTask } from '@shared/schema';
 import type { Stage } from '@shared/schema';
 import { useSubStages } from '@/hooks/use-stages';
+import { useProjectScope } from '@/hooks/use-project-scope';
 import {
   TASK_STATUS,
   TASK_STATUS_LABEL,
@@ -35,6 +36,7 @@ import { format } from 'date-fns';
 import { Check, Pencil, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { OwnerSelector } from './OwnerSelector';
+import { ProjectSelect } from './ProjectSelect';
 
 export interface EditTaskFormFieldsProps {
   control: Control<InsertTask>;
@@ -47,7 +49,9 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
   const [dueDateOpen, setDueDateOpen] = useState(false);
   const [editingDescription, setEditingDescription] = useState(false);
   const { data: allSubStages = [] } = useSubStages();
+  const { projects } = useProjectScope();
   const selectedStageId = useWatch({ control, name: 'stageId' });
+  const selectedProjectId = useWatch({ control, name: 'projectId' });
   // Blank tags exist in pre-validation data; they can't be selected (a Radix
   // SelectItem value must be a non-empty string) so leave them out entirely.
   const stageSubStages = allSubStages
@@ -107,6 +111,25 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
           </FormItem>
         )}
       />
+      {(projects.length > 0 || selectedProjectId != null) && (
+        <FormField
+          control={control}
+          name="projectId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-xs">Project</FormLabel>
+              <FormControl>
+                <ProjectSelect
+                  value={field.value}
+                  onChange={(next) => field.onChange(next)}
+                  data-testid="select-edit-project"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
       {stageSubStages.length > 0 && (
         <FormField
           control={control}

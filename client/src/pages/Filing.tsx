@@ -4,13 +4,16 @@ import { ArrowLeft, ArchiveIcon, FolderInput, Loader2 } from 'lucide-react';
 import { useTasks } from '@/hooks/use-tasks';
 import { useArchiveTask } from '@/hooks/use-tasks';
 import { useStages } from '@/hooks/use-stages';
+import { useProjectScope } from '@/hooks/use-project-scope';
 import { EditTaskDialog } from '@/components/EditTaskDialog';
+import { ProjectChip } from '@/components/ProjectChip';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { richTextToPlainText } from '@/lib/rich-text';
 import { isDoneStageName, ROUTES } from '@shared/constants';
+import { PROJECT_SCOPE_NONE } from '@shared/project-scope';
 import { sortTasksByDueDate } from '@shared/task-sort';
 import type { Task } from '@shared/schema';
 
@@ -22,8 +25,15 @@ import type { Task } from '@shared/schema';
 export default function Filing() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const { data: tasks, isLoading, error } = useTasks();
+  // Filing is a view of the board, so it follows the board's project scope.
+  const { scope, currentProject, showProjectOnCards, projectById } = useProjectScope();
+  const { data: tasks, isLoading, error } = useTasks(scope);
   const { data: stages = [] } = useStages();
+  const scopeLabel = currentProject
+    ? currentProject.name
+    : scope === PROJECT_SCOPE_NONE
+      ? 'No project'
+      : null;
   const archiveTask = useArchiveTask();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -95,6 +105,7 @@ export default function Filing() {
               </h1>
               <p className="text-[10px] text-muted-foreground leading-tight">
                 {totalDone} finished {totalDone === 1 ? 'task' : 'tasks'}
+                {scopeLabel && ` · ${scopeLabel}`}
               </p>
             </div>
           </div>
@@ -134,50 +145,54 @@ export default function Filing() {
 
                 {stageTasks.length > 0 ? (
                   <div className="space-y-2">
-                    {stageTasks.map((task) => (
-                      <Card
-                        key={task.id}
-                        className="cursor-pointer transition-all duration-200 active:scale-[0.98] rounded-xl"
-                        onClick={() => {
-                          setSelectedTask(task);
-                          setIsEditDialogOpen(true);
-                        }}
-                      >
-                        <CardHeader className="p-3 pb-1">
-                          <div className="flex items-start justify-between">
-                            <CardTitle className="text-sm font-semibold leading-tight pr-4 flex-1">
-                              {task.title}
-                            </CardTitle>
-                            <Badge
-                              variant="secondary"
-                              className="text-[10px] font-normal neo-pressed rounded-lg px-1.5 py-0 shrink-0 touch-target-sm min-h-0 min-w-0 h-5"
-                            >
-                              #{task.id}
-                            </Badge>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="p-3 pt-1">
-                          {task.description && (
-                            <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                              {richTextToPlainText(task.description)}
-                            </p>
-                          )}
-                          <div className="flex items-center justify-end">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleArchive(task);
-                              }}
-                              className="text-xs rounded-xl h-9 active:scale-95 transition-transform"
-                            >
-                              Archive
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                    {stageTasks.map((task) => {
+                      const project = showProjectOnCards ? projectById(task.projectId) : null;
+                      return (
+                        <Card
+                          key={task.id}
+                          className="cursor-pointer transition-all duration-200 active:scale-[0.98] rounded-xl"
+                          onClick={() => {
+                            setSelectedTask(task);
+                            setIsEditDialogOpen(true);
+                          }}
+                        >
+                          <CardHeader className="p-3 pb-1">
+                            <div className="flex items-start justify-between">
+                              <CardTitle className="text-sm font-semibold leading-tight pr-4 flex-1">
+                                {task.title}
+                              </CardTitle>
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] font-normal neo-pressed rounded-lg px-1.5 py-0 shrink-0 touch-target-sm min-h-0 min-w-0 h-5"
+                              >
+                                #{task.id}
+                              </Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="p-3 pt-1">
+                            {task.description && (
+                              <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                                {richTextToPlainText(task.description)}
+                              </p>
+                            )}
+                            <div className="flex items-center justify-between gap-2">
+                              <span>{project && <ProjectChip project={project} />}</span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleArchive(task);
+                                }}
+                                className="text-xs rounded-xl h-9 active:scale-95 transition-transform"
+                              >
+                                Archive
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="px-1 text-xs text-muted-foreground">Nothing filed here yet.</p>

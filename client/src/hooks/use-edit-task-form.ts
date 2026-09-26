@@ -58,6 +58,7 @@ export function useEditTaskForm({ task, open, onOpenChange }: UseEditTaskFormOpt
           tags: Array.isArray(task.tags) ? task.tags : [],
           recurrence: (task.recurrence as TaskRecurrence) || TASK_RECURRENCE.NONE,
           owner: task.owner ?? null,
+          projectId: task.projectId ?? null,
         });
       } catch (error) {
         logger.error('Error resetting form:', error);
@@ -72,6 +73,7 @@ export function useEditTaskForm({ task, open, onOpenChange }: UseEditTaskFormOpt
           tags: [],
           recurrence: (task.recurrence as TaskRecurrence) || TASK_RECURRENCE.NONE,
           owner: task.owner ?? null,
+          projectId: task.projectId ?? null,
         });
       }
     }
