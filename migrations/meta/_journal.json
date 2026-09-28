@@ -71,6 +71,13 @@
       "when": 1790467200000,
       "tag": "0011_task_attachments",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790553600000,
+      "tag": "0012_inbound_email_created_task_ids",
+      "breakpoints": true
     }
   ]
 }
