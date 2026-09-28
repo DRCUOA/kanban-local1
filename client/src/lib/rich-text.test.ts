@@ -7,6 +7,9 @@ import {
   toRichHtml,
   richTextToPlainText,
   isRichTextEmpty,
+  isAcceptedFileChipType,
+  resolveFileChipType,
+  FILE_CHIP_ACCEPT,
 } from './rich-text';
 
 describe('looksLikeRichText', () => {
@@ -67,6 +70,82 @@ describe('sanitizeRichText', () => {
 
   it('strips data: hrefs on regular links', () => {
     expect(sanitizeRichText('<a href="data:image/png;base64,AAAA">x</a>')).not.toContain('href');
+    const pdf = '<a href="data:application/pdf;base64,AAAA">x</a>';
+    expect(sanitizeRichText(pdf)).not.toContain('href');
+  });
+
+  it('keeps data URLs of accepted document types on file chips', () => {
+    for (const type of [
+      'application/pdf',
+      'text/plain',
+      'text/csv',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/zip',
+      'audio/mpeg',
+      'video/mp4',
+    ]) {
+      const chip = `<a data-file-chip data-file-name="f" href="data:${type};base64,AAAA">f</a>`;
+      expect(sanitizeRichText(chip)).toContain(`href="data:${type};base64,AAAA"`);
+    }
+  });
+
+  it('strips data URLs a browser would run, even on file chips', () => {
+    for (const type of [
+      'text/html',
+      'application/xhtml+xml',
+      'text/javascript',
+      'application/javascript',
+      'application/octet-stream',
+      'application/pdfx',
+    ]) {
+      const chip = `<a data-file-chip data-file-name="f" href="data:${type};base64,AAAA">f</a>`;
+      expect(sanitizeRichText(chip)).not.toContain('href');
+    }
+  });
+});
+
+describe('isAcceptedFileChipType', () => {
+  it('matches prefixes and exact types, case-insensitively', () => {
+    expect(isAcceptedFileChipType('image/png')).toBe(true);
+    expect(isAcceptedFileChipType('Application/PDF')).toBe(true);
+    expect(
+      isAcceptedFileChipType('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+    ).toBe(true);
+    expect(isAcceptedFileChipType('text/html')).toBe(false);
+    expect(isAcceptedFileChipType('text/plainx')).toBe(false);
+    expect(isAcceptedFileChipType('')).toBe(false);
+  });
+});
+
+describe('resolveFileChipType', () => {
+  it("keeps the browser's type when it is accepted", () => {
+    expect(resolveFileChipType('report.pdf', 'application/pdf')).toBe('application/pdf');
+    expect(resolveFileChipType('shot.png', 'image/png')).toBe('image/png');
+  });
+
+  it('falls back to the extension for missing, generic or vendor types', () => {
+    expect(resolveFileChipType('notes.md', '')).toBe('text/markdown');
+    expect(resolveFileChipType('data.CSV', 'application/octet-stream')).toBe('text/csv');
+    expect(resolveFileChipType('plan.pages', 'application/x-iwork-pages-sffpages')).toBe(
+      'application/vnd.apple.pages',
+    );
+  });
+
+  it('rejects files it cannot type as an accepted kind', () => {
+    expect(resolveFileChipType('page.html', 'text/html')).toBeNull();
+    expect(resolveFileChipType('run.exe', 'application/x-msdownload')).toBeNull();
+    expect(resolveFileChipType('README', '')).toBeNull();
+  });
+});
+
+describe('FILE_CHIP_ACCEPT', () => {
+  it('lists wildcard families, exact types and fallback extensions', () => {
+    const accept = FILE_CHIP_ACCEPT.split(',');
+    expect(accept).toContain('image/*');
+    expect(accept).toContain('application/pdf');
+    expect(accept).toContain('.docx');
+    expect(accept).toContain('.md');
+    expect(accept.some((a) => a.endsWith('.'))).toBe(false);
   });
 });
 

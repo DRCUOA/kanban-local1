@@ -31,7 +31,8 @@ import {
   toRichHtml,
   sanitizeRichText,
   fileToDataUrl,
-  FILE_CHIP_ACCEPTED_TYPES,
+  resolveFileChipType,
+  FILE_CHIP_ACCEPT,
   FILE_CHIP_MAX_BYTES,
 } from '@/lib/rich-text';
 
@@ -240,10 +241,12 @@ export function RichTextEditor({
   };
 
   const insertFile = async (file: File) => {
-    if (!FILE_CHIP_ACCEPTED_TYPES.some((prefix) => file.type.startsWith(prefix))) {
+    const type = resolveFileChipType(file.name, file.type);
+    if (!type) {
       toast({
         title: 'Unsupported file',
-        description: 'Only image files can be attached.',
+        description:
+          'Attach an image, PDF, Office or iWork document, text, CSV, audio, video or zip file.',
         variant: 'destructive',
       });
       return;
@@ -256,11 +259,13 @@ export function RichTextEditor({
       });
       return;
     }
-    const src = await fileToDataUrl(file);
+    // Re-typed so the data URL carries the resolved type, not an empty or
+    // generic one the sanitizer would strip.
+    const src = await fileToDataUrl(new Blob([file], { type }));
     editor
       .chain()
       .focus()
-      .insertContent({ type: 'fileChip', attrs: { src, name: file.name, type: file.type } })
+      .insertContent({ type: 'fileChip', attrs: { src, name: file.name, type } })
       .insertContent(' ')
       .run();
   };
@@ -363,7 +368,7 @@ export function RichTextEditor({
         </Popover>
         <ToolbarButton
           icon={Paperclip}
-          label="Attach image"
+          label="Attach file"
           onClick={() => fileInputRef.current?.click()}
         />
         <DictationButton
@@ -396,7 +401,7 @@ export function RichTextEditor({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept={FILE_CHIP_ACCEPT}
         className="hidden"
         data-testid="input-attach-file"
         onChange={(e) => {

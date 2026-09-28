@@ -11,7 +11,7 @@ import { errorHandler } from './errors';
  */
 export async function createApp(): Promise<{ app: express.Express; httpServer: Server }> {
   const app = express();
-  // 10mb: task descriptions can embed image attachments as data URLs.
+  // 10mb: task descriptions can embed file attachments as data URLs.
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 

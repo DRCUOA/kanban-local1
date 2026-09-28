@@ -43,7 +43,7 @@ app.use(
 
 app.use(
   express.json({
-    // 10mb: task descriptions can embed image attachments as data URLs.
+    // 10mb: task descriptions can embed file attachments as data URLs.
     limit: '10mb',
     verify: (req, _res, buf) => {
       req.rawBody = buf;

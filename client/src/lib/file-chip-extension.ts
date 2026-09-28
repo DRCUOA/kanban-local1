@@ -7,8 +7,9 @@ export interface FileChipAttributes {
 }
 
 /**
- * Inline atom node representing an attached file (e.g. an image) stored as a
- * data URL. Rendered as a clickable chip at the position the user inserted it;
+ * Inline atom node representing an attached file (image, PDF, document, …)
+ * stored as a data URL. Rendered as a clickable chip at the position the user
+ * inserted it;
  * read views open the underlying file in a new tab.
  */
 export const FileChip = Node.create({
