@@ -1,5 +1,6 @@
 import DOMPurify from 'dompurify';
 import { markdownToHtml } from './markdown';
+import { parseAttachmentUrl } from '@shared/attachments';
 
 /**
  * Rich-text helpers for task descriptions.
@@ -47,116 +48,9 @@ const ALLOWED_ATTR = [
   'class',
 ];
 
-/**
- * MIME types a file chip is allowed to carry as an inline data URL. Entries
- * ending in `/` or `.` are prefixes; the rest must match exactly. Chips are
- * previewed as images or downloaded, never rendered as pages, but anything a
- * browser would run (HTML, XHTML, scripts) stays off the list regardless.
- */
-export const FILE_CHIP_ACCEPTED_TYPES = [
-  'image/',
-  'audio/',
-  'video/',
-  'text/plain',
-  'text/csv',
-  'text/markdown',
-  'text/rtf',
-  'application/rtf',
-  'application/json',
-  'application/pdf',
-  'application/msword',
-  'application/vnd.ms-excel',
-  'application/vnd.ms-powerpoint',
-  'application/vnd.openxmlformats-officedocument.',
-  'application/vnd.oasis.opendocument.',
-  'application/vnd.apple.',
-  'application/zip',
-  'application/x-zip-compressed',
-];
-
-/**
- * MIME type by extension, for files the browser reports with no type, a
- * generic one (`application/octet-stream`) or a vendor alias not on the list
- * above — e.g. `.md` on most systems, or Apple's `x-iwork-*` types.
- */
-const FILE_CHIP_EXTENSION_TYPES: Record<string, string> = {
-  txt: 'text/plain',
-  log: 'text/plain',
-  csv: 'text/csv',
-  md: 'text/markdown',
-  markdown: 'text/markdown',
-  rtf: 'application/rtf',
-  json: 'application/json',
-  pdf: 'application/pdf',
-  doc: 'application/msword',
-  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  xls: 'application/vnd.ms-excel',
-  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  ppt: 'application/vnd.ms-powerpoint',
-  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  odt: 'application/vnd.oasis.opendocument.text',
-  ods: 'application/vnd.oasis.opendocument.spreadsheet',
-  odp: 'application/vnd.oasis.opendocument.presentation',
-  pages: 'application/vnd.apple.pages',
-  numbers: 'application/vnd.apple.numbers',
-  key: 'application/vnd.apple.keynote',
-  zip: 'application/zip',
-  heic: 'image/heic',
-  heif: 'image/heif',
-  mp3: 'audio/mpeg',
-  m4a: 'audio/mp4',
-  wav: 'audio/wav',
-  mp4: 'video/mp4',
-  mov: 'video/quicktime',
-};
-
-/** `accept` value for the attachment picker: every listed type and extension. */
-export const FILE_CHIP_ACCEPT = [
-  ...FILE_CHIP_ACCEPTED_TYPES.filter((t) => !t.endsWith('.')).map((t) => t.replace(/\/$/, '/*')),
-  ...Object.keys(FILE_CHIP_EXTENSION_TYPES).map((ext) => `.${ext}`),
-].join(',');
-
-/** Max attachment size (raw bytes) — data URLs inflate ~33%, keep rows sane. */
-export const FILE_CHIP_MAX_BYTES = 2.5 * 1024 * 1024;
-
-/**
- * Max length of a whole description's HTML. Attachments travel inside the
- * task's JSON body, which the server caps at 10mb; this leaves headroom for
- * the rest of the request so a save can't be refused as too large.
- */
-export const DESCRIPTION_MAX_CHARS = 8 * 1024 * 1024;
-
-/** True when a file of `fileBytes` still fits in a description of `htmlLength`. */
-export function attachmentFitsDescription(htmlLength: number, fileBytes: number): boolean {
-  // Base64 spends 4 characters per 3 bytes.
-  return htmlLength + Math.ceil(fileBytes / 3) * 4 <= DESCRIPTION_MAX_CHARS;
-}
-
-/** True when a file chip may carry this MIME type. */
-export function isAcceptedFileChipType(type: string): boolean {
-  const mime = type.trim().toLowerCase();
-  if (!mime) return false;
-  return FILE_CHIP_ACCEPTED_TYPES.some((accepted) => {
-    const isPrefix = accepted.endsWith('/') || accepted.endsWith('.');
-    return isPrefix ? mime.startsWith(accepted) : mime === accepted;
-  });
-}
-
-/**
- * The MIME type to store an attachment under, or null when it can't be
- * attached. The browser's type wins when it is accepted; otherwise the file
- * extension decides. Either way the stored type is one on the list above.
- */
-export function resolveFileChipType(name: string, type: string): string | null {
-  if (isAcceptedFileChipType(type)) return type.trim().toLowerCase();
-  const dot = name.lastIndexOf('.');
-  const ext = dot >= 0 ? name.slice(dot + 1).toLowerCase() : '';
-  return FILE_CHIP_EXTENSION_TYPES[ext] ?? null;
-}
-
-function isSafeChipDataUrl(href: string): boolean {
-  const mime = /^data:([^;,]*)[;,]/i.exec(href)?.[1];
-  return mime !== undefined && isAcceptedFileChipType(mime);
+/** A file chip may only point at an attachment this server holds. */
+function isSafeChipHref(href: string): boolean {
+  return parseAttachmentUrl(href) !== null;
 }
 
 function isSafeLinkHref(href: string): boolean {
@@ -172,8 +66,8 @@ function installHooks() {
     if (node.tagName !== 'A') return;
     const href = node.getAttribute('href') ?? '';
     if (node.hasAttribute('data-file-chip')) {
-      // File chips: only inline data URLs of accepted types survive.
-      if (!isSafeChipDataUrl(href)) {
+      // File chips: only this server's attachment urls survive.
+      if (!isSafeChipHref(href)) {
         node.removeAttribute('href');
       }
       node.setAttribute('class', 'file-chip');
@@ -196,10 +90,9 @@ export function sanitizeRichText(html: string): string {
     ALLOWED_ATTR,
     ALLOW_DATA_ATTR: false,
     ADD_ATTR: ['target'],
-    // Also admit data: URIs so file chips survive; the hook above then keeps
-    // them only on chips of an accepted type and strips them everywhere else.
-    ALLOWED_URI_REGEXP:
-      /^(?:(?:https?|mailto|tel):|data:[a-z]+\/|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
+    // DOMPurify's default, spelled out: same-origin paths (the attachment
+    // urls) pass, `javascript:` and `data:` do not.
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
   });
 }
 
@@ -252,36 +145,15 @@ export function isRichTextEmpty(value: string | null | undefined): boolean {
   return richTextToPlainText(value).length === 0;
 }
 
-/** Read a File (or Blob) as a data URL. */
-export function fileToDataUrl(file: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      resolve(reader.result as string);
-    };
-    reader.onerror = () => {
-      reject(reader.error ?? new Error('Failed to read file'));
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
 /**
- * Decode a data URL back into a Blob, without `fetch` (which the production
- * CSP's connect-src would refuse for `data:`).
+ * Attachment links are same-origin paths; outside the app (an email, a
+ * clipboard paste) they need the host in front. An empty `origin` leaves
+ * the HTML unchanged.
  */
-export function dataUrlToBlob(dataUrl: string): Blob {
-  const comma = dataUrl.indexOf(',');
-  if (!dataUrl.startsWith('data:') || comma < 0) {
-    throw new Error('Not a data URL');
-  }
-  const [type = '', ...params] = dataUrl.slice('data:'.length, comma).split(';');
-  const payload = dataUrl.slice(comma + 1);
-  if (params.includes('base64')) {
-    const binary = atob(payload);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return new Blob([bytes], { type });
-  }
-  return new Blob([decodeURIComponent(payload)], { type });
+export function absolutizeAttachmentLinks(html: string, origin: string): string {
+  if (!origin) return html;
+  const base = origin.replace(/\/$/, '');
+  return html.replace(/href="(\/api\/attachments\/\d+)"/g, (_match, path: string) => {
+    return `href="${base}${path}"`;
+  });
 }

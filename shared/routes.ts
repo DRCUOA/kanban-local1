@@ -10,6 +10,7 @@ import {
   type Project,
   type ProjectSummary,
   type TaskHistoryEntry,
+  type TaskAttachment,
 } from './schema';
 import { exportQuerySchema, taskExportBundleSchema } from './export';
 import { taskListQuerySchema } from './project-scope';
@@ -170,6 +171,36 @@ export const api = {
       responses: {
         200: taskExportBundleSchema,
         400: z.object({ error: z.string(), status: z.number() }),
+      },
+    },
+  },
+  attachments: {
+    /**
+     * The file as a raw `application/octet-stream` body; its own type and
+     * URL-encoded name travel in the `x-attachment-type` / `x-attachment-name`
+     * headers (shared/attachments.ts). The row stays unbound until a saved
+     * description references its `url`.
+     */
+    upload: {
+      method: 'POST' as const,
+      path: '/api/attachments',
+      responses: {
+        201: z.custom<TaskAttachment & { url: string }>(),
+        400: z.object({ error: z.string(), status: z.number() }),
+        413: z.object({ error: z.string(), status: z.number() }),
+        415: z.object({ error: z.string(), status: z.number() }),
+      },
+    },
+    /**
+     * The file itself. `?download=1` forces a download; types a browser can't
+     * show safely are always served as one.
+     */
+    get: {
+      method: 'GET' as const,
+      path: '/api/attachments/:id',
+      responses: {
+        200: z.unknown(),
+        404: z.object({ error: z.string(), status: z.number() }),
       },
     },
   },

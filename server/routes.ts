@@ -20,7 +20,12 @@ import type {
   InsertProject,
   TaskHistoryEntry,
 } from '@shared/schema';
-import type { ApiErrorResponse, IdParams, StageIdParams } from '@shared/api-types';
+import type {
+  ApiErrorResponse,
+  IdParams,
+  StageIdParams,
+  UploadedAttachmentResponse,
+} from '@shared/api-types';
 import {
   buildExportBundle,
   toBriefingExport,
@@ -31,6 +36,22 @@ import {
 import { projectScopeToFilter } from '@shared/project-scope';
 import { logger } from '@shared/logger';
 import { registerGmailPubSubWebhook } from './webhooks/gmail-pubsub';
+import express from 'express';
+import type { ExportAttachment } from '@shared/export';
+import {
+  ATTACHMENT_MAX_BYTES,
+  ATTACHMENT_NAME_HEADER,
+  ATTACHMENT_TYPE_HEADER,
+  attachmentServesInline,
+  attachmentUrl,
+  resolveAttachmentType,
+  sanitizeAttachmentFilename,
+} from '@shared/attachments';
+import {
+  contentDispositionHeader,
+  prepareDescriptionAttachments,
+  syncTaskAttachments,
+} from './attachments';
 
 /**
  * Validates with a Zod schema inside an `asyncHandler` route: a failure becomes
@@ -90,7 +111,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     ) => {
       try {
         const taskData = api.tasks.create.input.parse(req.body);
-        const task = await storage.createTask(taskData);
+        // Files the description references become the task's once it exists.
+        const prepared = taskData.description
+          ? await prepareDescriptionAttachments(storage, taskData.description, null)
+          : null;
+        const task = await storage.createTask(
+          prepared ? { ...taskData, description: prepared.description } : taskData,
+        );
+        if (prepared) {
+          await syncTaskAttachments(storage, task.id, prepared.attachmentIds, { release: false });
+        }
         res.status(201).json(task);
       } catch (error) {
         if (res.headersSent) {
@@ -118,9 +148,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const id = parseIdParam(req.params.id, res);
         if (id === null) return;
         const updates = api.tasks.update.input.parse(req.body);
-        const updatedTask = await storage.updateTask(id, updates);
+        // A description write re-syncs the task's files: newly referenced
+        // rows bind, dropped ones release (and are swept later).
+        const prepared =
+          typeof updates.description === 'string'
+            ? await prepareDescriptionAttachments(storage, updates.description, id)
+            : null;
+        const updatedTask = await storage.updateTask(
+          id,
+          prepared ? { ...updates, description: prepared.description } : updates,
+        );
         if (!updatedTask) {
           return res.status(404).json({ error: 'Task not found', status: 404 });
+        }
+        if (prepared || updates.description === null) {
+          await syncTaskAttachments(storage, id, prepared?.attachmentIds ?? [], { release: true });
         }
         res.json(updatedTask);
       } catch (error) {
@@ -268,11 +310,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             storage.getProjects(),
           ]);
 
+        const exportedTasks = [...activeTasks, ...archivedTasks];
+        // Metadata always; the bytes only on request, so the default bundle
+        // stays small for the briefing agent while a backup can be complete.
+        const attachmentRows = await storage.getAttachmentsByTasks(
+          exportedTasks.map((task) => task.id),
+          { withData: query.includeAttachments },
+        );
+        const attachments: ExportAttachment[] = attachmentRows.map(({ data, ...meta }) => ({
+          ...meta,
+          url: attachmentUrl(meta.id),
+          ...(data ? { data: data.toString('base64') } : {}),
+        }));
+
         const bundle = buildExportBundle({
-          tasks: [...activeTasks, ...archivedTasks],
+          tasks: exportedTasks,
           stages: allStages,
           subStages: allSubStages,
           projects: allProjects,
+          attachments,
+          includeAttachments: query.includeAttachments,
           includeArchived: query.includeArchived,
           projectIds: query.projectId === undefined ? null : [query.projectId],
           exportedAt: new Date().toISOString(),
@@ -287,6 +344,74 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         res.json(query.view === 'briefing' ? toBriefingExport(bundle) : bundle);
       },
     ),
+  );
+
+  // Attachments (shared/attachments.ts). An upload is the raw file; its row is
+  // unbound until a saved description references its url, and a row no saved
+  // description references is swept after a day.
+  app.post(
+    api.attachments.upload.path,
+    express.raw({ type: 'application/octet-stream', limit: ATTACHMENT_MAX_BYTES }),
+    asyncHandler(
+      async (req: Request, res: Response<UploadedAttachmentResponse | ApiErrorResponse>) => {
+        const body: unknown = req.body;
+        if (!Buffer.isBuffer(body) || body.length === 0) {
+          throw new AppError(400, 'Send the file as the request body (application/octet-stream)');
+        }
+        const rawName = req.get(ATTACHMENT_NAME_HEADER) ?? '';
+        let decodedName = rawName;
+        try {
+          decodedName = decodeURIComponent(rawName);
+        } catch {
+          // A name that is not URL-encoded is used as sent.
+        }
+        const filename = sanitizeAttachmentFilename(decodedName);
+        const mimeType = resolveAttachmentType(filename, req.get(ATTACHMENT_TYPE_HEADER) ?? '');
+        if (!mimeType) {
+          throw new AppError(415, 'Unsupported file type');
+        }
+        const stored = await storage.createAttachment({
+          taskId: null,
+          filename,
+          mimeType,
+          data: body,
+        });
+        res.status(201).json({ ...stored, url: attachmentUrl(stored.id) });
+      },
+    ),
+  );
+
+  app.get(
+    api.attachments.get.path,
+    asyncHandler(async (req: Request, res: Response<Buffer | ApiErrorResponse>) => {
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
+      const file = await storage.getAttachment(id);
+      if (!file) {
+        throw new AppError(404, 'Attachment not found');
+      }
+      // Types a browser can't show safely, and SVG (scriptable when opened
+      // directly), always download; anything else only when asked to.
+      const download = req.query.download === '1' || !attachmentServesInline(file.mimeType);
+      res.set({
+        'Content-Type': file.mimeType,
+        'Content-Length': String(file.byteSize),
+        'Content-Disposition': contentDispositionHeader(
+          download ? 'attachment' : 'inline',
+          file.filename,
+        ),
+        // A row never changes once written, so its url can be cached for good.
+        'Cache-Control': 'private, max-age=31536000, immutable',
+        'X-Content-Type-Options': 'nosniff',
+      });
+      // Nothing inside an attachment (a crafted SVG or text file) may run
+      // script or load anything. Not set for PDFs: browsers' built-in viewers
+      // refuse a PDF whose response restricts them.
+      if (file.mimeType !== 'application/pdf') {
+        res.set('Content-Security-Policy', "default-src 'none'");
+      }
+      res.send(file.data);
+    }),
   );
 
   // Project endpoints. A project is a set of tasks related to a common goal;

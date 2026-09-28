@@ -27,16 +27,13 @@ import { cn } from '@/lib/utils';
 import { FileChip } from '@/lib/file-chip-extension';
 import { formatDictatedInsertion, MACOS_DICTATION_HINT } from '@/lib/dictation';
 import { looksLikeMarkdown, markdownToHtml } from '@/lib/markdown';
+import { toRichHtml, sanitizeRichText } from '@/lib/rich-text';
 import {
-  toRichHtml,
-  sanitizeRichText,
-  fileToDataUrl,
-  resolveFileChipType,
-  attachmentFitsDescription,
-  FILE_CHIP_ACCEPT,
-  FILE_CHIP_MAX_BYTES,
-  DESCRIPTION_MAX_CHARS,
-} from '@/lib/rich-text';
+  ATTACHMENT_ACCEPT,
+  ATTACHMENT_MAX_BYTES,
+  resolveAttachmentType,
+} from '@shared/attachments';
+import { uploadAttachment } from '@/lib/attachments';
 
 interface RichTextEditorProps {
   value: string;
@@ -92,6 +89,7 @@ export function RichTextEditor({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
   const lastValueRef = useRef<string>(value || '');
   const editorRef = useRef<Editor | null>(null);
 
@@ -242,8 +240,10 @@ export function RichTextEditor({
     setLinkOpen(false);
   };
 
+  // The file is uploaded straight away and the chip points at the upload;
+  // saving the description is what ties the upload to the task.
   const insertFile = async (file: File) => {
-    const type = resolveFileChipType(file.name, file.type);
+    const type = resolveAttachmentType(file.name, file.type);
     if (!type) {
       toast({
         title: 'Unsupported file',
@@ -253,33 +253,35 @@ export function RichTextEditor({
       });
       return;
     }
-    if (file.size > FILE_CHIP_MAX_BYTES) {
+    if (file.size > ATTACHMENT_MAX_BYTES) {
       toast({
         title: 'File too large',
-        description: `Attachments are limited to ${Math.round(FILE_CHIP_MAX_BYTES / 1024 / 1024)}MB.`,
+        description: `Attachments are limited to ${Math.round(ATTACHMENT_MAX_BYTES / 1024 / 1024)}MB.`,
         variant: 'destructive',
       });
       return;
     }
-    if (!attachmentFitsDescription(editor.getHTML().length, file.size)) {
-      // Base64 is 4 chars per 3 bytes, so the budget holds ~3/4 of its size in files.
-      const totalMb = Math.round((DESCRIPTION_MAX_CHARS * 0.75) / 1024 / 1024);
+    setUploading(true);
+    try {
+      const uploaded = await uploadAttachment(file, file.name, type);
+      editor
+        .chain()
+        .focus()
+        .insertContent({
+          type: 'fileChip',
+          attrs: { src: uploaded.url, name: uploaded.filename, type: uploaded.mimeType },
+        })
+        .insertContent(' ')
+        .run();
+    } catch (error) {
       toast({
-        title: 'Description is full',
-        description: `Attachments in one description are limited to about ${totalMb}MB in total.`,
+        title: 'Upload failed',
+        description: error instanceof Error ? error.message : 'Could not upload the file.',
         variant: 'destructive',
       });
-      return;
+    } finally {
+      setUploading(false);
     }
-    // Re-typed so the data URL carries the resolved type, not an empty or
-    // generic one the sanitizer would strip.
-    const src = await fileToDataUrl(new Blob([file], { type }));
-    editor
-      .chain()
-      .focus()
-      .insertContent({ type: 'fileChip', attrs: { src, name: file.name, type } })
-      .insertContent(' ')
-      .run();
   };
 
   return (
@@ -380,7 +382,8 @@ export function RichTextEditor({
         </Popover>
         <ToolbarButton
           icon={Paperclip}
-          label="Attach file"
+          label={uploading ? 'Uploading…' : 'Attach file'}
+          disabled={uploading}
           onClick={() => fileInputRef.current?.click()}
         />
         <DictationButton
@@ -413,7 +416,7 @@ export function RichTextEditor({
       <input
         ref={fileInputRef}
         type="file"
-        accept={FILE_CHIP_ACCEPT}
+        accept={ATTACHMENT_ACCEPT}
         className="hidden"
         data-testid="input-attach-file"
         onChange={(e) => {

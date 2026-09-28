@@ -35,6 +35,16 @@ const mockStorage = vi.hoisted(() => ({
   updateProject: vi.fn(),
   deleteProject: vi.fn(),
   getProjectTaskCounts: vi.fn(),
+  createAttachment: vi.fn(),
+  getAttachment: vi.fn(),
+  getAttachmentsMeta: vi.fn(),
+  getAttachmentsByTasks: vi.fn(),
+  bindAttachments: vi.fn(),
+  copyAttachment: vi.fn(),
+  releaseAttachments: vi.fn(),
+  deleteOrphanAttachments: vi.fn(),
+  getTaskIdsWithInlineAttachments: vi.fn(),
+  setTaskDescription: vi.fn(),
 }));
 
 vi.mock('./storage', () => ({ storage: mockStorage }));
@@ -42,6 +52,7 @@ vi.mock('./storage', () => ({ storage: mockStorage }));
 import { createApp } from './app';
 import { api } from '@shared/routes';
 import { EXPORT_FORMAT_VERSION, EXPORT_GENERATOR, taskExportBundleSchema } from '@shared/export';
+import { ATTACHMENT_MAX_BYTES } from '@shared/attachments';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -120,6 +131,8 @@ let app: Express;
 
 beforeEach(async () => {
   vi.resetAllMocks();
+  // Every export lists attachments; most tests have none.
+  mockStorage.getAttachmentsByTasks.mockResolvedValue([]);
   const result = await createApp();
   app = result.app;
 });
@@ -472,7 +485,13 @@ describe('GET /api/export', () => {
 
     expect(res.body.stages).toHaveLength(1);
     expect(res.body.subStages).toHaveLength(1);
-    expect(res.body.counts).toEqual({ tasks: 1, stages: 1, subStages: 1, projects: 0 });
+    expect(res.body.counts).toEqual({
+      tasks: 1,
+      stages: 1,
+      subStages: 1,
+      projects: 0,
+      attachments: 0,
+    });
   });
 
   it('excludes archived tasks by default', async () => {
@@ -1133,5 +1152,305 @@ describe('Sub-stage routes', () => {
       expect(res.body).toHaveProperty('error');
       expect(res.body).toHaveProperty('status', 400);
     });
+  });
+});
+
+// ===========================================================================
+// Attachment routes
+// ===========================================================================
+
+describe('Attachment routes', () => {
+  const PNG = Buffer.from([1, 2, 3]);
+  const stored = {
+    id: 7,
+    taskId: null,
+    filename: 'shot.png',
+    mimeType: 'image/png',
+    byteSize: PNG.length,
+    createdAt: NOW,
+  };
+
+  const upload = (type: string, name: string, body: Buffer) =>
+    request(app)
+      .post(api.attachments.upload.path)
+      .set('Content-Type', 'application/octet-stream')
+      .set('x-attachment-type', type)
+      .set('x-attachment-name', encodeURIComponent(name))
+      .send(body);
+
+  describe('POST /api/attachments', () => {
+    it('stores a raw upload under its declared type and name', async () => {
+      mockStorage.createAttachment.mockResolvedValue(stored);
+
+      const res = await upload('image/png', 'shot.png', PNG);
+
+      expect(res.status).toBe(201);
+      expect(res.body).toMatchObject({
+        id: 7,
+        filename: 'shot.png',
+        mimeType: 'image/png',
+        url: '/api/attachments/7',
+      });
+      expect(mockStorage.createAttachment).toHaveBeenCalledWith({
+        taskId: null,
+        filename: 'shot.png',
+        mimeType: 'image/png',
+        data: PNG,
+      });
+    });
+
+    it('types a file by its extension when the declared type is generic, and cleans the name', async () => {
+      mockStorage.createAttachment.mockResolvedValue({
+        ...stored,
+        filename: '.._notes.md',
+        mimeType: 'text/markdown',
+      });
+
+      const res = await upload('application/octet-stream', '../notes.md', PNG);
+
+      expect(res.status).toBe(201);
+      expect(mockStorage.createAttachment).toHaveBeenCalledWith(
+        expect.objectContaining({ filename: '.._notes.md', mimeType: 'text/markdown' }),
+      );
+    });
+
+    it('refuses a type that cannot be attached with 415', async () => {
+      const res = await upload('text/html', 'page.html', PNG);
+      expect(res.status).toBe(415);
+      expect(res.body).toHaveProperty('status', 415);
+      expect(mockStorage.createAttachment).not.toHaveBeenCalled();
+    });
+
+    it('refuses an empty body with 400', async () => {
+      const res = await request(app)
+        .post(api.attachments.upload.path)
+        .set('Content-Type', 'application/octet-stream')
+        .set('x-attachment-type', 'image/png');
+      expect(res.status).toBe(400);
+      expect(mockStorage.createAttachment).not.toHaveBeenCalled();
+    });
+
+    it('refuses a body over the size limit with 413', async () => {
+      const res = await upload('image/png', 'big.png', Buffer.alloc(ATTACHMENT_MAX_BYTES + 1));
+      expect(res.status).toBe(413);
+      expect(res.body).toHaveProperty('status', 413);
+      expect(mockStorage.createAttachment).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('GET /api/attachments/:id', () => {
+    it('serves an image inline, cached for good, with a locked-down CSP', async () => {
+      mockStorage.getAttachment.mockResolvedValue({ ...stored, data: PNG });
+
+      const res = await request(app).get('/api/attachments/7');
+
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toBe('image/png');
+      expect(res.headers['content-length']).toBe(String(PNG.length));
+      expect(res.headers['content-disposition']).toBe(
+        `inline; filename="shot.png"; filename*=UTF-8''shot.png`,
+      );
+      expect(res.headers['cache-control']).toBe('private, max-age=31536000, immutable');
+      expect(res.headers['x-content-type-options']).toBe('nosniff');
+      expect(res.headers['content-security-policy']).toBe("default-src 'none'");
+      expect(Buffer.from(res.body as Buffer).equals(PNG)).toBe(true);
+    });
+
+    it('downloads on request', async () => {
+      mockStorage.getAttachment.mockResolvedValue({ ...stored, data: PNG });
+      const res = await request(app).get('/api/attachments/7?download=1');
+      expect(res.status).toBe(200);
+      expect(res.headers['content-disposition']).toMatch(/^attachment; filename="shot.png"/);
+    });
+
+    it('always downloads types a browser cannot show, and SVG', async () => {
+      mockStorage.getAttachment.mockResolvedValue({
+        ...stored,
+        filename: 'plan.docx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        data: PNG,
+      });
+      const docx = await request(app).get('/api/attachments/7');
+      expect(docx.headers['content-disposition']).toMatch(/^attachment; filename="plan.docx"/);
+
+      mockStorage.getAttachment.mockResolvedValue({
+        ...stored,
+        filename: 'logo.svg',
+        mimeType: 'image/svg+xml',
+        data: PNG,
+      });
+      const svg = await request(app).get('/api/attachments/7');
+      expect(svg.headers['content-disposition']).toMatch(/^attachment; filename="logo.svg"/);
+    });
+
+    it('leaves the CSP off a PDF so the viewer can render it', async () => {
+      mockStorage.getAttachment.mockResolvedValue({
+        ...stored,
+        filename: 'report.pdf',
+        mimeType: 'application/pdf',
+        data: PNG,
+      });
+      const res = await request(app).get('/api/attachments/7');
+      expect(res.headers['content-disposition']).toMatch(/^inline; filename="report.pdf"/);
+      expect(res.headers['content-security-policy']).toBeUndefined();
+    });
+
+    it('returns 404 for a missing attachment and 400 for a bad id', async () => {
+      mockStorage.getAttachment.mockResolvedValue(undefined);
+      const missing = await request(app).get('/api/attachments/99');
+      expect(missing.status).toBe(404);
+      expect(missing.body).toHaveProperty('status', 404);
+
+      const bad = await request(app).get('/api/attachments/abc');
+      expect(bad.status).toBe(400);
+    });
+  });
+});
+
+describe('Task routes keep attachments in step with the description', () => {
+  const PNG = Buffer.from([1, 2, 3]);
+  const stored = {
+    id: 5,
+    taskId: null,
+    filename: 'shot.png',
+    mimeType: 'image/png',
+    byteSize: PNG.length,
+    createdAt: NOW,
+  };
+  const chip = (href: string) =>
+    `<a data-file-chip="" data-file-name="shot.png" data-file-type="image/png" href="${href}" class="file-chip">shot.png</a>`;
+
+  it('binds the attachments a new task description references', async () => {
+    mockStorage.getAttachmentsMeta.mockResolvedValue([stored]);
+    mockStorage.createTask.mockResolvedValue(fakeTask({ id: 42 }));
+    mockStorage.bindAttachments.mockResolvedValue([5]);
+
+    const res = await request(app)
+      .post(api.tasks.create.path)
+      .send({ title: 'T', stageId: 1, description: `<p>${chip('/api/attachments/5')}</p>` });
+
+    expect(res.status).toBe(201);
+    expect(mockStorage.bindAttachments).toHaveBeenCalledWith(42, [5]);
+    expect(mockStorage.releaseAttachments).not.toHaveBeenCalled();
+  });
+
+  it('moves a file a new task description still holds inline into a row', async () => {
+    mockStorage.getAttachmentsMeta.mockResolvedValue([]);
+    mockStorage.createAttachment.mockResolvedValue({ ...stored, id: 9 });
+    mockStorage.createTask.mockResolvedValue(fakeTask({ id: 42 }));
+    mockStorage.bindAttachments.mockResolvedValue([9]);
+
+    const res = await request(app)
+      .post(api.tasks.create.path)
+      .send({
+        title: 'T',
+        stageId: 1,
+        description: `<p>${chip(`data:image/png;base64,${PNG.toString('base64')}`)}</p>`,
+      });
+
+    expect(res.status).toBe(201);
+    expect(mockStorage.createAttachment).toHaveBeenCalledWith({
+      taskId: null,
+      filename: 'shot.png',
+      mimeType: 'image/png',
+      data: PNG,
+    });
+    expect(mockStorage.createTask).toHaveBeenCalledWith(
+      expect.objectContaining({ description: `<p>${chip('/api/attachments/9')}</p>` }),
+    );
+    expect(mockStorage.bindAttachments).toHaveBeenCalledWith(42, [9]);
+  });
+
+  it('re-syncs attachments when a task description is updated', async () => {
+    mockStorage.getAttachmentsMeta.mockResolvedValue([{ ...stored, taskId: 1 }]);
+    mockStorage.updateTask.mockResolvedValue(fakeTask());
+    mockStorage.bindAttachments.mockResolvedValue([5]);
+
+    const res = await request(app)
+      .patch('/api/tasks/1')
+      .send({ description: `<p>${chip('/api/attachments/5')}</p>` });
+
+    expect(res.status).toBe(200);
+    expect(mockStorage.bindAttachments).toHaveBeenCalledWith(1, [5]);
+    expect(mockStorage.releaseAttachments).toHaveBeenCalledWith(1, [5]);
+  });
+
+  it("gives an update that references another task's attachment a copy of its own", async () => {
+    mockStorage.getAttachmentsMeta.mockResolvedValue([{ ...stored, taskId: 2 }]);
+    mockStorage.copyAttachment.mockResolvedValue({ ...stored, id: 8 });
+    mockStorage.updateTask.mockResolvedValue(fakeTask());
+    mockStorage.bindAttachments.mockResolvedValue([8]);
+
+    const res = await request(app)
+      .patch('/api/tasks/1')
+      .send({ description: chip('/api/attachments/5') });
+
+    expect(res.status).toBe(200);
+    expect(mockStorage.copyAttachment).toHaveBeenCalledWith(5);
+    expect(mockStorage.updateTask).toHaveBeenCalledWith(1, {
+      description: chip('/api/attachments/8'),
+    });
+    expect(mockStorage.bindAttachments).toHaveBeenCalledWith(1, [8]);
+  });
+
+  it('releases every attachment when the description is cleared', async () => {
+    mockStorage.updateTask.mockResolvedValue(fakeTask());
+    const res = await request(app).patch('/api/tasks/1').send({ description: null });
+    expect(res.status).toBe(200);
+    expect(mockStorage.bindAttachments).not.toHaveBeenCalled();
+    expect(mockStorage.releaseAttachments).toHaveBeenCalledWith(1, []);
+  });
+
+  it('leaves attachments alone when the update carries no description', async () => {
+    mockStorage.updateTask.mockResolvedValue(fakeTask());
+    const res = await request(app).patch('/api/tasks/1').send({ title: 'Renamed' });
+    expect(res.status).toBe(200);
+    expect(mockStorage.bindAttachments).not.toHaveBeenCalled();
+    expect(mockStorage.releaseAttachments).not.toHaveBeenCalled();
+  });
+});
+
+describe('GET /api/export lists attachments', () => {
+  const PNG = Buffer.from([1, 2, 3]);
+  const stored = {
+    id: 7,
+    taskId: 1,
+    filename: 'shot.png',
+    mimeType: 'image/png',
+    byteSize: PNG.length,
+    createdAt: NOW,
+  };
+
+  beforeEach(() => {
+    mockStorage.getTasks.mockResolvedValue([fakeTask({ id: 1 })]);
+    mockStorage.getArchivedTasks.mockResolvedValue([]);
+    mockStorage.getStages.mockResolvedValue([fakeStage()]);
+    mockStorage.getSubStages.mockResolvedValue([]);
+    mockStorage.getProjects.mockResolvedValue([]);
+  });
+
+  it("lists each task's attachments by url, without their bytes", async () => {
+    mockStorage.getAttachmentsByTasks.mockResolvedValue([stored]);
+
+    const res = await request(app).get(api.export.get.path);
+
+    expect(res.status).toBe(200);
+    expect(mockStorage.getAttachmentsByTasks).toHaveBeenCalledWith([1], { withData: false });
+    expect(res.body.attachments).toHaveLength(1);
+    expect(res.body.attachments[0]).toMatchObject({ id: 7, taskId: 1, url: '/api/attachments/7' });
+    expect(res.body.attachments[0]).not.toHaveProperty('data');
+    expect(res.body.counts.attachments).toBe(1);
+    expect(res.body.scope.includeAttachments).toBe(false);
+  });
+
+  it('embeds the bytes when asked to', async () => {
+    mockStorage.getAttachmentsByTasks.mockResolvedValue([{ ...stored, data: PNG }]);
+
+    const res = await request(app).get(`${api.export.get.path}?includeAttachments=true`);
+
+    expect(res.status).toBe(200);
+    expect(mockStorage.getAttachmentsByTasks).toHaveBeenCalledWith([1], { withData: true });
+    expect(res.body.attachments[0].data).toBe(PNG.toString('base64'));
+    expect(res.body.scope.includeAttachments).toBe(true);
   });
 });

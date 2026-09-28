@@ -7,12 +7,7 @@ import {
   toRichHtml,
   richTextToPlainText,
   isRichTextEmpty,
-  isAcceptedFileChipType,
-  resolveFileChipType,
-  attachmentFitsDescription,
-  dataUrlToBlob,
-  FILE_CHIP_ACCEPT,
-  DESCRIPTION_MAX_CHARS,
+  absolutizeAttachmentLinks,
 } from './rich-text';
 
 describe('looksLikeRichText', () => {
@@ -62,93 +57,23 @@ describe('sanitizeRichText', () => {
     expect(good).toContain('noopener');
   });
 
-  it('keeps image data URLs on file chips but strips other data URLs', () => {
-    const chip =
-      '<a data-file-chip data-file-name="pic.png" href="data:image/png;base64,AAAA">pic.png</a>';
-    expect(sanitizeRichText(chip)).toContain('href="data:image/png;base64,AAAA"');
-
-    const evil = '<a data-file-chip data-file-name="x" href="data:text/html,<script>">x</a>';
-    expect(sanitizeRichText(evil)).not.toContain('href');
+  it('keeps attachment urls on file chips but strips any other chip href', () => {
+    const chip = (href: string) =>
+      `<a data-file-chip data-file-name="pic.png" href="${href}">pic.png</a>`;
+    expect(sanitizeRichText(chip('/api/attachments/12'))).toContain('href="/api/attachments/12"');
+    for (const href of [
+      'data:image/png;base64,AAAA',
+      'https://example.com/pic.png',
+      '/api/attachments/12/../../x',
+      'javascript:alert(1)',
+    ]) {
+      expect(sanitizeRichText(chip(href))).not.toContain('href');
+    }
   });
 
-  it('strips data: hrefs on regular links', () => {
+  it('strips data: and attachment hrefs on regular links', () => {
     expect(sanitizeRichText('<a href="data:image/png;base64,AAAA">x</a>')).not.toContain('href');
-    const pdf = '<a href="data:application/pdf;base64,AAAA">x</a>';
-    expect(sanitizeRichText(pdf)).not.toContain('href');
-  });
-
-  it('keeps data URLs of accepted document types on file chips', () => {
-    for (const type of [
-      'application/pdf',
-      'text/plain',
-      'text/csv',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/zip',
-      'audio/mpeg',
-      'video/mp4',
-    ]) {
-      const chip = `<a data-file-chip data-file-name="f" href="data:${type};base64,AAAA">f</a>`;
-      expect(sanitizeRichText(chip)).toContain(`href="data:${type};base64,AAAA"`);
-    }
-  });
-
-  it('strips data URLs a browser would run, even on file chips', () => {
-    for (const type of [
-      'text/html',
-      'application/xhtml+xml',
-      'text/javascript',
-      'application/javascript',
-      'application/octet-stream',
-      'application/pdfx',
-    ]) {
-      const chip = `<a data-file-chip data-file-name="f" href="data:${type};base64,AAAA">f</a>`;
-      expect(sanitizeRichText(chip)).not.toContain('href');
-    }
-  });
-});
-
-describe('isAcceptedFileChipType', () => {
-  it('matches prefixes and exact types, case-insensitively', () => {
-    expect(isAcceptedFileChipType('image/png')).toBe(true);
-    expect(isAcceptedFileChipType('Application/PDF')).toBe(true);
-    expect(
-      isAcceptedFileChipType('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
-    ).toBe(true);
-    expect(isAcceptedFileChipType('text/html')).toBe(false);
-    expect(isAcceptedFileChipType('text/plainx')).toBe(false);
-    expect(isAcceptedFileChipType('')).toBe(false);
-  });
-});
-
-describe('resolveFileChipType', () => {
-  it("keeps the browser's type when it is accepted", () => {
-    expect(resolveFileChipType('report.pdf', 'application/pdf')).toBe('application/pdf');
-    expect(resolveFileChipType('shot.png', 'image/png')).toBe('image/png');
-  });
-
-  it('falls back to the extension for missing, generic or vendor types', () => {
-    expect(resolveFileChipType('notes.md', '')).toBe('text/markdown');
-    expect(resolveFileChipType('data.CSV', 'application/octet-stream')).toBe('text/csv');
-    expect(resolveFileChipType('plan.pages', 'application/x-iwork-pages-sffpages')).toBe(
-      'application/vnd.apple.pages',
-    );
-  });
-
-  it('rejects files it cannot type as an accepted kind', () => {
-    expect(resolveFileChipType('page.html', 'text/html')).toBeNull();
-    expect(resolveFileChipType('run.exe', 'application/x-msdownload')).toBeNull();
-    expect(resolveFileChipType('README', '')).toBeNull();
-  });
-});
-
-describe('FILE_CHIP_ACCEPT', () => {
-  it('lists wildcard families, exact types and fallback extensions', () => {
-    const accept = FILE_CHIP_ACCEPT.split(',');
-    expect(accept).toContain('image/*');
-    expect(accept).toContain('application/pdf');
-    expect(accept).toContain('.docx');
-    expect(accept).toContain('.md');
-    expect(accept.some((a) => a.endsWith('.'))).toBe(false);
+    expect(sanitizeRichText('<a href="/api/attachments/12">x</a>')).not.toContain('href');
   });
 });
 
@@ -181,7 +106,7 @@ describe('richTextToPlainText', () => {
 
   it('replaces file chips with their name', () => {
     const html =
-      '<p>see <a data-file-chip data-file-name="shot.png" href="data:image/png;base64,AAAA">shot.png</a></p>';
+      '<p>see <a data-file-chip data-file-name="shot.png" href="/api/attachments/1">shot.png</a></p>';
     expect(richTextToPlainText(html)).toBe('see [shot.png]');
   });
 });
@@ -197,41 +122,19 @@ describe('isRichTextEmpty', () => {
   it('counts a lone file chip as content', () => {
     expect(
       isRichTextEmpty(
-        '<p><a data-file-chip data-file-name="a.png" href="data:image/png;base64,AAAA"></a></p>',
+        '<p><a data-file-chip data-file-name="a.png" href="/api/attachments/1"></a></p>',
       ),
     ).toBe(false);
   });
 });
 
-describe('attachmentFitsDescription', () => {
-  it('counts the file at its base64 size against the description budget', () => {
-    expect(attachmentFitsDescription(0, 3)).toBe(true);
-    // 3 bytes become 4 characters: exactly at the limit still fits.
-    expect(attachmentFitsDescription(DESCRIPTION_MAX_CHARS - 4, 3)).toBe(true);
-    expect(attachmentFitsDescription(DESCRIPTION_MAX_CHARS - 3, 3)).toBe(false);
-  });
-});
-
-describe('dataUrlToBlob', () => {
-  it('decodes base64 data URLs to the original bytes and type', async () => {
-    const blob = dataUrlToBlob('data:application/pdf;base64,JVBERi0=');
-    expect(blob.type).toBe('application/pdf');
-    expect(await blob.text()).toBe('%PDF-');
-  });
-
-  it('decodes percent-encoded data URLs', async () => {
-    const blob = dataUrlToBlob('data:text/plain,hello%20world');
-    expect(blob.type).toBe('text/plain');
-    expect(await blob.text()).toBe('hello world');
-  });
-
-  it('round-trips binary bytes', async () => {
-    const blob = dataUrlToBlob('data:application/zip;base64,AP+Afw==');
-    expect([...new Uint8Array(await blob.arrayBuffer())]).toEqual([0, 255, 128, 127]);
-  });
-
-  it('rejects values that are not data URLs', () => {
-    expect(() => dataUrlToBlob('https://example.com/a.pdf')).toThrow();
-    expect(() => dataUrlToBlob('data:text/plain')).toThrow();
+describe('absolutizeAttachmentLinks', () => {
+  it('puts the origin in front of attachment links and leaves other links alone', () => {
+    const html =
+      '<p><a href="/api/attachments/3" data-file-chip="">f</a> <a href="https://x.y/">x</a></p>';
+    expect(absolutizeAttachmentLinks(html, 'https://board.example/')).toBe(
+      '<p><a href="https://board.example/api/attachments/3" data-file-chip="">f</a> <a href="https://x.y/">x</a></p>',
+    );
+    expect(absolutizeAttachmentLinks(html, '')).toBe(html);
   });
 });

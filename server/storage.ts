@@ -4,11 +4,15 @@ import {
   stages,
   subStages,
   projects,
+  taskAttachments,
   inboundEmailProcessing,
   type Task,
   type Stage,
   type SubStage,
   type Project,
+  type TaskAttachment,
+  type TaskAttachmentRow,
+  type InsertAttachment,
   type InsertTask,
   type InsertStage,
   type InsertSubStage,
@@ -24,8 +28,30 @@ import {
   getStatusFromStageName,
 } from '@shared/constants';
 import { db } from './db';
-import { eq, and, sql, isNull, isNotNull, desc } from 'drizzle-orm';
+import {
+  eq,
+  and,
+  or,
+  sql,
+  isNull,
+  isNotNull,
+  desc,
+  inArray,
+  notInArray,
+  lt,
+  like,
+} from 'drizzle-orm';
 import { logger } from '@shared/logger';
+
+/** Every attachment column but the bytes: what lists and exports read. */
+const attachmentMeta = {
+  id: taskAttachments.id,
+  taskId: taskAttachments.taskId,
+  filename: taskAttachments.filename,
+  mimeType: taskAttachments.mimeType,
+  byteSize: taskAttachments.byteSize,
+  createdAt: taskAttachments.createdAt,
+};
 
 type TaskInsertExecutor = Pick<typeof db, 'insert' | 'select'>;
 
@@ -106,6 +132,31 @@ export interface IStorage {
   deleteProject(id: number): Promise<boolean>;
   /** Live (unarchived, unbinned) task count per project id; projects with none are absent. */
   getProjectTaskCounts(): Promise<Record<number, number>>;
+  // Attachments (shared/attachments.ts): the bytes live in task_attachments and
+  // a description references a row by url. Metadata reads never load the bytes.
+  /** Stores an upload. `taskId` null = no saved description references it yet. */
+  createAttachment(attachment: InsertAttachment): Promise<TaskAttachment>;
+  /** One attachment with its bytes, for serving. */
+  getAttachment(id: number): Promise<TaskAttachmentRow | undefined>;
+  /** Metadata for the given ids; unknown ids are simply absent. */
+  getAttachmentsMeta(ids: number[]): Promise<TaskAttachment[]>;
+  /** The given tasks' attachments, oldest first, with their bytes when `withData`. */
+  getAttachmentsByTasks(
+    taskIds: number[],
+    options?: { withData?: boolean },
+  ): Promise<(TaskAttachment & { data?: Buffer })[]>;
+  /** Binds the attachments to the task. Rows bound to another task are left alone. Returns the ids bound. */
+  bindAttachments(taskId: number, ids: number[]): Promise<number[]>;
+  /** Duplicates an attachment as a new unbound row (a description copied between tasks). */
+  copyAttachment(id: number): Promise<TaskAttachment | undefined>;
+  /** Unbinds the task's attachments other than `keepIds`; the sweeper deletes them later. */
+  releaseAttachments(taskId: number, keepIds: number[]): Promise<void>;
+  /** Deletes unbound attachments created before `olderThan`. Returns how many. */
+  deleteOrphanAttachments(olderThan: Date): Promise<number>;
+  /** Tasks whose description still carries a file inline as a data: URL. */
+  getTaskIdsWithInlineAttachments(): Promise<number[]>;
+  /** Rewrites a description without touching updatedAt or history (data migration only). */
+  setTaskDescription(id: number, description: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -455,6 +506,119 @@ export class DatabaseStorage implements IStorage {
       if (row.projectId != null) counts[row.projectId] = row.count;
     }
     return counts;
+  }
+
+  async createAttachment(attachment: InsertAttachment): Promise<TaskAttachment> {
+    const [row] = await db
+      .insert(taskAttachments)
+      .values({
+        taskId: attachment.taskId,
+        filename: attachment.filename,
+        mimeType: attachment.mimeType,
+        byteSize: attachment.data.length,
+        data: attachment.data,
+      })
+      .returning(attachmentMeta);
+    return row!;
+  }
+
+  async getAttachment(id: number): Promise<TaskAttachmentRow | undefined> {
+    const [row] = await db.select().from(taskAttachments).where(eq(taskAttachments.id, id));
+    return row;
+  }
+
+  async getAttachmentsMeta(ids: number[]): Promise<TaskAttachment[]> {
+    if (ids.length === 0) return [];
+    return await db
+      .select(attachmentMeta)
+      .from(taskAttachments)
+      .where(inArray(taskAttachments.id, ids));
+  }
+
+  async getAttachmentsByTasks(
+    taskIds: number[],
+    { withData = false }: { withData?: boolean } = {},
+  ): Promise<(TaskAttachment & { data?: Buffer })[]> {
+    if (taskIds.length === 0) return [];
+    const ofTasks = inArray(taskAttachments.taskId, taskIds);
+    if (withData) {
+      return await db
+        .select({ ...attachmentMeta, data: taskAttachments.data })
+        .from(taskAttachments)
+        .where(ofTasks)
+        .orderBy(taskAttachments.id);
+    }
+    return await db
+      .select(attachmentMeta)
+      .from(taskAttachments)
+      .where(ofTasks)
+      .orderBy(taskAttachments.id);
+  }
+
+  async bindAttachments(taskId: number, ids: number[]): Promise<number[]> {
+    if (ids.length === 0) return [];
+    const bound = await db
+      .update(taskAttachments)
+      .set({ taskId })
+      .where(
+        and(
+          inArray(taskAttachments.id, ids),
+          or(isNull(taskAttachments.taskId), eq(taskAttachments.taskId, taskId)),
+        ),
+      )
+      .returning({ id: taskAttachments.id });
+    return bound.map((row) => row.id);
+  }
+
+  async copyAttachment(id: number): Promise<TaskAttachment | undefined> {
+    // Copied inside the database so the bytes never round-trip through Node.
+    const result = await db.execute(sql`
+      INSERT INTO task_attachments (task_id, filename, mime_type, byte_size, data)
+      SELECT NULL, filename, mime_type, byte_size, data
+      FROM task_attachments
+      WHERE id = ${id}
+      RETURNING id, filename, mime_type, byte_size, created_at
+    `);
+    const row = result.rows[0];
+    if (!row) return undefined;
+    return {
+      id: Number(row.id),
+      taskId: null,
+      filename: String(row.filename),
+      mimeType: String(row.mime_type),
+      byteSize: Number(row.byte_size),
+      createdAt: new Date(row.created_at as string | Date),
+    };
+  }
+
+  async releaseAttachments(taskId: number, keepIds: number[]): Promise<void> {
+    const ofTask = eq(taskAttachments.taskId, taskId);
+    await db
+      .update(taskAttachments)
+      .set({ taskId: null })
+      .where(keepIds.length === 0 ? ofTask : and(ofTask, notInArray(taskAttachments.id, keepIds)));
+  }
+
+  async deleteOrphanAttachments(olderThan: Date): Promise<number> {
+    const deleted = await db
+      .delete(taskAttachments)
+      .where(and(isNull(taskAttachments.taskId), lt(taskAttachments.createdAt, olderThan)))
+      .returning({ id: taskAttachments.id });
+    return deleted.length;
+  }
+
+  async getTaskIdsWithInlineAttachments(): Promise<number[]> {
+    // A coarse match; prepareDescriptionAttachments re-checks each chip.
+    const rows = await db
+      .select({ id: tasks.id })
+      .from(tasks)
+      .where(and(like(tasks.description, '%data-file-chip%'), like(tasks.description, '%data:%')))
+      .orderBy(tasks.id);
+    return rows.map((row) => row.id);
+  }
+
+  async setTaskDescription(id: number, description: string): Promise<void> {
+    await db.update(tasks).set({ description }).where(eq(tasks.id, id));
   }
 }
 

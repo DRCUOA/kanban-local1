@@ -118,6 +118,8 @@ Each change ships expand → backfill → contract so no deploy has a broken win
 
 ### Story 7 — acceptance criteria
 
+> **Landed 28 Sep 2026**, ahead of the rest of the epic: `task_attachments` (migration 0011, `data bytea`, `task_id` FK cascade), `POST /api/attachments` + `GET /api/attachments/:id`, chips reference rows by `/api/attachments/:id`, a startup pass rewrites every description still holding a `data:` chip (idempotent, no `updatedAt` bump), and the export lists attachments with `?includeAttachments=true` for a complete backup. See `shared/attachments.ts` and `server/attachments.ts`. The "under 50 KB" target below is met for the default export; `description_text` (story 8) is still open.
+
 - **Given** #146 and #122, **when** the migration runs, **then** their embedded base64 URIs are stored as `task_attachments` rows and the description references them by id.
 - **Given** the full board, **when** `GET /api/export` is called, **then** the response is **under 50 KB** (from 547 KB) and no task loses content a user can see in the editor.
 - **Given** a user pastes an image into the task editor, **when** the task is saved, **then** the image lands in `task_attachments`, not inline in the description body.

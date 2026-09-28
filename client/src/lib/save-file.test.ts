@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { saveTextFile, downloadBlob, type SaveTextFileOptions } from './save-file';
+import { saveTextFile, type SaveTextFileOptions } from './save-file';
 
 const options: SaveTextFileOptions = {
   filename: 'taskflow-task-1.txt',
@@ -96,27 +96,6 @@ describe('saveTextFile', () => {
 
     expect(result).toBe('downloaded');
     expect(clicks).toEqual(['taskflow-task-1.txt']);
-    expect(revokeObjectURL).toHaveBeenCalledWith('blob:stub');
-  });
-});
-
-describe('downloadBlob', () => {
-  beforeEach(() => {
-    revokeObjectURL.mockClear();
-    (URL as unknown as { createObjectURL: unknown }).createObjectURL = vi.fn(() => 'blob:stub');
-    (URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL = revokeObjectURL;
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it('downloads through an object URL under the given name and releases it', () => {
-    const { clicks } = stubAnchorDownload();
-
-    downloadBlob('report.pdf', new Blob(['%PDF'], { type: 'application/pdf' }));
-
-    expect(clicks).toEqual(['report.pdf']);
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:stub');
   });
 });

@@ -12,6 +12,9 @@ import type {
   InsertProject,
   TaskHistoryEntry,
   TaskStatus,
+  TaskAttachment,
+  TaskAttachmentRow,
+  InsertAttachment,
 } from '@shared/schema';
 import type { TaskProjectFilter } from '@shared/project-scope';
 import {
@@ -40,6 +43,8 @@ class MemStorage implements IStorage {
   private stageStore = new Map<number, Stage>();
   private subStageStore = new Map<number, SubStage>();
   private projectStore = new Map<number, Project>();
+  private attachmentSeq = 0;
+  private attachmentStore = new Map<number, TaskAttachmentRow>();
 
   async getTasks(filter?: TaskProjectFilter): Promise<Task[]> {
     return [...this.taskStore.values()]
@@ -330,6 +335,111 @@ class MemStorage implements IStorage {
       counts[task.projectId] = (counts[task.projectId] ?? 0) + 1;
     }
     return counts;
+  }
+
+  // ===== Attachments =====
+
+  private attachmentMeta(row: TaskAttachmentRow): TaskAttachment {
+    return {
+      id: row.id,
+      taskId: row.taskId,
+      filename: row.filename,
+      mimeType: row.mimeType,
+      byteSize: row.byteSize,
+      createdAt: row.createdAt,
+    };
+  }
+
+  async createAttachment(attachment: InsertAttachment): Promise<TaskAttachment> {
+    const row: TaskAttachmentRow = {
+      id: ++this.attachmentSeq,
+      taskId: attachment.taskId,
+      filename: attachment.filename,
+      mimeType: attachment.mimeType,
+      byteSize: attachment.data.length,
+      data: attachment.data,
+      createdAt: new Date(),
+    };
+    this.attachmentStore.set(row.id, row);
+    return this.attachmentMeta(row);
+  }
+
+  async getAttachment(id: number): Promise<TaskAttachmentRow | undefined> {
+    return this.attachmentStore.get(id);
+  }
+
+  async getAttachmentsMeta(ids: number[]): Promise<TaskAttachment[]> {
+    return ids.flatMap((id) => {
+      const row = this.attachmentStore.get(id);
+      return row ? [this.attachmentMeta(row)] : [];
+    });
+  }
+
+  async getAttachmentsByTasks(
+    taskIds: number[],
+    { withData = false }: { withData?: boolean } = {},
+  ): Promise<(TaskAttachment & { data?: Buffer })[]> {
+    const wanted = new Set(taskIds);
+    return [...this.attachmentStore.values()]
+      .filter((row) => row.taskId !== null && wanted.has(row.taskId))
+      .sort((a, b) => a.id - b.id)
+      .map((row) => (withData ? { ...row } : this.attachmentMeta(row)));
+  }
+
+  async bindAttachments(taskId: number, ids: number[]): Promise<number[]> {
+    const bound: number[] = [];
+    for (const id of ids) {
+      const row = this.attachmentStore.get(id);
+      if (row && (row.taskId === null || row.taskId === taskId)) {
+        row.taskId = taskId;
+        bound.push(id);
+      }
+    }
+    return bound;
+  }
+
+  async copyAttachment(id: number): Promise<TaskAttachment | undefined> {
+    const row = this.attachmentStore.get(id);
+    if (!row) return undefined;
+    return this.createAttachment({
+      taskId: null,
+      filename: row.filename,
+      mimeType: row.mimeType,
+      data: row.data,
+    });
+  }
+
+  async releaseAttachments(taskId: number, keepIds: number[]): Promise<void> {
+    const keep = new Set(keepIds);
+    for (const row of this.attachmentStore.values()) {
+      if (row.taskId === taskId && !keep.has(row.id)) row.taskId = null;
+    }
+  }
+
+  async deleteOrphanAttachments(olderThan: Date): Promise<number> {
+    let deleted = 0;
+    for (const [id, row] of this.attachmentStore) {
+      if (row.taskId === null && row.createdAt < olderThan) {
+        this.attachmentStore.delete(id);
+        deleted++;
+      }
+    }
+    return deleted;
+  }
+
+  async getTaskIdsWithInlineAttachments(): Promise<number[]> {
+    return [...this.taskStore.values()]
+      .filter(
+        (task) =>
+          task.description?.includes('data-file-chip') && task.description.includes('data:'),
+      )
+      .map((task) => task.id)
+      .sort((a, b) => a - b);
+  }
+
+  async setTaskDescription(id: number, description: string): Promise<void> {
+    const task = this.taskStore.get(id);
+    if (task) task.description = description;
   }
 }
 
@@ -1029,5 +1139,95 @@ describe('IStorage contract', () => {
 
       expect(child.parentTaskId).toBe(parent.id);
     });
+  });
+});
+
+describe('IStorage contract: attachments', () => {
+  let storage: IStorage;
+  const png = Buffer.from([1, 2, 3]);
+  const upload = (filename = 'shot.png', taskId: number | null = null): InsertAttachment => ({
+    taskId,
+    filename,
+    mimeType: 'image/png',
+    data: png,
+  });
+
+  beforeEach(() => {
+    storage = new MemStorage();
+  });
+
+  it('stores an upload unbound and reads it back with and without its bytes', async () => {
+    const meta = await storage.createAttachment(upload());
+    expect(meta).toMatchObject({ taskId: null, filename: 'shot.png', byteSize: 3 });
+    expect(meta).not.toHaveProperty('data');
+
+    const row = await storage.getAttachment(meta.id);
+    expect(row?.data.equals(png)).toBe(true);
+    expect(await storage.getAttachmentsMeta([meta.id, 999])).toEqual([meta]);
+    expect(await storage.getAttachment(999)).toBeUndefined();
+  });
+
+  it('binds only rows that are unbound or already the task’s own', async () => {
+    const stage = await storage.createStage(makeStageInput());
+    const a = await storage.createTask(makeTaskInput(stage.id));
+    const b = await storage.createTask(makeTaskInput(stage.id));
+    const free = await storage.createAttachment(upload());
+    const owned = await storage.createAttachment(upload('b.png', b.id));
+
+    expect(await storage.bindAttachments(a.id, [free.id, owned.id, 999])).toEqual([free.id]);
+    expect(await storage.bindAttachments(b.id, [owned.id])).toEqual([owned.id]);
+    expect((await storage.getAttachmentsByTasks([a.id])).map((r) => r.id)).toEqual([free.id]);
+    const withData = await storage.getAttachmentsByTasks([a.id, b.id], { withData: true });
+    expect(withData.map((r) => r.data?.equals(png))).toEqual([true, true]);
+  });
+
+  it('copies a row as a new unbound row with the same bytes', async () => {
+    const stage = await storage.createStage(makeStageInput());
+    const task = await storage.createTask(makeTaskInput(stage.id));
+    const original = await storage.createAttachment(upload('shot.png', task.id));
+
+    const copy = await storage.copyAttachment(original.id);
+
+    expect(copy).toMatchObject({ taskId: null, filename: 'shot.png', byteSize: 3 });
+    expect(copy!.id).not.toBe(original.id);
+    expect((await storage.getAttachment(copy!.id))?.data.equals(png)).toBe(true);
+    expect(await storage.copyAttachment(999)).toBeUndefined();
+  });
+
+  it('releases all but the kept rows and sweeps released rows by age', async () => {
+    const stage = await storage.createStage(makeStageInput());
+    const task = await storage.createTask(makeTaskInput(stage.id));
+    const kept = await storage.createAttachment(upload('a.png', task.id));
+    const dropped = await storage.createAttachment(upload('b.png', task.id));
+
+    await storage.releaseAttachments(task.id, [kept.id]);
+    expect((await storage.getAttachmentsMeta([dropped.id]))[0]?.taskId).toBeNull();
+    expect((await storage.getAttachmentsMeta([kept.id]))[0]?.taskId).toBe(task.id);
+
+    expect(await storage.deleteOrphanAttachments(new Date(Date.now() - 60_000))).toBe(0);
+    expect(await storage.deleteOrphanAttachments(new Date(Date.now() + 60_000))).toBe(1);
+    expect(await storage.getAttachmentsMeta([dropped.id])).toEqual([]);
+    expect(await storage.getAttachmentsMeta([kept.id])).toHaveLength(1);
+  });
+
+  it('finds descriptions still holding a file inline and rewrites them in place', async () => {
+    const stage = await storage.createStage(makeStageInput());
+    const legacy = await storage.createTask(
+      makeTaskInput(stage.id, {
+        description: '<p><a data-file-chip="" href="data:image/png;base64,AAAA">f</a></p>',
+      }),
+    );
+    await storage.createTask(makeTaskInput(stage.id, { description: '<p>plain</p>' }));
+
+    expect(await storage.getTaskIdsWithInlineAttachments()).toEqual([legacy.id]);
+
+    await storage.setTaskDescription(
+      legacy.id,
+      '<p><a data-file-chip="" href="/api/attachments/1">f</a></p>',
+    );
+    const after = await storage.getTaskById(legacy.id);
+    expect(after?.description).toContain('/api/attachments/1');
+    expect(after?.updatedAt).toEqual(legacy.updatedAt);
+    expect(await storage.getTaskIdsWithInlineAttachments()).toEqual([]);
   });
 });

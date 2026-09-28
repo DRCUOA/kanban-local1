@@ -27,7 +27,10 @@ export async function fetchBoardBundle({
   stages,
 }: FetchBoardBundleOptions): Promise<BoardBundleResult> {
   try {
-    return { bundle: await apiGet<TaskExportBundle>(api.export.get.path), degraded: false };
+    // With the files: an export or share from the board is a complete copy,
+    // one an import can restore attachments from.
+    const url = `${api.export.get.path}?includeAttachments=true`;
+    return { bundle: await apiGet<TaskExportBundle>(url), degraded: false };
   } catch (error: unknown) {
     logger.error('Export API failed, falling back to in-memory export:', error);
     if (!tasks) throw error;

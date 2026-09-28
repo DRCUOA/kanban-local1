@@ -1,4 +1,12 @@
-import type { Task, Stage, SubStage, Project, ProjectSummary, TaskHistoryEntry } from './schema';
+import type {
+  Task,
+  Stage,
+  SubStage,
+  Project,
+  ProjectSummary,
+  TaskHistoryEntry,
+  TaskAttachment,
+} from './schema';
 
 /** Standard error response shape returned by all API endpoints on failure */
 export interface ApiErrorResponse {
@@ -33,3 +41,7 @@ export type SubStageResponse = SubStage;
 // --- Project endpoint response types ---
 export type ProjectListResponse = ProjectSummary[];
 export type ProjectResponse = Project;
+
+// --- Attachment endpoint response types ---
+/** A stored upload plus the url a description chip references it by. */
+export type UploadedAttachmentResponse = TaskAttachment & { url: string };

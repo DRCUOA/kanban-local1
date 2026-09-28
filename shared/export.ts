@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Task, Stage, SubStage, Project } from './schema';
+import type { Task, Stage, SubStage, Project, TaskAttachment } from './schema';
 import {
   annotateTasksWithUrgency,
   buildBriefing,
@@ -18,6 +18,15 @@ import {
 export const EXPORT_FORMAT_VERSION = 1;
 
 export const EXPORT_GENERATOR = 'kanban-local';
+
+/**
+ * A task's attachment in the export: the metadata always, and the bytes
+ * (`data`, base64) only when the export was taken with
+ * `?includeAttachments=true` — that makes the file a complete backup an
+ * import can restore the files from. `url` is what the task's description
+ * chip references.
+ */
+export type ExportAttachment = TaskAttachment & { url: string; data?: string };
 
 /**
  * Self-contained export envelope. Deliberately an object rather than a bare
@@ -42,18 +51,23 @@ export interface TaskExportBundle {
     includeArchived: boolean;
     /** null = unscoped; otherwise the project ids the tasks were filtered to. */
     projectIds: number[] | null;
+    /** True when `attachments[].data` carries each file's bytes. */
+    includeAttachments: boolean;
   };
   counts: {
     tasks: number;
     stages: number;
     subStages: number;
     projects: number;
+    attachments: number;
   };
   stages: Stage[];
   subStages: SubStage[];
   tasks: ExportTask[];
   /** Every project, so a scoped file still resolves each task's `projectId`. */
   projects: Project[];
+  /** The exported tasks' files. Last in the envelope: with bytes it is the heavy part. */
+  attachments: ExportAttachment[];
   /** Pre-bucketed briefing sections. Derived from `tasks`; never a new source. */
   briefing: BriefingDigest;
 }
@@ -65,17 +79,21 @@ export const taskExportBundleSchema = z.object({
   scope: z.object({
     includeArchived: z.boolean(),
     projectIds: z.array(z.number()).nullable(),
+    includeAttachments: z.boolean().optional(),
   }),
   counts: z.object({
     tasks: z.number(),
     stages: z.number(),
     subStages: z.number(),
     projects: z.number(),
+    attachments: z.number().optional(),
   }),
   stages: z.array(z.custom<Stage>()),
   subStages: z.array(z.custom<SubStage>()),
   tasks: z.array(z.custom<Task>()),
   projects: z.array(z.custom<Project>()),
+  // Optional so export files written before attachments had rows still validate.
+  attachments: z.array(z.custom<ExportAttachment>()).optional(),
   // Optional so export files written before the briefing block still validate.
   briefing: briefingDigestSchema.optional(),
 });
@@ -115,6 +133,15 @@ export const exportQuerySchema = z.object({
     .transform(Number)
     .pipe(z.number().int().positive(INVALID_EXPORT_PROJECT_ID))
     .optional(),
+  /**
+   * Embed each attachment's bytes (base64) in `attachments[].data`, making
+   * the file a complete backup. Off by default: metadata alone keeps the
+   * bundle small for the briefing agent.
+   */
+  includeAttachments: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
 });
 export type ExportQuery = z.infer<typeof exportQuerySchema>;
 
@@ -148,6 +175,10 @@ export interface BuildExportBundleInput {
   includeArchived: boolean;
   /** Project ids `tasks` were filtered to; omit (or null) for an unscoped export. */
   projectIds?: number[] | null;
+  /** The exported tasks' files. Defaults to none (the in-memory fallback). */
+  attachments?: ExportAttachment[];
+  /** True when `attachments[].data` is populated. */
+  includeAttachments?: boolean;
   exportedAt: string;
   /** IANA zone the due-date buckets are cut in. Defaults to `DEFAULT_TIMEZONE`. */
   timezone?: string;
@@ -164,6 +195,8 @@ export function buildExportBundle({
   projects = [],
   includeArchived,
   projectIds = null,
+  attachments = [],
+  includeAttachments = false,
   exportedAt,
   timezone,
 }: BuildExportBundleInput): TaskExportBundle {
@@ -181,12 +214,14 @@ export function buildExportBundle({
     scope: {
       includeArchived,
       projectIds,
+      includeAttachments,
     },
     counts: {
       tasks: tasks.length,
       stages: stages.length,
       subStages: subStages.length,
       projects: projects.length,
+      attachments: attachments.length,
     },
     // Serialization order is deliberate: `briefing` before the heavy arrays.
     // Consumers whose fetch tools truncate large responses (LLM agents cap
@@ -203,7 +238,31 @@ export function buildExportBundle({
     subStages,
     tasks: annotatedTasks,
     projects,
+    attachments,
   };
+}
+
+/**
+ * The attachments an import payload carries, by id. Empty for files written
+ * before attachments had rows: those still hold each file inline in the
+ * task's description as a `data:` URL, which the server extracts on save.
+ */
+export function attachmentsFromExportPayload(payload: unknown): Map<number, ExportAttachment> {
+  const byId = new Map<number, ExportAttachment>();
+  if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) return byId;
+  const { attachments } = payload as { attachments?: unknown };
+  if (!Array.isArray(attachments)) return byId;
+  for (const entry of attachments as unknown[]) {
+    if (
+      entry !== null &&
+      typeof entry === 'object' &&
+      typeof (entry as { id?: unknown }).id === 'number'
+    ) {
+      const attachment = entry as ExportAttachment;
+      byId.set(attachment.id, attachment);
+    }
+  }
+  return byId;
 }
 
 /**

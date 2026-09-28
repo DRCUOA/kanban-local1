@@ -259,6 +259,20 @@ A project is a set of tasks related to a common goal. It scopes which tasks the 
 | updated_at | timestamp | |
 | created_at | timestamp | |
 
+### task_attachments
+
+A file attached to a task description (`shared/attachments.ts`). The description references a row by `/api/attachments/:id`; the bytes live here, never as base64 inside the description text. Large values are TOASTed out of line by Postgres, so metadata reads stay cheap.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | serial PK | |
+| task_id | integer FK → tasks | Nullable — null until a saved description references the upload, and again once a save drops it; such rows are swept after a day. `ON DELETE CASCADE`; indexed |
+| filename | text | Sanitised on upload (no control characters or path separators) |
+| mime_type | text | Always one on the allow-list in `shared/attachments.ts` |
+| byte_size | integer | `length(data)` |
+| data | bytea | The file, ≤ 10 MB |
+| created_at | timestamp | Not null |
+
 ---
 
 ## Directory Structure
