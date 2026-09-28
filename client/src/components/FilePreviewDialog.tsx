@@ -1,6 +1,8 @@
 import { Download } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { dataUrlToBlob } from '@/lib/rich-text';
+import { downloadBlob } from '@/lib/save-file';
 
 export interface PreviewFile {
   src: string;
@@ -46,7 +48,22 @@ export function FilePreviewDialog({ file, onOpenChange }: FilePreviewDialogProps
         )}
         {file && (
           <Button asChild variant="outline" className="h-11 rounded-xl w-full gap-2">
-            <a href={file.src} download={file.name}>
+            <a
+              href={file.src}
+              download={file.name}
+              onClick={(e) => {
+                // Download through a Blob: Chrome refuses data: hrefs over
+                // 2MB, which a 2.5MB attachment exceeds once encoded. A value
+                // that won't decode is left to the plain link.
+                try {
+                  downloadBlob(file.name, dataUrlToBlob(file.src));
+                  e.preventDefault();
+                } catch {
+                  // Fall through to the anchor's own download.
+                }
+              }}
+              data-testid="link-file-download"
+            >
               <Download className="h-4 w-4" />
               Download
             </a>

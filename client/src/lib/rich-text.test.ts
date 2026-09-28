@@ -9,7 +9,10 @@ import {
   isRichTextEmpty,
   isAcceptedFileChipType,
   resolveFileChipType,
+  attachmentFitsDescription,
+  dataUrlToBlob,
   FILE_CHIP_ACCEPT,
+  DESCRIPTION_MAX_CHARS,
 } from './rich-text';
 
 describe('looksLikeRichText', () => {
@@ -197,5 +200,38 @@ describe('isRichTextEmpty', () => {
         '<p><a data-file-chip data-file-name="a.png" href="data:image/png;base64,AAAA"></a></p>',
       ),
     ).toBe(false);
+  });
+});
+
+describe('attachmentFitsDescription', () => {
+  it('counts the file at its base64 size against the description budget', () => {
+    expect(attachmentFitsDescription(0, 3)).toBe(true);
+    // 3 bytes become 4 characters: exactly at the limit still fits.
+    expect(attachmentFitsDescription(DESCRIPTION_MAX_CHARS - 4, 3)).toBe(true);
+    expect(attachmentFitsDescription(DESCRIPTION_MAX_CHARS - 3, 3)).toBe(false);
+  });
+});
+
+describe('dataUrlToBlob', () => {
+  it('decodes base64 data URLs to the original bytes and type', async () => {
+    const blob = dataUrlToBlob('data:application/pdf;base64,JVBERi0=');
+    expect(blob.type).toBe('application/pdf');
+    expect(await blob.text()).toBe('%PDF-');
+  });
+
+  it('decodes percent-encoded data URLs', async () => {
+    const blob = dataUrlToBlob('data:text/plain,hello%20world');
+    expect(blob.type).toBe('text/plain');
+    expect(await blob.text()).toBe('hello world');
+  });
+
+  it('round-trips binary bytes', async () => {
+    const blob = dataUrlToBlob('data:application/zip;base64,AP+Afw==');
+    expect([...new Uint8Array(await blob.arrayBuffer())]).toEqual([0, 255, 128, 127]);
+  });
+
+  it('rejects values that are not data URLs', () => {
+    expect(() => dataUrlToBlob('https://example.com/a.pdf')).toThrow();
+    expect(() => dataUrlToBlob('data:text/plain')).toThrow();
   });
 });

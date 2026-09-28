@@ -119,6 +119,19 @@ export const FILE_CHIP_ACCEPT = [
 /** Max attachment size (raw bytes) — data URLs inflate ~33%, keep rows sane. */
 export const FILE_CHIP_MAX_BYTES = 2.5 * 1024 * 1024;
 
+/**
+ * Max length of a whole description's HTML. Attachments travel inside the
+ * task's JSON body, which the server caps at 10mb; this leaves headroom for
+ * the rest of the request so a save can't be refused as too large.
+ */
+export const DESCRIPTION_MAX_CHARS = 8 * 1024 * 1024;
+
+/** True when a file of `fileBytes` still fits in a description of `htmlLength`. */
+export function attachmentFitsDescription(htmlLength: number, fileBytes: number): boolean {
+  // Base64 spends 4 characters per 3 bytes.
+  return htmlLength + Math.ceil(fileBytes / 3) * 4 <= DESCRIPTION_MAX_CHARS;
+}
+
 /** True when a file chip may carry this MIME type. */
 export function isAcceptedFileChipType(type: string): boolean {
   const mime = type.trim().toLowerCase();
@@ -251,4 +264,24 @@ export function fileToDataUrl(file: Blob): Promise<string> {
     };
     reader.readAsDataURL(file);
   });
+}
+
+/**
+ * Decode a data URL back into a Blob, without `fetch` (which the production
+ * CSP's connect-src would refuse for `data:`).
+ */
+export function dataUrlToBlob(dataUrl: string): Blob {
+  const comma = dataUrl.indexOf(',');
+  if (!dataUrl.startsWith('data:') || comma < 0) {
+    throw new Error('Not a data URL');
+  }
+  const [type = '', ...params] = dataUrl.slice('data:'.length, comma).split(';');
+  const payload = dataUrl.slice(comma + 1);
+  if (params.includes('base64')) {
+    const binary = atob(payload);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new Blob([bytes], { type });
+  }
+  return new Blob([decodeURIComponent(payload)], { type });
 }

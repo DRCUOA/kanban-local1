@@ -47,14 +47,22 @@ function extensionFor(mimeType: SaveTextFileOptions['mimeType']): string {
   return mimeType === 'application/json' ? '.json' : '.txt';
 }
 
-function downloadViaAnchor({ filename, content, mimeType }: SaveTextFileOptions): void {
-  const blob = new Blob([content], { type: mimeType });
+/**
+ * Start a browser download of `blob` as `filename` through a temporary object
+ * URL. Unlike a `data:` href this has no URL-length cap (Chrome refuses
+ * data URLs over 2MB).
+ */
+export function downloadBlob(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function downloadViaAnchor({ filename, content, mimeType }: SaveTextFileOptions): void {
+  downloadBlob(filename, new Blob([content], { type: mimeType }));
 }
 
 /**

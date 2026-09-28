@@ -32,8 +32,10 @@ import {
   sanitizeRichText,
   fileToDataUrl,
   resolveFileChipType,
+  attachmentFitsDescription,
   FILE_CHIP_ACCEPT,
   FILE_CHIP_MAX_BYTES,
+  DESCRIPTION_MAX_CHARS,
 } from '@/lib/rich-text';
 
 interface RichTextEditorProps {
@@ -255,6 +257,16 @@ export function RichTextEditor({
       toast({
         title: 'File too large',
         description: `Attachments are limited to ${Math.round(FILE_CHIP_MAX_BYTES / 1024 / 1024)}MB.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!attachmentFitsDescription(editor.getHTML().length, file.size)) {
+      // Base64 is 4 chars per 3 bytes, so the budget holds ~3/4 of its size in files.
+      const totalMb = Math.round((DESCRIPTION_MAX_CHARS * 0.75) / 1024 / 1024);
+      toast({
+        title: 'Description is full',
+        description: `Attachments in one description are limited to about ${totalMb}MB in total.`,
         variant: 'destructive',
       });
       return;
