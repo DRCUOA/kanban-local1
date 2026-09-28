@@ -44,6 +44,22 @@ export function errorHandler(
     return;
   }
 
+  // body-parser and other middleware report a client's fault as an http-error
+  // (an oversized body is a 413, malformed JSON a 400). Those are the
+  // client's to see, not a 500.
+  const httpStatus = (err as { status?: unknown }).status;
+  const expose = (err as { expose?: unknown }).expose;
+  if (
+    err instanceof Error &&
+    typeof httpStatus === 'number' &&
+    httpStatus >= 400 &&
+    httpStatus < 500 &&
+    expose !== false
+  ) {
+    res.status(httpStatus).json({ error: err.message, status: httpStatus });
+    return;
+  }
+
   const status = 500;
   const body: ApiErrorResponse = {
     error:

@@ -17,6 +17,9 @@ type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 interface ApiRequestOptions {
   method?: HttpMethod;
   body?: unknown;
+  /** Sent as-is (a file upload) instead of being JSON-encoded; `headers` then names its type. */
+  rawBody?: BodyInit;
+  headers?: Record<string, string>;
 }
 
 /**
@@ -31,14 +34,17 @@ export async function apiRequest<T = void>(
   url: string,
   options: ApiRequestOptions = {},
 ): Promise<T> {
-  const { method = 'GET', body } = options;
+  const { method = 'GET', body, rawBody, headers } = options;
 
   let res: Response;
   try {
     res = await fetch(url, {
       method,
-      headers: body !== undefined ? { 'Content-Type': 'application/json' } : {},
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      headers: {
+        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...headers,
+      },
+      body: rawBody ?? (body !== undefined ? JSON.stringify(body) : undefined),
       credentials: 'include',
     });
   } catch (error) {
@@ -82,4 +88,9 @@ export function apiPatch<T>(url: string, body: unknown): Promise<T> {
 
 export function apiDelete(url: string): Promise<void> {
   return apiRequest(url, { method: 'DELETE' });
+}
+
+/** POST a raw body (a file) with the headers that describe it. */
+export function apiUpload<T>(url: string, rawBody: BodyInit, headers: Record<string, string>) {
+  return apiRequest<T>(url, { method: 'POST', rawBody, headers });
 }

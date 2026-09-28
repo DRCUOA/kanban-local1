@@ -7,6 +7,7 @@ import {
   boolean,
   jsonb,
   unique,
+  customType,
 } from 'drizzle-orm/pg-core';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
@@ -124,6 +125,31 @@ export const tasks = pgTable('tasks', {
   deletedAt: timestamp('deleted_at'),
 });
 
+// Drizzle has no built-in bytea column; the driver already speaks Buffer.
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return 'bytea';
+  },
+});
+
+/**
+ * A file attached to a task description (see shared/attachments.ts). The
+ * description references a row by `/api/attachments/:id`; the bytes live
+ * here rather than as base64 inside the description text.
+ */
+export const taskAttachments = pgTable('task_attachments', {
+  id: serial('id').primaryKey(),
+  // Null until the description that references the upload is saved, and
+  // again once a save drops the reference; the sweeper deletes those rows
+  // after ATTACHMENT_ORPHAN_TTL_MS. Deleting a task forever cascades.
+  taskId: integer('task_id').references(() => tasks.id, { onDelete: 'cascade' }),
+  filename: text('filename').notNull(),
+  mimeType: text('mime_type').notNull(),
+  byteSize: integer('byte_size').notNull(),
+  data: bytea('data').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 /** Gmail watch cursor: one row per monitored mailbox. */
 export const gmailWatchCursor = pgTable('gmail_watch_cursor', {
   mailbox: text('mailbox').primaryKey(),
@@ -188,6 +214,14 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   }),
   subtasks: many(tasks, {
     relationName: 'subtasks',
+  }),
+  attachments: many(taskAttachments),
+}));
+
+export const taskAttachmentsRelations = relations(taskAttachments, ({ one }) => ({
+  task: one(tasks, {
+    fields: [taskAttachments.taskId],
+    references: [tasks.id],
   }),
 }));
 
@@ -309,6 +343,17 @@ export type Stage = typeof stages.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
 export type SubStage = typeof subStages.$inferSelect;
 export type Project = typeof projects.$inferSelect;
+/** An attachment row including its bytes — what the file route serves. */
+export type TaskAttachmentRow = typeof taskAttachments.$inferSelect;
+/** An attachment without its bytes: what lists, exports and the API return. */
+export type TaskAttachment = Omit<TaskAttachmentRow, 'data'>;
+/** What an upload stores. `byteSize` is derived from `data`. */
+export interface InsertAttachment {
+  taskId: number | null;
+  filename: string;
+  mimeType: string;
+  data: Buffer;
+}
 /** A project plus how many live (unarchived, unbinned) tasks it holds. */
 export type ProjectSummary = Project & { taskCount: number };
 export type InsertStage = z.infer<typeof insertStageSchema>;

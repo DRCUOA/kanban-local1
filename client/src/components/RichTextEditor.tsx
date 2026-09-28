@@ -27,13 +27,13 @@ import { cn } from '@/lib/utils';
 import { FileChip } from '@/lib/file-chip-extension';
 import { formatDictatedInsertion, MACOS_DICTATION_HINT } from '@/lib/dictation';
 import { looksLikeMarkdown, markdownToHtml } from '@/lib/markdown';
+import { toRichHtml, sanitizeRichText } from '@/lib/rich-text';
 import {
-  toRichHtml,
-  sanitizeRichText,
-  fileToDataUrl,
-  FILE_CHIP_ACCEPTED_TYPES,
-  FILE_CHIP_MAX_BYTES,
-} from '@/lib/rich-text';
+  ATTACHMENT_ACCEPT,
+  ATTACHMENT_MAX_BYTES,
+  resolveAttachmentType,
+} from '@shared/attachments';
+import { uploadAttachment } from '@/lib/attachments';
 
 interface RichTextEditorProps {
   value: string;
@@ -89,6 +89,7 @@ export function RichTextEditor({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
   const lastValueRef = useRef<string>(value || '');
   const editorRef = useRef<Editor | null>(null);
 
@@ -239,30 +240,48 @@ export function RichTextEditor({
     setLinkOpen(false);
   };
 
+  // The file is uploaded straight away and the chip points at the upload;
+  // saving the description is what ties the upload to the task.
   const insertFile = async (file: File) => {
-    if (!FILE_CHIP_ACCEPTED_TYPES.some((prefix) => file.type.startsWith(prefix))) {
+    const type = resolveAttachmentType(file.name, file.type);
+    if (!type) {
       toast({
         title: 'Unsupported file',
-        description: 'Only image files can be attached.',
+        description:
+          'Attach an image, PDF, Office or iWork document, text, CSV, audio, video or zip file.',
         variant: 'destructive',
       });
       return;
     }
-    if (file.size > FILE_CHIP_MAX_BYTES) {
+    if (file.size > ATTACHMENT_MAX_BYTES) {
       toast({
         title: 'File too large',
-        description: `Attachments are limited to ${Math.round(FILE_CHIP_MAX_BYTES / 1024 / 1024)}MB.`,
+        description: `Attachments are limited to ${Math.round(ATTACHMENT_MAX_BYTES / 1024 / 1024)}MB.`,
         variant: 'destructive',
       });
       return;
     }
-    const src = await fileToDataUrl(file);
-    editor
-      .chain()
-      .focus()
-      .insertContent({ type: 'fileChip', attrs: { src, name: file.name, type: file.type } })
-      .insertContent(' ')
-      .run();
+    setUploading(true);
+    try {
+      const uploaded = await uploadAttachment(file, file.name, type);
+      editor
+        .chain()
+        .focus()
+        .insertContent({
+          type: 'fileChip',
+          attrs: { src: uploaded.url, name: uploaded.filename, type: uploaded.mimeType },
+        })
+        .insertContent(' ')
+        .run();
+    } catch (error) {
+      toast({
+        title: 'Upload failed',
+        description: error instanceof Error ? error.message : 'Could not upload the file.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -363,7 +382,8 @@ export function RichTextEditor({
         </Popover>
         <ToolbarButton
           icon={Paperclip}
-          label="Attach image"
+          label={uploading ? 'Uploading…' : 'Attach file'}
+          disabled={uploading}
           onClick={() => fileInputRef.current?.click()}
         />
         <DictationButton
@@ -396,7 +416,7 @@ export function RichTextEditor({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept={ATTACHMENT_ACCEPT}
         className="hidden"
         data-testid="input-attach-file"
         onChange={(e) => {

@@ -143,8 +143,17 @@ All routes are defined declaratively in `shared/routes.ts` and registered in `se
 | GET | `/api/export?projectId=3` | Tasks scoped to one project (`scope.projectIds: [3]`); `projects` is still complete so the file resolves every `projectId` |
 | GET | `/api/export?view=briefing` | Digest only (~4 KB vs ~540 KB): the `briefing` object plus envelope metadata. For consumers whose fetch tools truncate large responses (LLM agents) |
 | GET | `/api/export?tz=Pacific/Auckland` | IANA zone the calendar day is cut in. Defaults to `Pacific/Auckland`; an unknown zone is a 400 |
+| GET | `/api/export?includeAttachments=true` | Embed each attachment's bytes (base64) in `attachments[].data`, making the file a complete backup an import can restore files from. Off by default: the bundle always lists attachments (`id`, `taskId`, `filename`, `mimeType`, `byteSize`, `url`) but the metadata alone keeps it small |
 
 Every response carries `Cache-Control: no-store, no-cache, must-revalidate` (plus `CDN-Cache-Control: no-store`) — the board changes all day, so nothing in front of the route may hold a snapshot. A CDN that ignores those headers needs a cache-bypass rule for `/api/export*`.
+
+### Attachments
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/attachments` | Upload a file: the raw bytes as an `application/octet-stream` body (≤ 10 MB), the file's type in `x-attachment-type` and its URL-encoded name in `x-attachment-name`. Returns the row (`id`, `filename`, `mimeType`, `byteSize`, …) plus the `url` a description chip references it by. 415 for a type that can't be attached (anything a browser would run), 413 over the limit |
+| GET | `/api/attachments/:id` | The file, with `Content-Disposition` (inline for images, PDF, audio, video and plain text; a download for everything else and for SVG), `nosniff`, a locked-down CSP and immutable caching. `?download=1` forces a download |
+
+A file is attached to a task by saving a description whose chip points at its `url`: the task's create and update routes bind the rows a description references and release the ones it dropped. Rows no saved description has referenced for a day are swept. There is no delete endpoint — remove the chip and save. Deleting a task forever deletes its files. Allow-list, size limit and chip helpers: `shared/attachments.ts`.
 
 Alongside the stored data the bundle carries two derived, read-only views, built in `shared/briefing.ts` for the scheduled briefing agent:
 

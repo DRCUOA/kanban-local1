@@ -12,6 +12,7 @@ import { createServer } from 'http';
 import { logger } from '@shared/logger';
 import { startInboundEmailWorker } from './jobs/inbound-email-worker';
 import { runMigrations } from './migrate';
+import { extractInlineAttachments, startAttachmentSweeper } from './attachments';
 
 const app = express();
 if (process.env.NODE_ENV === 'production') {
@@ -43,7 +44,9 @@ app.use(
 
 app.use(
   express.json({
-    // 10mb: task descriptions can embed image attachments as data URLs.
+    // 10mb: descriptions no longer carry files, but import files written
+    // before task_attachments still embed them as data: URLs, which the task
+    // routes move into rows on save.
     limit: '10mb',
     verify: (req, _res, buf) => {
       req.rawBody = buf;
@@ -81,6 +84,9 @@ app.use((req, res, next) => {
 (async () => {
   await runMigrations();
   await seedDatabase(storage);
+  // Files still embedded in descriptions from before task_attachments move
+  // into rows before the first request reads them.
+  await extractInlineAttachments(storage);
   await registerRoutes(httpServer, app);
 
   app.use(errorHandler);
@@ -103,5 +109,6 @@ app.use((req, res, next) => {
   httpServer.listen(port, '0.0.0.0', () => {
     log(`serving on port ${port}`);
     startInboundEmailWorker();
+    startAttachmentSweeper(storage);
   });
 })();

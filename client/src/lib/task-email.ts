@@ -7,7 +7,12 @@ import {
   type TaskPriorityValue,
   type TaskStatusValue,
 } from '@shared/constants';
-import { isRichTextEmpty, richTextToPlainText, toRichHtml } from '@/lib/rich-text';
+import {
+  absolutizeAttachmentLinks,
+  isRichTextEmpty,
+  richTextToPlainText,
+  toRichHtml,
+} from '@/lib/rich-text';
 
 /**
  * Renders one or more tasks as a paste-ready email.
@@ -21,11 +26,15 @@ import { isRichTextEmpty, richTextToPlainText, toRichHtml } from '@/lib/rich-tex
 export interface TaskEmailOptions {
   /** Stage name resolved from `task.stageId`; omitted if unknown. */
   stageName?: string | null;
+  /** Host put in front of attachment links (same-origin paths). Defaults to this page's origin. */
+  origin?: string;
 }
 
 export interface TasksEmailOptions {
   /** Resolves each task's stage name; return null when unknown. */
   stageNameFor?: (task: Task) => string | null | undefined;
+  /** Host put in front of attachment links (same-origin paths). Defaults to this page's origin. */
+  origin?: string;
 }
 
 export interface TaskEmail {
@@ -168,7 +177,10 @@ export function formatTaskAsTextBlock(task: Task, options: TaskEmailOptions = {}
 
 /** Build the shareable email for a single task. */
 export function formatTaskAsEmail(task: Task, options: TaskEmailOptions = {}): TaskEmail {
-  return formatTasksAsEmail([task], { stageNameFor: () => options.stageName });
+  return formatTasksAsEmail([task], {
+    stageNameFor: () => options.stageName,
+    origin: options.origin,
+  });
 }
 
 /**
@@ -186,13 +198,17 @@ export function formatTasksAsEmail(tasks: Task[], options: TasksEmailOptions = {
     ? `${FOOTER} · Task #${single.id}`
     : `${FOOTER} · ${tasks.length} tasks (${tasks.map((task) => `#${task.id}`).join(', ')})`;
 
+  // Attachment links are paths on this server; an email needs the host too.
+  const origin = options.origin ?? (typeof window === 'undefined' ? '' : window.location.origin);
   const textBlocks: string[][] = [];
   const htmlBlocks: string[] = [];
   for (const task of tasks) {
     const details = buildDetails(task, { stageName: options.stageNameFor?.(task) ?? null });
     const hasDescription = !isRichTextEmpty(task.description);
     const description = hasDescription ? richTextToPlainText(task.description) : '';
-    const descriptionHtml = hasDescription ? toRichHtml(task.description) : '';
+    const descriptionHtml = hasDescription
+      ? absolutizeAttachmentLinks(toRichHtml(task.description), origin)
+      : '';
     textBlocks.push(buildTaskBlockLines(task, details, description));
     htmlBlocks.push(buildTaskBlockHtml(task, details, descriptionHtml));
   }

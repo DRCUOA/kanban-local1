@@ -1,5 +1,6 @@
 import DOMPurify from 'dompurify';
 import { markdownToHtml } from './markdown';
+import { parseAttachmentUrl } from '@shared/attachments';
 
 /**
  * Rich-text helpers for task descriptions.
@@ -47,14 +48,9 @@ const ALLOWED_ATTR = [
   'class',
 ];
 
-/** MIME types a file chip is allowed to carry as an inline data URL. */
-export const FILE_CHIP_ACCEPTED_TYPES = ['image/'];
-
-/** Max attachment size (raw bytes) — data URLs inflate ~33%, keep rows sane. */
-export const FILE_CHIP_MAX_BYTES = 2.5 * 1024 * 1024;
-
-function isSafeChipDataUrl(href: string): boolean {
-  return FILE_CHIP_ACCEPTED_TYPES.some((prefix) => href.startsWith(`data:${prefix}`));
+/** A file chip may only point at an attachment this server holds. */
+function isSafeChipHref(href: string): boolean {
+  return parseAttachmentUrl(href) !== null;
 }
 
 function isSafeLinkHref(href: string): boolean {
@@ -70,8 +66,8 @@ function installHooks() {
     if (node.tagName !== 'A') return;
     const href = node.getAttribute('href') ?? '';
     if (node.hasAttribute('data-file-chip')) {
-      // File chips: only inline data URLs of accepted types survive.
-      if (!isSafeChipDataUrl(href)) {
+      // File chips: only this server's attachment urls survive.
+      if (!isSafeChipHref(href)) {
         node.removeAttribute('href');
       }
       node.setAttribute('class', 'file-chip');
@@ -94,10 +90,9 @@ export function sanitizeRichText(html: string): string {
     ALLOWED_ATTR,
     ALLOW_DATA_ATTR: false,
     ADD_ATTR: ['target'],
-    // Also admit data:image/ URIs so file chips survive; the hook above then
-    // strips data: hrefs from anything that is not a file chip.
-    ALLOWED_URI_REGEXP:
-      /^(?:(?:https?|mailto|tel):|data:image\/|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
+    // DOMPurify's default, spelled out: same-origin paths (the attachment
+    // urls) pass, `javascript:` and `data:` do not.
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
   });
 }
 
@@ -150,16 +145,15 @@ export function isRichTextEmpty(value: string | null | undefined): boolean {
   return richTextToPlainText(value).length === 0;
 }
 
-/** Read a File as a data URL. */
-export function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      resolve(reader.result as string);
-    };
-    reader.onerror = () => {
-      reject(reader.error ?? new Error('Failed to read file'));
-    };
-    reader.readAsDataURL(file);
+/**
+ * Attachment links are same-origin paths; outside the app (an email, a
+ * clipboard paste) they need the host in front. An empty `origin` leaves
+ * the HTML unchanged.
+ */
+export function absolutizeAttachmentLinks(html: string, origin: string): string {
+  if (!origin) return html;
+  const base = origin.replace(/\/$/, '');
+  return html.replace(/href="(\/api\/attachments\/\d+)"/g, (_match, path: string) => {
+    return `href="${base}${path}"`;
   });
 }

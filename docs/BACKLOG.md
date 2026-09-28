@@ -60,10 +60,11 @@ board timezone** stories early (they unblock EPIC-04). Owner sort from #162 land
 as a trailer story once assignment is one namespace.
 
 **B-06 — Attachment UX: drag-drop + screenshot paste** · board #161 · effort 1–2
-Gated by B-05's attachment extraction. Building this first would pump more base64
-into `description` — the single worst finding in EPIC-03 (533 KB of a 547 KB
-payload). Once attachments are real entities: drag-drop onto the modal, clipboard
-paste for screenshots, dynamic preview.
+_Unblocked 28 Sep 2026:_ EPIC-03 story 7 (attachment extraction) landed on its own —
+attachments are `task_attachments` rows referenced by url, and `description` no
+longer carries base64 (the single worst finding in EPIC-03, 533 KB of a 547 KB
+payload). Remaining: drag-drop onto the modal, clipboard paste for screenshots,
+dynamic preview.
 
 ### Later
 
@@ -209,6 +210,7 @@ endlegend
    the `description` text column — actively growing the single worst measured
    problem in the model (533 KB of a 547 KB payload). The feature isn't hard;
    building it *first* would be building the problem a bigger front door.
+   _28 Sep 2026: that story landed ahead of the rest of EPIC-03; B-06 is open._
 4. **B-08 (EPIC-01, projects) waits for a decision, not just for code.** The audit
    carries the question "should a project be its own entity, or should a normalised
    owner become the project?" Until that's answered, EPIC-01 as written might be the

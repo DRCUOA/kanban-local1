@@ -3,8 +3,14 @@ import { type Task, type InsertTask, type Stage } from '@shared/schema';
 import { TASK_STATUS, TASK_PRIORITY, TASK_RECURRENCE } from '@shared/constants';
 import { apiGet } from '@/lib/api';
 import { api } from '@shared/routes';
-import { exportFilename, tasksFromExportPayload, type TaskExportBundle } from '@shared/export';
+import {
+  attachmentsFromExportPayload,
+  exportFilename,
+  tasksFromExportPayload,
+  type TaskExportBundle,
+} from '@shared/export';
 import { fetchBoardBundle } from '@/lib/board-bundle';
+import { importDescriptionAttachments } from '@/lib/attachments';
 import { logger } from '@shared/logger';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateTask } from '@/hooks/use-tasks';
@@ -76,6 +82,10 @@ export function useTaskImportExport({ tasks, stages }: UseTaskImportExportOption
             return;
           }
 
+          // Files the export carries are uploaded here as each task is
+          // created, so its description ends up pointing at this board's rows.
+          const bundleAttachments = attachmentsFromExportPayload(payload);
+
           localStorage.setItem('taskflow-backup', JSON.stringify(imported));
 
           let stagesData = stages;
@@ -122,7 +132,10 @@ export function useTaskImportExport({ tasks, stages }: UseTaskImportExportOption
             try {
               const taskToCreate = {
                 title: taskData.title || 'Untitled Task',
-                description: taskData.description || '',
+                description: await importDescriptionAttachments(
+                  String(taskData.description || ''),
+                  bundleAttachments,
+                ),
                 stageId: taskData.stageId || stagesData[0]!.id,
                 projectId: resolveProjectId(taskData.projectId),
                 status: taskData.status || TASK_STATUS.BACKLOG,

@@ -7,6 +7,7 @@ import {
   toRichHtml,
   richTextToPlainText,
   isRichTextEmpty,
+  absolutizeAttachmentLinks,
 } from './rich-text';
 
 describe('looksLikeRichText', () => {
@@ -56,17 +57,23 @@ describe('sanitizeRichText', () => {
     expect(good).toContain('noopener');
   });
 
-  it('keeps image data URLs on file chips but strips other data URLs', () => {
-    const chip =
-      '<a data-file-chip data-file-name="pic.png" href="data:image/png;base64,AAAA">pic.png</a>';
-    expect(sanitizeRichText(chip)).toContain('href="data:image/png;base64,AAAA"');
-
-    const evil = '<a data-file-chip data-file-name="x" href="data:text/html,<script>">x</a>';
-    expect(sanitizeRichText(evil)).not.toContain('href');
+  it('keeps attachment urls on file chips but strips any other chip href', () => {
+    const chip = (href: string) =>
+      `<a data-file-chip data-file-name="pic.png" href="${href}">pic.png</a>`;
+    expect(sanitizeRichText(chip('/api/attachments/12'))).toContain('href="/api/attachments/12"');
+    for (const href of [
+      'data:image/png;base64,AAAA',
+      'https://example.com/pic.png',
+      '/api/attachments/12/../../x',
+      'javascript:alert(1)',
+    ]) {
+      expect(sanitizeRichText(chip(href))).not.toContain('href');
+    }
   });
 
-  it('strips data: hrefs on regular links', () => {
+  it('strips data: and attachment hrefs on regular links', () => {
     expect(sanitizeRichText('<a href="data:image/png;base64,AAAA">x</a>')).not.toContain('href');
+    expect(sanitizeRichText('<a href="/api/attachments/12">x</a>')).not.toContain('href');
   });
 });
 
@@ -99,7 +106,7 @@ describe('richTextToPlainText', () => {
 
   it('replaces file chips with their name', () => {
     const html =
-      '<p>see <a data-file-chip data-file-name="shot.png" href="data:image/png;base64,AAAA">shot.png</a></p>';
+      '<p>see <a data-file-chip data-file-name="shot.png" href="/api/attachments/1">shot.png</a></p>';
     expect(richTextToPlainText(html)).toBe('see [shot.png]');
   });
 });
@@ -115,8 +122,19 @@ describe('isRichTextEmpty', () => {
   it('counts a lone file chip as content', () => {
     expect(
       isRichTextEmpty(
-        '<p><a data-file-chip data-file-name="a.png" href="data:image/png;base64,AAAA"></a></p>',
+        '<p><a data-file-chip data-file-name="a.png" href="/api/attachments/1"></a></p>',
       ),
     ).toBe(false);
+  });
+});
+
+describe('absolutizeAttachmentLinks', () => {
+  it('puts the origin in front of attachment links and leaves other links alone', () => {
+    const html =
+      '<p><a href="/api/attachments/3" data-file-chip="">f</a> <a href="https://x.y/">x</a></p>';
+    expect(absolutizeAttachmentLinks(html, 'https://board.example/')).toBe(
+      '<p><a href="https://board.example/api/attachments/3" data-file-chip="">f</a> <a href="https://x.y/">x</a></p>',
+    );
+    expect(absolutizeAttachmentLinks(html, '')).toBe(html);
   });
 });

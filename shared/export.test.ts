@@ -26,8 +26,18 @@ describe('buildExportBundle', () => {
 
     expect(taskExportBundleSchema.safeParse(bundle).success).toBe(true);
     expect(bundle.formatVersion).toBe(EXPORT_FORMAT_VERSION);
-    expect(bundle.counts).toEqual({ tasks: 1, stages: 1, subStages: 1, projects: 0 });
-    expect(bundle.scope).toEqual({ includeArchived: true, projectIds: null });
+    expect(bundle.counts).toEqual({
+      tasks: 1,
+      stages: 1,
+      subStages: 1,
+      projects: 0,
+      attachments: 0,
+    });
+    expect(bundle.scope).toEqual({
+      includeArchived: true,
+      projectIds: null,
+      includeAttachments: false,
+    });
     expect(bundle.projects).toEqual([]);
   });
 
