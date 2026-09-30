@@ -360,6 +360,14 @@
       inset -2px -2px 4px rgba(var(--neo-light-edge), calc(var(--neo-light-alpha) * 0.45));
   }
 
+  /* Sub-stage lane shade: a wash of the shadow colour over the well, at the
+     strength the Admin "Shade" slider chose (--lane-shade, 0–1, set inline by
+     lib/lane-shade.ts). The shadow token keeps it a shade in both themes
+     rather than a foreign colour. */
+  .lane-shade {
+    background-color: rgba(var(--neo-dark-edge), var(--lane-shade, 0));
+  }
+
   /* Mobile bottom nav — elevated above page with a top edge shadow. */
   .mobile-bottom-nav {
     @apply fixed bottom-0 left-0 right-0 z-50;

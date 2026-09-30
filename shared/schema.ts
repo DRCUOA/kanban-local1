@@ -56,8 +56,11 @@ export const subStages = pgTable('sub_stages', {
     .references(() => stages.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   tag: text('tag').notNull(), // Unique identifier like "day-plan-am"
-  bgClass: text('bg_class').notNull(), // Tailwind class like "bg-background/20"
-  opacity: integer('opacity').notNull(), // 0-100 (stored as integer, e.g., 20 for 0.2)
+  // Legacy: once a Tailwind class for the lane tint. The board no longer reads
+  // it (the lane's look is `opacity`); new rows leave it blank. Drop in a
+  // later migration.
+  bgClass: text('bg_class').notNull(),
+  opacity: integer('opacity').notNull(), // The lane's shade, 0-100 (Admin "Shade" slider)
   order: integer('order').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
 });

@@ -23,6 +23,7 @@ import {
 } from '@shared/schema';
 import { queryClient } from '@/lib/queryClient';
 import { apiPost, apiPatch, apiDelete } from '@/lib/api';
+import { laneShadeStyle } from '@/lib/lane-shade';
 import { Trash2, Edit } from 'lucide-react';
 import { useState } from 'react';
 import {
@@ -38,6 +39,19 @@ export interface SubStageSectionProps {
   subStages: SubStage[];
 }
 
+/**
+ * A fresh form. `bgClass` is a legacy column the board no longer reads — a
+ * lane's look is its shade (`opacity`, 0–100) — so new rows leave it blank.
+ */
+const EMPTY_SUB_STAGE: InsertSubStage = {
+  stageId: 0,
+  name: '',
+  tag: '',
+  bgClass: '',
+  opacity: 20,
+  order: 1,
+};
+
 export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
   const { toast } = useToast();
   const [editingSubStageId, setEditingSubStageId] = useState<number | null>(null);
@@ -46,15 +60,10 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
 
   const subStageForm = useForm<InsertSubStage>({
     resolver: zodResolver(insertSubStageSchema),
-    defaultValues: {
-      stageId: 0,
-      name: '',
-      tag: '',
-      bgClass: 'bg-background/20',
-      opacity: 20,
-      order: 1,
-    },
+    defaultValues: EMPTY_SUB_STAGE,
   });
+  // The shade preview names the lane as it is being typed.
+  const previewName = subStageForm.watch('name');
 
   const createSubStageMutation = useMutation({
     mutationFn: (data: InsertSubStage) => apiPost<SubStage>(api.subStages.create.path, data),
@@ -62,14 +71,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
       queryClient.invalidateQueries({ queryKey: [api.subStages.list.path] });
       toast({ description: 'Sub-stage created' });
       setSubStageDialogOpen(false);
-      subStageForm.reset({
-        stageId: 0,
-        name: '',
-        tag: '',
-        bgClass: 'bg-background/20',
-        opacity: 20,
-        order: 1,
-      });
+      subStageForm.reset(EMPTY_SUB_STAGE);
     },
     onError: (error) => {
       toast({
@@ -89,14 +91,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
       toast({ description: 'Sub-stage updated' });
       setSubStageDialogOpen(false);
       setEditingSubStageId(null);
-      subStageForm.reset({
-        stageId: 0,
-        name: '',
-        tag: '',
-        bgClass: 'bg-background/20',
-        opacity: 20,
-        order: 1,
-      });
+      subStageForm.reset(EMPTY_SUB_STAGE);
     },
     onError: (error) => {
       toast({
@@ -138,6 +133,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
       stageId: subStage.stageId,
       name: subStage.name,
       tag: subStage.tag,
+      // Carried through untouched: the column is inert but not ours to erase.
       bgClass: subStage.bgClass,
       opacity: subStage.opacity,
       order: subStage.order,
@@ -149,14 +145,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
     setSubStageDialogOpen(false);
     setEditingSubStageId(null);
     setSelectedStageId(null);
-    subStageForm.reset({
-      stageId: 0,
-      name: '',
-      tag: '',
-      bgClass: 'bg-background/20',
-      opacity: 20,
-      order: 1,
-    });
+    subStageForm.reset(EMPTY_SUB_STAGE);
   };
 
   return (
@@ -171,15 +160,9 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
               onClick={() => {
                 setEditingSubStageId(null);
                 setSelectedStageId(null);
-                subStageForm.reset({
-                  stageId: 0,
-                  name: '',
-                  tag: '',
-                  bgClass: 'bg-background/20',
-                  opacity: 20,
-                  order: 1,
-                });
+                subStageForm.reset(EMPTY_SUB_STAGE);
               }}
+              data-testid="button-add-sub-stage"
             >
               Add Sub-Stage
             </Button>
@@ -256,64 +239,80 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                     </FormItem>
                   )}
                 />
+                {/* The lane's shade: one slider, previewed as the board will
+                    paint it. It is the `opacity` column; the old free-text
+                    Tailwind class only rendered when the class happened to be
+                    compiled in, so it is gone. */}
                 <FormField
                   control={subStageForm.control}
-                  name="bgClass"
+                  name="opacity"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs">Background Class</FormLabel>
+                      <div className="flex items-center justify-between">
+                        <FormLabel className="text-xs">Shade</FormLabel>
+                        <span
+                          className="text-xs tabular-nums text-muted-foreground"
+                          data-testid="shade-value"
+                        >
+                          {field.value}%
+                        </span>
+                      </div>
+                      <div
+                        className="neo-well relative overflow-hidden rounded-xl"
+                        data-testid="shade-preview"
+                        aria-hidden
+                      >
+                        <div
+                          className="lane-shade absolute inset-0"
+                          style={laneShadeStyle(field.value)}
+                        />
+                        <div className="relative px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          {previewName || 'Sub-stage'}
+                        </div>
+                      </div>
+                      <FormControl>
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          step={1}
+                          name={field.name}
+                          ref={field.ref}
+                          onBlur={field.onBlur}
+                          value={field.value}
+                          onChange={(e) => {
+                            field.onChange(Number(e.target.value));
+                          }}
+                          className="h-2 w-full cursor-pointer accent-primary"
+                          data-testid="shade-slider"
+                        />
+                      </FormControl>
+                      <div className="flex justify-between text-[10px] text-muted-foreground">
+                        <span>Light</span>
+                        <span>Dark</span>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={subStageForm.control}
+                  name="order"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Order</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="e.g. bg-background/20"
-                          {...field}
+                          type="number"
                           className="h-12 rounded-xl text-base"
+                          {...field}
+                          onChange={(e) => {
+                            field.onChange(Number(e.target.value));
+                          }}
                         />
                       </FormControl>
                     </FormItem>
                   )}
                 />
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    control={subStageForm.control}
-                    name="opacity"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">Opacity (0-100)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min="0"
-                            max="100"
-                            className="h-12 rounded-xl text-base"
-                            {...field}
-                            onChange={(e) => {
-                              field.onChange(Number(e.target.value));
-                            }}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={subStageForm.control}
-                    name="order"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">Order</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            className="h-12 rounded-xl text-base"
-                            {...field}
-                            onChange={(e) => {
-                              field.onChange(Number(e.target.value));
-                            }}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
                 <div className="flex-1" />
                 <div className="flex gap-3 pb-safe-bottom sticky bottom-0 bg-background pt-4">
                   <Button
@@ -358,10 +357,17 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                       className="flex items-center justify-between p-3 neo-card rounded-xl"
                     >
                       <div className="flex items-center gap-3">
+                        {/* A swatch of the lane at its shade. */}
                         <div
-                          className="w-5 h-5 rounded"
-                          style={{ backgroundColor: `rgba(0,0,0,${subStage.opacity / 100})` }}
-                        />
+                          className="neo-well relative h-6 w-6 shrink-0 overflow-hidden rounded-md"
+                          aria-hidden
+                        >
+                          <div
+                            className="lane-shade absolute inset-0"
+                            style={laneShadeStyle(subStage.opacity)}
+                            data-testid={`sub-stage-swatch-${subStage.id}`}
+                          />
+                        </div>
                         <div>
                           <p className="font-medium text-sm">{subStage.name}</p>
                           <p className="text-[10px] text-muted-foreground">
@@ -377,6 +383,8 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                           onClick={() => {
                             openEditSubStageDialog(subStage);
                           }}
+                          aria-label={`Edit ${subStage.name}`}
+                          data-testid={`button-edit-sub-stage-${subStage.id}`}
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -388,6 +396,8 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                             deleteSubStageMutation.mutate(subStage.id);
                           }}
                           disabled={deleteSubStageMutation.isPending}
+                          aria-label={`Delete ${subStage.name}`}
+                          data-testid={`button-delete-sub-stage-${subStage.id}`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>

@@ -26,14 +26,15 @@ export function KanbanColumnContent({
   layout = 'list',
   onTaskClick,
 }: KanbanColumnContentProps) {
+  // `opacity` is the lane's shade, 0–100, passed through as stored; the
+  // legacy `bgClass` column is not read.
   const stageSubStages = allSubStages
     .filter((ss) => ss.stageId === stageId)
     .sort((a, b) => a.order - b.order)
     .map((ss) => ({
       name: ss.name,
       tag: ss.tag,
-      bgClass: ss.bgClass,
-      opacity: ss.opacity / 100,
+      opacity: ss.opacity,
     }));
 
   return (
@@ -58,7 +59,7 @@ export function KanbanColumnContent({
 }
 
 function renderWithSubStages(
-  stageSubStages: { name: string; tag: string; bgClass: string; opacity: number }[],
+  stageSubStages: { name: string; tag: string; opacity: number }[],
   stageTasks: Task[],
   stageId: number,
   stageColor: string,
