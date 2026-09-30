@@ -80,7 +80,9 @@ export function ProjectSelector({ className }: { className?: string }) {
           <div
             role="menu"
             aria-label="Project"
-            className="absolute right-0 top-full z-50 mt-2 max-h-[calc(100dvh-5rem)] w-60 overflow-y-auto animate-slide-up neo-raised rounded-xl p-2"
+            // The trigger sits at the left of a phone header and the right of a
+            // wide one, so the menu hangs from whichever edge keeps it on screen.
+            className="absolute left-0 top-full z-50 mt-2 max-h-[calc(100dvh-5rem)] w-60 overflow-y-auto animate-slide-up neo-raised rounded-xl p-2 lg:left-auto lg:right-0"
           >
             <p className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               Project
