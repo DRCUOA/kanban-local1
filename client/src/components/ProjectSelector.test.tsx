@@ -76,14 +76,16 @@ describe('ProjectSelector', () => {
     );
   });
 
-  it('hangs its menu from the left edge on a phone and the right edge from the tablet breakpoint', () => {
+  it('opens its menu centred on a phone and hung from the trigger’s right edge from lg', () => {
     renderSelector();
     fireEvent.click(screen.getByTestId('project-selector-trigger'));
 
-    const menu = screen.getByRole('menu');
-    expect(menu.className).toContain('left-0');
-    expect(menu.className).toContain('lg:left-auto');
-    expect(menu.className).toContain('lg:right-0');
+    expect(screen.getByRole('menu').getAttribute('aria-label')).toBe('Project');
+    const placement = screen.getByTestId('project-selector-menu-placement');
+    expect(placement.className).toContain('fixed');
+    expect(placement.className).toContain('justify-center');
+    expect(placement.className).toContain('lg:right-0');
+    expect(placement.className).toContain('lg:top-full');
   });
 
   it('keeps an archived project listed while it is the current scope', () => {

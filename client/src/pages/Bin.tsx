@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { ArrowLeft, Loader2, RotateCcw, Trash2 } from 'lucide-react';
+import { Loader2, RotateCcw, Trash2 } from 'lucide-react';
 import { useDeletedTasks, useRestoreTask, useDeleteTask } from '@/hooks/use-tasks';
 import { EditTaskDialog } from '@/components/EditTaskDialog';
+import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -86,34 +87,14 @@ export default function Bin() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="sticky top-0 z-50 neo-container rounded-none px-4 py-3">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              navigate(ROUTES.DASHBOARD);
-            }}
-            className="rounded-lg h-10 w-10 shrink-0"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex items-center gap-3 flex-1">
-            <div className="h-10 w-10 neo-raised rounded-lg flex items-center justify-center">
-              <Trash2 className="text-destructive h-5 w-5" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold tracking-tight text-foreground leading-tight">
-                Bin
-              </h1>
-              <p className="text-[10px] text-muted-foreground leading-tight">
-                {deletedTasks?.length ?? 0} deleted{' '}
-                {(deletedTasks?.length ?? 0) === 1 ? 'task' : 'tasks'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        title="Bin"
+        subtitle={`${deletedTasks?.length ?? 0} deleted ${(deletedTasks?.length ?? 0) === 1 ? 'task' : 'tasks'}`}
+        icon={<Trash2 className="h-5 w-5 text-destructive" />}
+        onBack={() => {
+          navigate(ROUTES.DASHBOARD);
+        }}
+      />
 
       <main className="flex-1 overflow-y-auto scroll-container">
         <div className="px-3 py-4">

@@ -2,8 +2,9 @@
 import { useState } from 'react';
 import { useArchivedTasks, useUnarchiveTask } from '@/hooks/use-tasks';
 import { EditTaskDialog } from '@/components/EditTaskDialog';
+import { PageHeader } from '@/components/PageHeader';
 import { Task } from '@shared/schema';
-import { Loader2, Archive as ArchiveIcon, Search, ArrowLeft, X } from 'lucide-react';
+import { Loader2, Archive as ArchiveIcon, Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -91,44 +92,35 @@ export default function Archive() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Mobile Header */}
-      <header className="sticky top-0 z-50 neo-container rounded-none px-4 py-3">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              navigate(ROUTES.DASHBOARD);
-            }}
-            className="rounded-lg h-10 w-10 shrink-0"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex items-center gap-3 flex-1">
-            <div className="h-10 w-10 neo-raised rounded-lg flex items-center justify-center">
-              <ArchiveIcon className="text-primary h-5 w-5" />
+      <PageHeader
+        title="Archive"
+        subtitle={<>Archived Tasks{scopeLabel && ` · ${scopeLabel}`}</>}
+        icon={<ArchiveIcon className="h-5 w-5 text-primary" />}
+        onBack={() => {
+          navigate(ROUTES.DASHBOARD);
+        }}
+        actions={
+          <>
+            {/* The theme also lives in the board's More menu, which is where
+                a phone changes it; the bar stays clear here. */}
+            <div className="hidden lg:block">
+              <ThemeToggle />
             </div>
-            <div>
-              <h1 className="text-lg font-bold tracking-tight text-foreground leading-tight">
-                Archive
-              </h1>
-              <p className="text-[10px] text-muted-foreground leading-tight">
-                Archived Tasks{scopeLabel && ` · ${scopeLabel}`}
-              </p>
-            </div>
-          </div>
-          <ThemeToggle />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-lg h-10 w-10"
-            onClick={() => {
-              setShowSearch(!showSearch);
-            }}
-          >
-            <Search className="h-5 w-5" />
-          </Button>
-        </div>
-
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 rounded-lg"
+              aria-label="Search archived tasks"
+              aria-expanded={showSearch}
+              onClick={() => {
+                setShowSearch(!showSearch);
+              }}
+            >
+              <Search className="h-5 w-5" />
+            </Button>
+          </>
+        }
+      >
         {/* Expandable search */}
         {showSearch && (
           <div className="mt-3 flex items-center gap-2">
@@ -148,6 +140,7 @@ export default function Archive() {
               variant="ghost"
               size="icon"
               className="rounded-lg h-10 w-10 shrink-0"
+              aria-label="Close search"
               onClick={() => {
                 setShowSearch(false);
                 setSearchQuery('');
@@ -157,7 +150,7 @@ export default function Archive() {
             </Button>
           </div>
         )}
-      </header>
+      </PageHeader>
 
       {/* Content */}
       <main className="flex-1 overflow-y-auto scroll-container">

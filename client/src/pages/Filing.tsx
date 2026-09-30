@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { ArrowLeft, ArchiveIcon, FolderInput, Loader2 } from 'lucide-react';
+import { ArchiveIcon, FolderInput, Loader2 } from 'lucide-react';
 import { useTasks } from '@/hooks/use-tasks';
 import { useArchiveTask } from '@/hooks/use-tasks';
 import { useStages } from '@/hooks/use-stages';
 import { useProjectScope } from '@/hooks/use-project-scope';
 import { EditTaskDialog } from '@/components/EditTaskDialog';
+import { PageHeader } from '@/components/PageHeader';
 import { ProjectChip } from '@/components/ProjectChip';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -83,45 +84,34 @@ export default function Filing() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="sticky top-0 z-50 neo-container rounded-none px-4 py-3">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              navigate(ROUTES.DASHBOARD);
-            }}
-            className="rounded-lg h-10 w-10 shrink-0"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex items-center gap-3 flex-1">
-            <div className="h-10 w-10 neo-raised rounded-lg flex items-center justify-center">
-              <FolderInput className="text-primary h-5 w-5" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold tracking-tight text-foreground leading-tight">
-                Filing
-              </h1>
-              <p className="text-[10px] text-muted-foreground leading-tight">
-                {totalDone} finished {totalDone === 1 ? 'task' : 'tasks'}
-                {scopeLabel && ` · ${scopeLabel}`}
-              </p>
-            </div>
-          </div>
+      <PageHeader
+        title="Filing"
+        subtitle={
+          <>
+            {totalDone} finished {totalDone === 1 ? 'task' : 'tasks'}
+            {scopeLabel && ` · ${scopeLabel}`}
+          </>
+        }
+        icon={<FolderInput className="h-5 w-5 text-primary" />}
+        onBack={() => {
+          navigate(ROUTES.DASHBOARD);
+        }}
+        actions={
+          // Icon-only on a phone so the bar stays balanced around the title.
           <Button
             variant="ghost"
             size="sm"
-            className="rounded-lg h-10"
+            className="h-10 rounded-lg px-2.5 lg:px-3"
+            aria-label="Archive"
             onClick={() => {
               navigate(ROUTES.ARCHIVE);
             }}
           >
-            <ArchiveIcon className="mr-2 h-4 w-4" />
-            Archive
+            <ArchiveIcon className="h-4 w-4 lg:mr-2" />
+            <span className="hidden lg:inline">Archive</span>
           </Button>
-        </div>
-      </header>
+        }
+      />
 
       <main className="flex-1 overflow-y-auto scroll-container">
         <div className="px-3 py-4 space-y-6">
