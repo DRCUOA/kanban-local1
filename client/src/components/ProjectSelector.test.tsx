@@ -76,6 +76,16 @@ describe('ProjectSelector', () => {
     );
   });
 
+  it('hangs its menu from the left edge on a phone and the right edge from the tablet breakpoint', () => {
+    renderSelector();
+    fireEvent.click(screen.getByTestId('project-selector-trigger'));
+
+    const menu = screen.getByRole('menu');
+    expect(menu.className).toContain('left-0');
+    expect(menu.className).toContain('lg:left-auto');
+    expect(menu.className).toContain('lg:right-0');
+  });
+
   it('keeps an archived project listed while it is the current scope', () => {
     renderSelector({ scope: 3, currentProject: projects[2] ?? null });
     fireEvent.click(screen.getByTestId('project-selector-trigger'));
