@@ -12,6 +12,7 @@ import {
   Share2,
   Upload,
 } from 'lucide-react';
+import { MenuPanel } from '@/components/MenuPanel';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
 
@@ -32,7 +33,8 @@ export interface MoreActionsMenuProps {
 /**
  * Everything that changes how the board is *viewed*, plus the board-level
  * actions. It lives in the header now: the bottom bar is reserved for the three
- * places a task can go (Filing, Add, Bin).
+ * places a task can go (Filing, Add, Bin). The panel opens centred on a phone
+ * and hangs from the button from the tablet breakpoint (see MenuPanel).
  */
 export function MoreActionsMenu({
   viewMode,
@@ -77,85 +79,79 @@ export function MoreActionsMenu({
         <span className="sr-only">More</span>
       </button>
 
-      {open && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/20"
-            onClick={() => {
-              setOpen(false);
-            }}
-          />
+      <MenuPanel
+        open={open}
+        onClose={() => {
+          setOpen(false);
+        }}
+        anchor="below-end"
+        label="Board and view options"
+        testId="more-actions-menu"
+      >
+        <p className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          View
+        </p>
+        <button
+          className={toggleRow(viewMode === 'detail')}
+          aria-pressed={viewMode === 'detail'}
+          onClick={() => {
+            onSetViewMode('detail');
+          }}
+        >
+          <List className="h-4 w-4" />
+          Detail
+        </button>
+        <button
+          className={toggleRow(viewMode === 'summary')}
+          aria-pressed={viewMode === 'summary'}
+          onClick={() => {
+            onSetViewMode('summary');
+          }}
+        >
+          <CircleDot className="h-4 w-4" />
+          Summary
+        </button>
+        <button
+          className={toggleRow(focusMode)}
+          aria-pressed={focusMode}
+          onClick={onToggleFocusMode}
+        >
+          <Focus className="h-4 w-4" />
+          Focus
+        </button>
+        <button className={toggleRow(false)} onClick={onToggleBoardLayout}>
+          {boardLayout === 'vertical' ? (
+            <Columns className="h-4 w-4" />
+          ) : (
+            <Rows className="h-4 w-4" />
+          )}
+          {boardLayout === 'vertical' ? 'Horiz' : 'Vert'}
+        </button>
 
-          <div
-            role="menu"
-            className="absolute right-0 top-full z-50 mt-2 max-h-[calc(100dvh-5rem)] w-52 overflow-y-auto animate-slide-up neo-raised rounded-xl p-2"
-          >
-            <p className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              View
-            </p>
-            <button
-              className={toggleRow(viewMode === 'detail')}
-              aria-pressed={viewMode === 'detail'}
-              onClick={() => {
-                onSetViewMode('detail');
-              }}
-            >
-              <List className="h-4 w-4" />
-              Detail
-            </button>
-            <button
-              className={toggleRow(viewMode === 'summary')}
-              aria-pressed={viewMode === 'summary'}
-              onClick={() => {
-                onSetViewMode('summary');
-              }}
-            >
-              <CircleDot className="h-4 w-4" />
-              Summary
-            </button>
-            <button
-              className={toggleRow(focusMode)}
-              aria-pressed={focusMode}
-              onClick={onToggleFocusMode}
-            >
-              <Focus className="h-4 w-4" />
-              Focus
-            </button>
-            <button className={toggleRow(false)} onClick={onToggleBoardLayout}>
-              {boardLayout === 'vertical' ? (
-                <Columns className="h-4 w-4" />
-              ) : (
-                <Rows className="h-4 w-4" />
-              )}
-              {boardLayout === 'vertical' ? 'Horiz' : 'Vert'}
-            </button>
+        <div className="my-1 border-t border-border-subtle" />
 
-            <div className="my-1 border-t border-border-subtle" />
-
-            <ThemeToggle variant="row" />
-            <button className={actionRow} onClick={runAndClose(onArchive)}>
-              <Archive className="h-4 w-4" />
-              Archive
-            </button>
-            <button className={actionRow} onClick={runAndClose(onAdmin)}>
-              <Settings className="h-4 w-4" />
-              Admin
-            </button>
-            <button className={actionRow} onClick={runAndClose(onShareBoard)}>
-              <Share2 className="h-4 w-4" />
-              Share Board
-            </button>
-            <button className={actionRow} onClick={runAndClose(onExport)}>
-              <Download className="h-4 w-4" />
-              Export Tasks
-            </button>
-            <button className={actionRow} onClick={runAndClose(onImport)}>
-              <Upload className="h-4 w-4" />
-              Import Tasks
-            </button>
-          </div>
-        </>
-      )}
+        <ThemeToggle variant="row" />
+        <button className={actionRow} onClick={runAndClose(onArchive)}>
+          <Archive className="h-4 w-4" />
+          Archive
+        </button>
+        <button className={actionRow} onClick={runAndClose(onAdmin)}>
+          <Settings className="h-4 w-4" />
+          Admin
+        </button>
+        <button className={actionRow} onClick={runAndClose(onShareBoard)}>
+          <Share2 className="h-4 w-4" />
+          Share Board
+        </button>
+        <button className={actionRow} onClick={runAndClose(onExport)}>
+          <Download className="h-4 w-4" />
+          Export Tasks
+        </button>
+        <button className={actionRow} onClick={runAndClose(onImport)}>
+          <Upload className="h-4 w-4" />
+          Import Tasks
+        </button>
+      </MenuPanel>
     </div>
   );
 }

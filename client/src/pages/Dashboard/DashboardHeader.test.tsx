@@ -73,6 +73,29 @@ describe('DashboardHeader', () => {
     expect(screen.getByText('Admin')).toBeDefined();
   });
 
+  it('is one bar on a phone: logo at the start, the title centred, the icons at the end', () => {
+    render(<DashboardHeader {...defaults} />);
+    const bar = screen.getByTestId('app-bar');
+    // Never wraps on a phone; dissolves into the wide layout from lg.
+    expect(bar.className).not.toContain('flex-wrap');
+    expect(bar.className).toContain('lg:contents');
+
+    const title = screen.getByRole('heading', { level: 1 });
+    expect(title.parentElement?.className).toContain('text-center');
+    expect(title.parentElement?.className).toContain('lg:text-left');
+
+    // The leading and trailing groups share the leftover width equally, which
+    // is what keeps the title centred between them.
+    const actions = screen.getByTestId('app-bar-actions');
+    expect(actions.className).toContain('flex-1');
+    expect(actions.className).toContain('basis-0');
+    expect(actions.className).toContain('justify-end');
+    expect(actions.contains(screen.getByTestId('button-search-toggle'))).toBe(true);
+    expect(actions.contains(screen.getByLabelText('More options'))).toBe(true);
+    expect(bar.firstElementChild?.className).toContain('flex-1');
+    expect(bar.firstElementChild?.className).toContain('basis-0');
+  });
+
   it('on a phone the app name gives way to the project selector once a project exists', () => {
     const { unmount } = render(<DashboardHeader {...defaults} />);
     const title = screen.getByRole('heading', { level: 1 });

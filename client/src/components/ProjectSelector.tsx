@@ -4,6 +4,7 @@ import { DEFAULT_PROJECT_COLOR } from '@shared/constants';
 import { PROJECT_SCOPE_ALL, PROJECT_SCOPE_NONE, type ProjectScope } from '@shared/project-scope';
 import { useProjectScope } from '@/hooks/use-project-scope';
 import { Badge } from '@/components/ui/badge';
+import { MenuPanel } from '@/components/MenuPanel';
 import { cn } from '@/lib/utils';
 
 /**
@@ -11,6 +12,8 @@ import { cn } from '@/lib/utils';
  * project exists — no new UI before there is something to choose — and "All
  * projects" is always one row away, so a scope can never hide work for good.
  * Each project row shows its live task count: the volume a scoped view hides.
+ * On a phone the trigger doubles as the board's title, and its menu opens
+ * centred (see MenuPanel).
  */
 export function ProjectSelector({ className }: { className?: string }) {
   const { scope, setScope, projects, activeProjects, currentProject } = useProjectScope();
@@ -68,89 +71,81 @@ export function ProjectSelector({ className }: { className?: string }) {
         <ChevronDown className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
       </button>
 
-      {open && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/20"
-            onClick={() => {
-              setOpen(false);
-            }}
-          />
-
-          <div
-            role="menu"
-            aria-label="Project"
-            // The trigger sits at the left of a phone header and the right of a
-            // wide one, so the menu hangs from whichever edge keeps it on screen.
-            className="absolute left-0 top-full z-50 mt-2 max-h-[calc(100dvh-5rem)] w-60 overflow-y-auto animate-slide-up neo-raised rounded-xl p-2 lg:left-auto lg:right-0"
-          >
-            <p className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Project
-            </p>
+      <MenuPanel
+        open={open}
+        onClose={() => {
+          setOpen(false);
+        }}
+        anchor="below-end"
+        widthClass="lg:w-60"
+        label="Project"
+        testId="project-selector-menu"
+      >
+        <p className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Project
+        </p>
+        <button
+          type="button"
+          role="menuitemradio"
+          aria-checked={scope === PROJECT_SCOPE_ALL}
+          className={row(scope === PROJECT_SCOPE_ALL)}
+          onClick={choose(PROJECT_SCOPE_ALL)}
+          data-testid="project-selector-item-all"
+        >
+          <FolderKanban className="h-4 w-4 shrink-0" aria-hidden />
+          <span className="flex-1 truncate">All projects</span>
+        </button>
+        {options.map((project) => {
+          const active = scope === project.id;
+          return (
             <button
+              key={project.id}
               type="button"
               role="menuitemradio"
-              aria-checked={scope === PROJECT_SCOPE_ALL}
-              className={row(scope === PROJECT_SCOPE_ALL)}
-              onClick={choose(PROJECT_SCOPE_ALL)}
-              data-testid="project-selector-item-all"
-            >
-              <FolderKanban className="h-4 w-4 shrink-0" aria-hidden />
-              <span className="flex-1 truncate">All projects</span>
-            </button>
-            {options.map((project) => {
-              const active = scope === project.id;
-              return (
-                <button
-                  key={project.id}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={active}
-                  className={row(active)}
-                  onClick={choose(project.id)}
-                  data-testid={`project-selector-item-${project.id}`}
-                >
-                  <span
-                    className="h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: project.color ?? DEFAULT_PROJECT_COLOR }}
-                    aria-hidden
-                  />
-                  <span className="flex-1 truncate">
-                    {project.name}
-                    {project.archived && (
-                      <span className="ml-1 text-[10px] text-muted-foreground">(archived)</span>
-                    )}
-                  </span>
-                  <Badge
-                    variant="secondary"
-                    className="h-5 min-h-0 min-w-0 rounded-md px-1.5 py-0 font-mono text-[10px] neo-pressed"
-                    aria-label={`${project.taskCount} tasks`}
-                  >
-                    {project.taskCount}
-                  </Badge>
-                </button>
-              );
-            })}
-
-            <div className="my-1 border-t border-border-subtle" />
-
-            <button
-              type="button"
-              role="menuitemradio"
-              aria-checked={scope === PROJECT_SCOPE_NONE}
-              className={row(scope === PROJECT_SCOPE_NONE)}
-              onClick={choose(PROJECT_SCOPE_NONE)}
-              data-testid="project-selector-item-none"
+              aria-checked={active}
+              className={row(active)}
+              onClick={choose(project.id)}
+              data-testid={`project-selector-item-${project.id}`}
             >
               <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full border border-dashed border-muted-foreground"
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: project.color ?? DEFAULT_PROJECT_COLOR }}
                 aria-hidden
               />
-              <span className="flex-1 truncate">No project</span>
+              <span className="flex-1 truncate">
+                {project.name}
+                {project.archived && (
+                  <span className="ml-1 text-[10px] text-muted-foreground">(archived)</span>
+                )}
+              </span>
+              <Badge
+                variant="secondary"
+                className="h-5 min-h-0 min-w-0 rounded-md px-1.5 py-0 font-mono text-[10px] neo-pressed"
+                aria-label={`${project.taskCount} tasks`}
+              >
+                {project.taskCount}
+              </Badge>
             </button>
-          </div>
-        </>
-      )}
+          );
+        })}
+
+        <div className="my-1 border-t border-border-subtle" />
+
+        <button
+          type="button"
+          role="menuitemradio"
+          aria-checked={scope === PROJECT_SCOPE_NONE}
+          className={row(scope === PROJECT_SCOPE_NONE)}
+          onClick={choose(PROJECT_SCOPE_NONE)}
+          data-testid="project-selector-item-none"
+        >
+          <span
+            className="h-2.5 w-2.5 shrink-0 rounded-full border border-dashed border-muted-foreground"
+            aria-hidden
+          />
+          <span className="flex-1 truncate">No project</span>
+        </button>
+      </MenuPanel>
     </div>
   );
 }

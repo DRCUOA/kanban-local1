@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Archive, CheckCircle2, FolderInput, Trash2 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { CreateTaskDialog } from '@/components/CreateTaskDialog';
+import { MenuPanel } from '@/components/MenuPanel';
 import { useNavDropSlots } from '@/components/nav-drop-slots';
 import { filingTargets } from '@/lib/filing-targets';
 import { ROUTES } from '@shared/constants';
@@ -45,39 +46,38 @@ export function DashboardBottomNav() {
             <span className="text-[10px] font-medium">Filing</span>
           </button>
 
-          {filingOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-40 bg-black/20"
+          {/* Centred on a phone, hung above the button from lg (see MenuPanel). */}
+          <MenuPanel
+            open={filingOpen}
+            onClose={() => {
+              setFilingOpen(false);
+            }}
+            anchor="above-start"
+            label="Filing"
+            testId="filing-menu"
+          >
+            <p className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              File to
+            </p>
+            {targets.map((target) => (
+              <button
+                key={target.id}
+                role="menuitem"
+                className="flex w-full items-center gap-3 rounded-lg p-3 text-left text-sm transition-colors active:bg-muted/50"
                 onClick={() => {
                   setFilingOpen(false);
+                  navigate(target.href);
                 }}
-              />
-              <div
-                role="menu"
-                className="absolute bottom-full left-0 z-50 mb-2 w-52 animate-slide-up neo-raised rounded-xl p-2"
               >
-                {targets.map((target) => (
-                  <button
-                    key={target.id}
-                    role="menuitem"
-                    className="flex w-full items-center gap-3 rounded-lg p-3 text-left text-sm transition-colors active:bg-muted/50"
-                    onClick={() => {
-                      setFilingOpen(false);
-                      navigate(target.href);
-                    }}
-                  >
-                    {target.action === 'archive' ? (
-                      <Archive className="h-4 w-4 shrink-0" aria-hidden />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
-                    )}
-                    <span className="truncate">{target.label}</span>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
+                {target.action === 'archive' ? (
+                  <Archive className="h-4 w-4 shrink-0" aria-hidden />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
+                )}
+                <span className="truncate">{target.label}</span>
+              </button>
+            ))}
+          </MenuPanel>
         </div>
 
         <CreateTaskDialog iconOnly />
