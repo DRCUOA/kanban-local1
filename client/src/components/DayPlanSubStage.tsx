@@ -6,6 +6,7 @@ import { TaskCard } from './TaskCard';
 import { TaskCardSummary } from './TaskCardSummary';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { laneShadeStyle } from '@/lib/lane-shade';
 import { STRIP_DETAIL_GRID_CLASS, type ColumnContentLayout } from './column-layout';
 
 interface DayPlanSubStageProps {
@@ -13,7 +14,7 @@ interface DayPlanSubStageProps {
   subStage: {
     name: string;
     tag: string;
-    bgClass: string;
+    /** The lane's shade, 0–100, as the Admin slider stores it. */
     opacity: number;
   };
   tasks: Task[];
@@ -55,9 +56,14 @@ export function DayPlanSubStage({
         isOver && 'ring-2 ring-primary/50',
       )}
     >
-      {/* Admin-configured tint renders over the solid well so it stays a
-          visible panel even when the tint is a near-transparent wash. */}
-      <div aria-hidden className={cn('absolute inset-0 pointer-events-none', subStage.bgClass)} />
+      {/* The Admin-chosen shade renders over the solid well so the lane stays
+          a visible panel even at shade 0. */}
+      <div
+        aria-hidden
+        className="lane-shade pointer-events-none absolute inset-0"
+        style={laneShadeStyle(subStage.opacity)}
+        data-testid="lane-shade"
+      />
       <div className="relative flex flex-col gap-2 p-2.5 min-h-[60px]">
         <div className="flex items-center justify-between mb-1 px-1">
           <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">

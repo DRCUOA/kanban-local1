@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { SubStageSection } from './SubStageSection';
@@ -84,5 +84,47 @@ describe('SubStageSection', () => {
     const headings = screen.getAllByRole('heading', { level: 3 });
     const headingTexts = headings.map((h) => h.textContent);
     expect(headingTexts).not.toContain('Backlog');
+  });
+
+  it('paints each listed sub-stage’s swatch at its shade', () => {
+    render(<SubStageSection stages={mockStages} subStages={mockSubStages} />, { wrapper });
+
+    expect(screen.getByTestId('sub-stage-swatch-10').style.getPropertyValue('--lane-shade')).toBe(
+      '0.12',
+    );
+    expect(screen.getByTestId('sub-stage-swatch-11').style.getPropertyValue('--lane-shade')).toBe(
+      '0.24',
+    );
+  });
+
+  it('offers a Shade slider with a live preview in place of the background-class box', () => {
+    render(<SubStageSection stages={mockStages} subStages={mockSubStages} />, { wrapper });
+    fireEvent.click(screen.getByTestId('button-add-sub-stage'));
+
+    const slider = screen.getByRole<HTMLInputElement>('slider');
+    expect(slider.value).toBe('20');
+    expect(slider.getAttribute('max')).toBe('100');
+    expect(screen.getByText('Shade')).toBeDefined();
+    expect(screen.getByTestId('shade-value').textContent).toBe('20%');
+    expect(screen.queryByPlaceholderText('e.g. bg-background/20')).toBeNull();
+    expect(screen.queryByText('Opacity (0-100)')).toBeNull();
+
+    fireEvent.change(slider, { target: { value: '60' } });
+    expect(screen.getByTestId('shade-value').textContent).toBe('60%');
+    const tint = screen.getByTestId('shade-preview').firstElementChild as HTMLElement;
+    expect(tint.style.getPropertyValue('--lane-shade')).toBe('0.36');
+
+    // The preview names the lane as it is typed.
+    fireEvent.change(screen.getByPlaceholderText('e.g. AM'), { target: { value: 'Waiting' } });
+    expect(screen.getByTestId('shade-preview').textContent).toBe('Waiting');
+  });
+
+  it('opens an existing sub-stage at its stored shade', () => {
+    render(<SubStageSection stages={mockStages} subStages={mockSubStages} />, { wrapper });
+    fireEvent.click(screen.getByTestId('button-edit-sub-stage-11'));
+
+    expect(screen.getByRole<HTMLInputElement>('slider').value).toBe('40');
+    expect(screen.getByTestId('shade-value').textContent).toBe('40%');
+    expect(screen.getByText('Edit Sub-Stage')).toBeDefined();
   });
 });

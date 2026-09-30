@@ -233,8 +233,8 @@ A project is a set of tasks related to a common goal. It scopes which tasks the 
 | stage_id | integer FK → stages | Cascade delete |
 | name | text | |
 | tag | text | Unique identifier, e.g. `"day-plan-am"` |
-| bg_class | text | Tailwind class |
-| opacity | integer | 0–100 |
+| bg_class | text | Legacy: once a Tailwind class for the lane tint; no longer read, blank on new rows. Drop in a later migration |
+| opacity | integer | 0–100, the lane's shade (Admin "Shade" slider) |
 | order | integer | Display order |
 | created_at | timestamp | |
 
