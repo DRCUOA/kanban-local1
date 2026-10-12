@@ -110,6 +110,11 @@ export function MoreActionsMenu({
         anchor="below-end"
         label="Board and view options"
         testId="more-actions-menu"
+        footer={
+          <div className="border-t border-border-subtle pt-1">
+            <BuiltByTk />
+          </div>
+        }
       >
         <p className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           View
@@ -232,10 +237,6 @@ export function MoreActionsMenu({
           <Upload className="h-4 w-4" />
           Import Tasks
         </button>
-
-        <div className="mt-1 border-t border-border-subtle pt-1">
-          <BuiltByTk />
-        </div>
       </MenuPanel>
     </div>
   );

@@ -7,6 +7,7 @@ import { AppLogo } from '@/components/AppLogo';
 import { ProjectSelector } from '@/components/ProjectSelector';
 import { useProjectScope } from '@/hooks/use-project-scope';
 import { cn } from '@/lib/utils';
+import { BuiltByTk } from '@/components/BuiltByTk';
 import { MoreActionsMenu, type MoreActionsMenuProps } from './MoreActionsMenu';
 
 export interface DashboardHeaderProps extends MoreActionsMenuProps {
@@ -91,6 +92,9 @@ export function DashboardHeader({
               {import.meta.env.VITE_APP_NAME_SUBTITLE ||
                 'Keep on top of the bandos who you need to do'}
             </p>
+            {/* Wide screens only: the phone bar is a single non-wrapping row
+                with no space for a third line. */}
+            <BuiltByTk align="start" className="hidden px-0 py-0 leading-tight lg:flex" />
           </div>
 
           {/* Hidden until a project exists. */}
