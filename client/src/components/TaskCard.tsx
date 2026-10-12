@@ -6,6 +6,7 @@ import { formatDueDayLabel, isDueTodayOn, isTaskOverdueOn } from '@shared/briefi
 import { TASK_WARNING_BORDER_COLOR } from '@/lib/task-warning-border';
 import { useStages } from '@/hooks/use-stages';
 import { useProjectScope } from '@/hooks/use-project-scope';
+import { useOwnerById } from '@/hooks/use-owners';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +15,7 @@ import { GripVertical, Clock, AlertCircle, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { InlineTaskEditor } from './InlineTaskEditor';
 import { ProjectChip } from './ProjectChip';
+import { OwnerChip } from './OwnerChip';
 import { RichTextContent } from './RichTextContent';
 import { useTaskSelection } from './task-selection-context';
 
@@ -29,6 +31,7 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
   // The chip only shows under "All projects"; a scoped header already says it.
   const { showProjectOnCards, projectById } = useProjectScope();
   const project = showProjectOnCards ? projectById(task.projectId) : null;
+  const owner = useOwnerById()(task.ownerId);
   const { selectedTaskIds, onTaskContextMenu } = useTaskSelection();
   const isSelected = selectedTaskIds.has(task.id);
   const warningHighlight = getTaskWarningHighlight(task, stages);
@@ -162,15 +165,19 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
                 {task.effort}/{EFFORT_MAX}
               </Badge>
             )}
-            {task.owner && (
-              <Badge
-                variant="outline"
-                className="text-xs font-normal px-1.5 py-0 touch-target-sm min-h-0 min-w-0 h-5 gap-1 max-w-[140px]"
-                data-testid="task-card-owner"
-              >
-                <User className="h-3 w-3 shrink-0" />
-                <span className="truncate">{task.owner}</span>
-              </Badge>
+            {owner ? (
+              <OwnerChip owner={owner} testId="task-card-owner" />
+            ) : (
+              task.owner && (
+                <Badge
+                  variant="outline"
+                  className="text-xs font-normal px-1.5 py-0 touch-target-sm min-h-0 min-w-0 h-5 gap-1 max-w-[140px]"
+                  data-testid="task-card-owner"
+                >
+                  <User className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{task.owner}</span>
+                </Badge>
+              )
             )}
           </div>
 

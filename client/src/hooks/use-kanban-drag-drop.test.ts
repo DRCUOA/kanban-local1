@@ -69,6 +69,25 @@ const subStages: SubStage[] = [
   },
 ] as SubStage[];
 
+/**
+ * The same lanes with the person lanes bound to owners, as EPIC-06 binds them:
+ * lane 11 ("Moi") is owner 2's in Backlog, lane 12 is owner 2's in In Progress.
+ */
+const boundSubStages: SubStage[] = [
+  ...subStages.map((lane) => ({ ...lane, ownerId: lane.tag === 'moi' ? 2 : null })),
+  {
+    id: 12,
+    stageId: 2,
+    name: 'Moi',
+    tag: 'moi-doing',
+    bgClass: 'bg',
+    opacity: 20,
+    order: 1,
+    ownerId: 2,
+    createdAt: new Date(),
+  },
+] as SubStage[];
+
 const dragEnd = (activeId: number, over: DragEndEvent['over']): DragEndEvent =>
   ({ active: { id: activeId }, over }) as unknown as DragEndEvent;
 
@@ -177,6 +196,87 @@ describe('useKanbanDragDrop handleDragEnd', () => {
     });
 
     expect(updateMutate).toHaveBeenCalledWith({ id: 5, tags: [] });
+  });
+});
+
+describe('useKanbanDragDrop and a person’s lane (EPIC-06)', () => {
+  beforeEach(() => {
+    updateMutate.mockClear();
+  });
+
+  it('assigns the owner, and writes no tag, on a drop into a person’s lane', () => {
+    const tasks = [makeTask({ id: 5, stageId: 1, ownerId: null, tags: ['keep-me'] })];
+    const { result } = renderHook(() =>
+      useKanbanDragDrop({ tasks, sortedStages: stages, allSubStages: boundSubStages }),
+    );
+
+    act(() => {
+      result.current.handleDragEnd(dragEnd(5, subStageOver(1, 'moi')));
+    });
+
+    // The lane is the owner, so the owner is the whole write — the lane's tag
+    // is not part of how that lane is matched any more.
+    expect(updateMutate).toHaveBeenCalledWith({ id: 5, tags: ['keep-me'], ownerId: 2 });
+  });
+
+  it('carries the owner across stages when the lane dropped on is a person’s', () => {
+    const tasks = [makeTask({ id: 5, stageId: 1, ownerId: null })];
+    const { result } = renderHook(() =>
+      useKanbanDragDrop({ tasks, sortedStages: stages, allSubStages: boundSubStages }),
+    );
+
+    act(() => {
+      result.current.handleDragEnd(dragEnd(5, subStageOver(2, 'moi-doing')));
+    });
+
+    expect(updateMutate).toHaveBeenCalledWith({
+      id: 5,
+      stageId: 2,
+      status: 'in_progress',
+      tags: [],
+      ownerId: 2,
+    });
+  });
+
+  it('leaves the owner alone on a drop into a lane that is nobody’s', () => {
+    const tasks = [makeTask({ id: 5, stageId: 1, ownerId: 2, tags: null })];
+    const { result } = renderHook(() =>
+      useKanbanDragDrop({ tasks, sortedStages: stages, allSubStages: boundSubStages }),
+    );
+
+    act(() => {
+      result.current.handleDragEnd(dragEnd(5, subStageOver(1, 'waiting')));
+    });
+
+    expect(updateMutate).toHaveBeenCalledWith({ id: 5, tags: ['waiting'] });
+  });
+
+  it('clears the owner when a card is dragged out of its own lane onto the column', () => {
+    // Without this the drop would be invisible: the lane is defined by the
+    // owner, so the card would snap straight back into it (OWN-R13).
+    const tasks = [makeTask({ id: 5, stageId: 1, ownerId: 2, tags: null })];
+    const { result } = renderHook(() =>
+      useKanbanDragDrop({ tasks, sortedStages: stages, allSubStages: boundSubStages }),
+    );
+
+    act(() => {
+      result.current.handleDragEnd(dragEnd(5, stageOver(1)));
+    });
+
+    expect(updateMutate).toHaveBeenCalledWith({ id: 5, tags: null, ownerId: null });
+  });
+
+  it('does nothing on a column drop when the stage holds no lane for the owner', () => {
+    const tasks = [makeTask({ id: 5, stageId: 1, ownerId: 7, tags: null })];
+    const { result } = renderHook(() =>
+      useKanbanDragDrop({ tasks, sortedStages: stages, allSubStages: boundSubStages }),
+    );
+
+    act(() => {
+      result.current.handleDragEnd(dragEnd(5, stageOver(1)));
+    });
+
+    expect(updateMutate).not.toHaveBeenCalled();
   });
 });
 

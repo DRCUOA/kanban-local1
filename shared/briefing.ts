@@ -98,10 +98,18 @@ export interface BriefingEntry {
   /** True when `storedStatus` and `stage` disagree; the board renders `stage`. */
   statusConflict: boolean;
   priority: string | null;
+  /** The owner's name, mirrored from `owners.name`. Null = Unassigned. */
   owner: string | null;
-  /** Sub-stage lane the card sits in, resolved from `tags`. Null if none. */
+  /**
+   * Sub-stage lane the card sits in: by owner for a person's lane, by tag for
+   * any other. Null if none.
+   */
   swimlane: string | null;
-  /** True when `owner` and `swimlane` name different people. */
+  /**
+   * Always false since EPIC-06, which made a person's lane and the owner field
+   * the same fact. Retained for payload stability; OWN-10 removes it, and
+   * nothing new should read it.
+   */
   ownerConflict: boolean;
   /** The reference instant. Its UTC date part is NOT the labeled day. */
   dueDate: string | null;
@@ -151,16 +159,29 @@ export function resolveStageLabel(task: Task, stages: Stage[]): string {
 }
 
 /**
- * Sub-stage lane for a card. Membership is encoded as a tag string rather than
- * a foreign key, so match `tags` against the sub-stages of the task's own stage
- * — tag values like "Rich" are reused across stages and are not unique alone.
+ * Sub-stage lane for a card, among the sub-stages of the task's own stage.
+ *
+ * A lane with an `ownerId` is a person's lane and holds exactly the tasks that
+ * owner owns in that stage (EPIC-06 OWN-R11) — it is matched by foreign key,
+ * and its `tag` is not read. Every other lane is still matched by tag string,
+ * which is why the tag alone is not enough: values like "rich" are reused
+ * across stages and are unique only within one.
  */
 export function resolveSwimlane(task: Task, subStages: SubStage[]): string | null {
-  const tags = Array.isArray(task.tags) ? task.tags : [];
   const candidates = subStages.filter((s) => s.stageId === task.stageId);
+
+  if (task.ownerId != null) {
+    const ownLane = candidates.find((s) => s.ownerId === task.ownerId);
+    // The lane is that owner, so the owner's name labels it — otherwise a
+    // rename would reach every task and leave the lane header behind, which is
+    // the duplication EPIC-06 removes. `task.owner` is the mirrored name.
+    if (ownLane) return task.owner ?? cleanLabel(ownLane.name);
+  }
+
+  const tags = Array.isArray(task.tags) ? task.tags : [];
   for (const tag of tags) {
     if (typeof tag !== 'string' || tag.length === 0) continue;
-    const match = candidates.find((s) => s.tag === tag);
+    const match = candidates.find((s) => s.ownerId == null && s.tag === tag);
     if (match) return cleanLabel(match.name);
   }
   return null;
@@ -447,19 +468,10 @@ function stageNameFor(task: Task, stages: Stage[]): string {
 
 // --- Digest ---
 
-function toEntry(
-  task: ExportTask,
-  stages: Stage[],
-  subStages: SubStage[],
-  ownerLabels: Set<string>,
-): BriefingEntry {
+function toEntry(task: ExportTask, stages: Stage[], subStages: SubStage[]): BriefingEntry {
   const stage = resolveStageStatus(task, stages);
   const swimlane = resolveSwimlane(task, subStages);
   const owner = task.owner ?? null;
-  // Only a lane that names a person can contradict `owner`. Status lanes like
-  // "Scheduled Action | On Track" sit in the same tag namespace and must not
-  // read as a conflicting assignee.
-  const swimlaneNamesPerson = swimlane !== null && ownerLabels.has(swimlane);
 
   return {
     id: task.id,
@@ -471,7 +483,10 @@ function toEntry(
     priority: task.priority ?? null,
     owner,
     swimlane,
-    ownerConflict: !isBlank(owner) && swimlaneNamesPerson && owner !== swimlane,
+    // Always false since EPIC-06: a person's lane holds exactly the tasks that
+    // owner owns, so the lane and the owner cannot disagree. Kept so the
+    // payload's shape does not change under consumers; removed by OWN-10.
+    ownerConflict: false,
     dueDate: task.dueDate ? new Date(task.dueDate).toISOString() : null,
     dueDay: task.urgency.dueDay,
     daysOverdue: task.urgency.daysOverdue,
@@ -513,15 +528,9 @@ export function buildBriefing({
   now,
   timezone,
 }: BuildBriefingInput): BriefingDigest {
-  // Owner labels are free-form, so the set of real people is whatever the board
-  // actually uses — the only way to tell a person lane from a status lane.
-  const ownerLabels = new Set(
-    tasks.map((task) => task.owner).filter((owner): owner is string => !isBlank(owner)),
-  );
-
   const live = tasks
     .filter((task) => !task.archived)
-    .map((task) => ({ task, entry: toEntry(task, stages, subStages, ownerLabels) }));
+    .map((task) => ({ task, entry: toEntry(task, stages, subStages) }));
 
   const pick = (predicate: (entry: BriefingEntry, task: ExportTask) => boolean) =>
     live

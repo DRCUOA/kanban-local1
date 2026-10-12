@@ -24,6 +24,8 @@ import {
 import { queryClient } from '@/lib/queryClient';
 import { apiPost, apiPatch, apiDelete } from '@/lib/api';
 import { laneShadeStyle } from '@/lib/lane-shade';
+import { useOwners } from '@/hooks/use-owners';
+import { DEFAULT_OWNER_COLOR } from '@shared/constants';
 import { Trash2, Edit } from 'lucide-react';
 import { useState } from 'react';
 import {
@@ -50,10 +52,15 @@ const EMPTY_SUB_STAGE: InsertSubStage = {
   bgClass: '',
   opacity: 20,
   order: 1,
+  ownerId: null,
 };
+
+/** The "no owner" option's value — a Radix SelectItem value cannot be empty. */
+const NO_OWNER = 'none';
 
 export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
   const { toast } = useToast();
+  const { data: owners = [] } = useOwners();
   const [editingSubStageId, setEditingSubStageId] = useState<number | null>(null);
   const [subStageDialogOpen, setSubStageDialogOpen] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState<number | null>(null);
@@ -137,6 +144,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
       bgClass: subStage.bgClass,
       opacity: subStage.opacity,
       order: subStage.order,
+      ownerId: subStage.ownerId ?? null,
     });
     setSubStageDialogOpen(true);
   };
@@ -236,6 +244,48 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                           className="h-12 rounded-xl text-base"
                         />
                       </FormControl>
+                    </FormItem>
+                  )}
+                />
+                {/* Binding a lane to an owner makes it that person's lane:
+                    it then holds exactly the tasks in this stage they own, the
+                    tag above is not read for it, and dropping a card in sets
+                    the card's owner (EPIC-06 OWN-R11, OWN-R12). */}
+                <FormField
+                  control={subStageForm.control}
+                  name="ownerId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Whose lane is this?</FormLabel>
+                      <Select
+                        value={field.value ? String(field.value) : NO_OWNER}
+                        onValueChange={(value) => {
+                          field.onChange(value === NO_OWNER ? null : parseInt(value));
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger
+                            className="h-12 rounded-xl"
+                            data-testid="select-sub-stage-owner"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value={NO_OWNER} className="py-3">
+                            Nobody&apos;s — match on the tag
+                          </SelectItem>
+                          {owners.map((owner) => (
+                            <SelectItem key={owner.id} value={String(owner.id)} className="py-3">
+                              {owner.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground">
+                        A person&apos;s lane holds whatever they own in this stage, and dropping a
+                        card into it assigns them.
+                      </p>
                     </FormItem>
                   )}
                 />
@@ -369,9 +419,25 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                           />
                         </div>
                         <div>
-                          <p className="font-medium text-sm">{subStage.name}</p>
+                          <p className="flex items-center gap-1.5 font-medium text-sm">
+                            {subStage.ownerId && (
+                              <span
+                                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                                style={{
+                                  backgroundColor:
+                                    owners.find((o) => o.id === subStage.ownerId)?.color ??
+                                    DEFAULT_OWNER_COLOR,
+                                }}
+                                aria-hidden
+                              />
+                            )}
+                            {subStage.name}
+                          </p>
                           <p className="text-[10px] text-muted-foreground">
-                            {subStage.tag} | {subStage.opacity}%
+                            {subStage.ownerId
+                              ? `${owners.find((o) => o.id === subStage.ownerId)?.name ?? 'owner'}’s lane`
+                              : subStage.tag}{' '}
+                            | {subStage.opacity}%
                           </p>
                         </div>
                       </div>

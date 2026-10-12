@@ -57,7 +57,7 @@ export function useEditTaskForm({ task, open, onOpenChange }: UseEditTaskFormOpt
           dueDate: parsedDueDate,
           tags: Array.isArray(task.tags) ? task.tags : [],
           recurrence: (task.recurrence as TaskRecurrence) || TASK_RECURRENCE.NONE,
-          owner: task.owner ?? null,
+          ownerId: task.ownerId ?? null,
           projectId: task.projectId ?? null,
         });
       } catch (error) {
@@ -72,7 +72,7 @@ export function useEditTaskForm({ task, open, onOpenChange }: UseEditTaskFormOpt
           dueDate: undefined,
           tags: [],
           recurrence: (task.recurrence as TaskRecurrence) || TASK_RECURRENCE.NONE,
-          owner: task.owner ?? null,
+          ownerId: task.ownerId ?? null,
           projectId: task.projectId ?? null,
         });
       }

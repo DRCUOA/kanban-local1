@@ -18,6 +18,9 @@ import type {
   Project,
   ProjectSummary,
   InsertProject,
+  Owner,
+  OwnerSummary,
+  InsertOwner,
   TaskHistoryEntry,
 } from '@shared/schema';
 import type {
@@ -78,6 +81,52 @@ async function assertProjectNameFree(name: string, exceptId?: number): Promise<v
   }
 }
 
+/**
+ * Owner names are unique case-insensitively (the database enforces it too), so
+ * a create or rename that collides is a 409 — EPIC-06 OWN-R4.
+ */
+async function assertOwnerNameFree(name: string, exceptId?: number): Promise<void> {
+  const wanted = name.trim().toLowerCase();
+  const existing = await storage.getOwners();
+  const clash = existing.find((o) => o.id !== exceptId && o.name.trim().toLowerCase() === wanted);
+  if (clash) {
+    throw new AppError(409, `An owner named “${clash.name}” already exists`);
+  }
+}
+
+/**
+ * A task may only be assigned to an owner that exists. Free text can no longer
+ * invent a person, so an unknown id is a 400 that names it — EPIC-06 OWN-R3.
+ * Returns an error message, or null when the write is fine.
+ */
+async function unknownOwnerMessage(ownerId: number | null | undefined): Promise<string | null> {
+  if (ownerId === undefined || ownerId === null) return null;
+  const owner = await storage.getOwnerById(ownerId);
+  return owner ? null : `Unknown owner ${ownerId}`;
+}
+
+/**
+ * One stage holds at most one lane per owner, or "this stage's tasks owned by
+ * Rich" has two homes — EPIC-06 OWN-R15. Returns an error message, or null.
+ */
+async function laneOwnerClashMessage(
+  ownerId: number | null | undefined,
+  stageId: number | undefined,
+  exceptId?: number,
+): Promise<string | null> {
+  if (ownerId === undefined || ownerId === null) return null;
+  const owner = await storage.getOwnerById(ownerId);
+  if (!owner) return `Unknown owner ${ownerId}`;
+  const lanes = await storage.getSubStages();
+  const self = exceptId === undefined ? undefined : lanes.find((l) => l.id === exceptId);
+  const inStage = stageId ?? self?.stageId;
+  if (inStage === undefined) return null;
+  const clash = lanes.find(
+    (lane) => lane.id !== exceptId && lane.stageId === inStage && lane.ownerId === ownerId,
+  );
+  return clash ? `The lane “${clash.name}” in this stage is already ${owner.name}'s` : null;
+}
+
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   registerGmailPubSubWebhook(app);
 
@@ -111,6 +160,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     ) => {
       try {
         const taskData = api.tasks.create.input.parse(req.body);
+        const unknownOwner = await unknownOwnerMessage(taskData.ownerId);
+        if (unknownOwner) {
+          return res.status(400).json({ error: unknownOwner, status: 400 });
+        }
         // Files the description references become the task's once it exists.
         const prepared = taskData.description
           ? await prepareDescriptionAttachments(storage, taskData.description, null)
@@ -148,6 +201,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const id = parseIdParam(req.params.id, res);
         if (id === null) return;
         const updates = api.tasks.update.input.parse(req.body);
+        const unknownOwner = await unknownOwnerMessage(updates.ownerId);
+        if (unknownOwner) {
+          return res.status(400).json({ error: unknownOwner, status: 400 });
+        }
         // A description write re-syncs the task's files: newly referenced
         // rows bind, dropped ones release (and are swept later).
         const prepared =
@@ -472,6 +529,62 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }),
   );
 
+  // Owner endpoints (EPIC-06). An owner is a row with a name, colour and short
+  // code — a label with an identity, not an account.
+  app.get(
+    api.owners.list.path,
+    asyncHandler(async (_req: Request, res: Response<OwnerSummary[]>) => {
+      const [ownerList, counts] = await Promise.all([
+        storage.getOwners(),
+        storage.getOwnerTaskCounts(),
+      ]);
+      res.json(ownerList.map((owner) => ({ ...owner, taskCount: counts[owner.id] ?? 0 })));
+    }),
+  );
+
+  app.post(
+    api.owners.create.path,
+    asyncHandler(
+      async (
+        req: Request<Record<string, string>, Owner | ApiErrorResponse, InsertOwner>,
+        res: Response<Owner | ApiErrorResponse>,
+      ) => {
+        const ownerData = parseOrThrow(api.owners.create.input, req.body);
+        await assertOwnerNameFree(ownerData.name);
+        const owner = await storage.createOwner(ownerData);
+        res.status(201).json(owner);
+      },
+    ),
+  );
+
+  app.patch(
+    api.owners.update.path,
+    asyncHandler(async (req: Request, res: Response<Owner | ApiErrorResponse>) => {
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
+      const updates: Partial<InsertOwner> = parseOrThrow(api.owners.update.input, req.body);
+      if (updates.name !== undefined) await assertOwnerNameFree(updates.name, id);
+      const updated = await storage.updateOwner(id, updates);
+      if (!updated) {
+        throw new AppError(404, 'Owner not found');
+      }
+      res.json(updated);
+    }),
+  );
+
+  app.delete(
+    api.owners.delete.path,
+    asyncHandler(async (req: Request, res: Response<ApiErrorResponse>) => {
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
+      const deleted = await storage.deleteOwner(id);
+      if (!deleted) {
+        throw new AppError(404, 'Owner not found');
+      }
+      res.status(204).send();
+    }),
+  );
+
   // Stage endpoints
   app.get(api.stages.list.path, async (_req: Request, res: Response<Stage[]>) => {
     const allStages = await storage.getStages();
@@ -583,6 +696,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     ) => {
       try {
         const validated = api.subStages.create.input.parse(req.body);
+        const laneClash = await laneOwnerClashMessage(validated.ownerId, validated.stageId);
+        if (laneClash) {
+          return res.status(409).json({ error: laneClash, status: 409 });
+        }
         const subStage = await storage.createSubStage(validated);
         res.status(201).json(subStage);
       } catch (error) {
@@ -611,6 +728,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (id === null) return;
       try {
         const validated = api.subStages.update.input.parse(req.body);
+        const laneClash = await laneOwnerClashMessage(validated.ownerId, validated.stageId, id);
+        if (laneClash) {
+          return res.status(409).json({ error: laneClash, status: 409 });
+        }
         const subStage = await storage.updateSubStage(id, validated);
         if (!subStage) {
           return res.status(404).json({ error: 'Sub-stage not found', status: 404 });

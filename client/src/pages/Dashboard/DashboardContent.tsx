@@ -10,6 +10,8 @@ export interface DashboardContentProps {
   viewMode: 'detail' | 'summary';
   boardLayout: 'vertical' | 'horizontal';
   searchQuery: string;
+  /** Order cards by owner name instead of by due date (EPIC-06 OWN-R33). */
+  sortByOwner?: boolean;
   onTaskClick: (task: Task) => void;
 }
 
@@ -19,6 +21,7 @@ export function DashboardContent({
   viewMode,
   boardLayout,
   searchQuery,
+  sortByOwner = false,
   onTaskClick,
 }: DashboardContentProps) {
   return (
@@ -42,6 +45,7 @@ export function DashboardContent({
               focusMode={focusMode}
               boardLayout={boardLayout}
               searchQuery={searchQuery}
+              sortByOwner={sortByOwner}
             />
           </div>
         ) : (

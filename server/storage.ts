@@ -4,12 +4,14 @@ import {
   stages,
   subStages,
   projects,
+  owners,
   taskAttachments,
   inboundEmailProcessing,
   type Task,
   type Stage,
   type SubStage,
   type Project,
+  type Owner,
   type TaskAttachment,
   type TaskAttachmentRow,
   type InsertAttachment,
@@ -17,6 +19,7 @@ import {
   type InsertStage,
   type InsertSubStage,
   type InsertProject,
+  type InsertOwner,
   type TaskHistoryEntry,
   type TaskStatus,
 } from '@shared/schema';
@@ -113,7 +116,17 @@ export interface IStorage {
   binTask(id: number): Promise<Task | undefined>;
   restoreTask(id: number): Promise<Task | undefined>;
   deleteTask(id: number): Promise<void>;
+  /** Owner names, for the legacy `GET /api/tasks/owners` contract. */
   getDistinctOwners(): Promise<string[]>;
+  /** Every owner, active ones first, then by order and name. */
+  getOwners(): Promise<Owner[]>;
+  getOwnerById(id: number): Promise<Owner | undefined>;
+  createOwner(owner: InsertOwner): Promise<Owner>;
+  updateOwner(id: number, owner: Partial<InsertOwner>): Promise<Owner | undefined>;
+  /** Releases the owner's tasks and unbinds their lanes. False when no such owner. */
+  deleteOwner(id: number): Promise<boolean>;
+  /** Live (unarchived, unbinned) task count per owner id; owners with none are absent. */
+  getOwnerTaskCounts(): Promise<Record<number, number>>;
   getStages(): Promise<Stage[]>;
   createStage(stage: InsertStage): Promise<Stage>;
   updateStage(id: number, stage: Partial<InsertStage>): Promise<Stage | undefined>;
@@ -312,16 +325,77 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDistinctOwners(): Promise<string[]> {
-    // Returns each owner string that has been used on at least one task,
-    // sorted alphabetically (case-insensitive). Nulls/empties excluded by the WHERE clause.
+    // Owner names now come from the owners table, not from a DISTINCT over
+    // whatever has been typed on a task (EPIC-06). Archived owners are
+    // included: the field this endpoint feeds can still be holding one.
+    const rows = await this.getOwners();
+    return rows.map((owner) => owner.name);
+  }
+
+  async getOwners(): Promise<Owner[]> {
+    return await db
+      .select()
+      .from(owners)
+      .orderBy(owners.archived, owners.order, sql`lower(${owners.name})`);
+  }
+
+  async getOwnerById(id: number): Promise<Owner | undefined> {
+    const [owner] = await db.select().from(owners).where(eq(owners.id, id));
+    return owner;
+  }
+
+  async createOwner(insertOwner: InsertOwner): Promise<Owner> {
+    const [owner] = await db
+      .insert(owners)
+      .values({
+        name: insertOwner.name,
+        key: insertOwner.key ?? null,
+        color: insertOwner.color ?? null,
+        archived: insertOwner.archived ?? false,
+        order: insertOwner.order ?? 0,
+      })
+      .returning();
+    return owner!;
+  }
+
+  async updateOwner(id: number, updates: Partial<InsertOwner>): Promise<Owner | undefined> {
+    // Only the keys the caller sent; Drizzle refuses an empty SET, so a no-op
+    // patch just reads the row back. A name change propagates to the mirrored
+    // `tasks.owner` through the database trigger, not through a write per task.
+    const values: Partial<typeof owners.$inferInsert> = {};
+    if (updates.name !== undefined) values.name = updates.name;
+    if (updates.key !== undefined) values.key = updates.key;
+    if (updates.color !== undefined) values.color = updates.color;
+    if (updates.archived !== undefined) values.archived = updates.archived;
+    if (updates.order !== undefined) values.order = updates.order;
+    if (Object.keys(values).length === 0) return this.getOwnerById(id);
+
+    const [updated] = await db.update(owners).set(values).where(eq(owners.id, id)).returning();
+    return updated;
+  }
+
+  async deleteOwner(id: number): Promise<boolean> {
+    // Both FKs are ON DELETE SET NULL too; doing it here keeps the contract
+    // true whatever a given database's constraints say, and routes the task
+    // update through the mirror trigger so `tasks.owner` clears with it.
+    await db.update(tasks).set({ ownerId: null }).where(eq(tasks.ownerId, id));
+    await db.update(subStages).set({ ownerId: null }).where(eq(subStages.ownerId, id));
+    const deleted = await db.delete(owners).where(eq(owners.id, id)).returning({ id: owners.id });
+    return deleted.length > 0;
+  }
+
+  async getOwnerTaskCounts(): Promise<Record<number, number>> {
     const rows = await db
-      .selectDistinct({ owner: tasks.owner })
+      .select({ ownerId: tasks.ownerId, count: sql<number>`count(*)`.mapWith(Number) })
       .from(tasks)
-      .where(sql`${tasks.owner} IS NOT NULL AND length(${tasks.owner}) > 0`);
-    return rows
-      .map((r) => r.owner!)
-      .filter((v): v is string => typeof v === 'string' && v.length > 0)
-      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+      .where(and(isNotNull(tasks.ownerId), eq(tasks.archived, false), isNull(tasks.deletedAt)))
+      .groupBy(tasks.ownerId);
+
+    const counts: Record<number, number> = {};
+    for (const row of rows) {
+      if (row.ownerId != null) counts[row.ownerId] = row.count;
+    }
+    return counts;
   }
 
   async deleteTask(id: number): Promise<void> {

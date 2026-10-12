@@ -16,6 +16,8 @@ interface DayPlanSubStageProps {
     tag: string;
     /** The lane's shade, 0–100, as the Admin slider stores it. */
     opacity: number;
+    /** Set = this is that owner's lane, and a drop here assigns them. */
+    ownerId?: number | null;
   };
   tasks: Task[];
   stageColor: string;

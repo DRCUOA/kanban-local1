@@ -32,3 +32,40 @@ export function compareTasksByDueDate(a: Task, b: Task): number {
 export function sortTasksByDueDate<T extends Task>(tasks: T[]): T[] {
   return [...tasks].sort(compareTasksByDueDate);
 }
+
+/**
+ * Owner ordering, for the board's "sort by owner" (EPIC-06 OWN-R33).
+ *
+ * `ownerNameOf` resolves an id to a name rather than reading `task.owner`,
+ * because that column is a mirror and the owner rows are what the board has
+ * loaded. Unassigned tasks sort last — the same rule the due-date sort uses for
+ * undated ones, and for the same reason: an absent value is not a small value.
+ *
+ * Falls back to the due-date comparison, then `id`, so the order inside one
+ * owner is the board's own order and is total and stable.
+ */
+export function compareTasksByOwner(
+  a: Task,
+  b: Task,
+  ownerNameOf: (id: number | null) => string | null,
+): number {
+  const aName = ownerNameOf(a.ownerId ?? null);
+  const bName = ownerNameOf(b.ownerId ?? null);
+
+  if (aName !== bName) {
+    if (aName === null) return 1;
+    if (bName === null) return -1;
+    const byName = aName.localeCompare(bName, undefined, { sensitivity: 'base' });
+    if (byName !== 0) return byName;
+  }
+
+  return compareTasksByDueDate(a, b);
+}
+
+/** Non-mutating sort — callers hold arrays owned by the query cache. */
+export function sortTasksByOwner<T extends Task>(
+  tasks: T[],
+  ownerNameOf: (id: number | null) => string | null,
+): T[] {
+  return [...tasks].sort((a, b) => compareTasksByOwner(a, b, ownerNameOf));
+}

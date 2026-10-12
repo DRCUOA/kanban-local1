@@ -6,10 +6,12 @@ import type {
   Stage,
   SubStage,
   Project,
+  Owner,
   InsertTask,
   InsertStage,
   InsertSubStage,
   InsertProject,
+  InsertOwner,
   TaskHistoryEntry,
   TaskStatus,
   TaskAttachment,
@@ -39,10 +41,12 @@ class MemStorage implements IStorage {
   private stageSeq = 0;
   private subStageSeq = 0;
   private projectSeq = 0;
+  private ownerSeq = 0;
   private taskStore = new Map<number, Task>();
   private stageStore = new Map<number, Stage>();
   private subStageStore = new Map<number, SubStage>();
   private projectStore = new Map<number, Project>();
+  private ownerStore = new Map<number, Owner>();
   private attachmentSeq = 0;
   private attachmentStore = new Map<number, TaskAttachmentRow>();
 
@@ -100,7 +104,10 @@ class MemStorage implements IStorage {
       history,
       updatedAt: now,
       createdAt: now,
-      owner: insert.owner ?? null,
+      ownerId: insert.ownerId ?? null,
+      // The real schema keeps `owner` in step with the owner's name through a
+      // trigger; mirror that here so the double behaves like the database.
+      owner: this.ownerNameFor(insert.ownerId ?? null),
       deletedAt: null,
     };
 
@@ -196,12 +203,88 @@ class MemStorage implements IStorage {
     this.taskStore.delete(id);
   }
 
+  private ownerNameFor(id: number | null): string | null {
+    return id === null ? null : (this.ownerStore.get(id)?.name ?? null);
+  }
+
   async getDistinctOwners(): Promise<string[]> {
-    const set = new Set<string>();
-    for (const t of this.taskStore.values()) {
-      if (t.owner && t.owner.length > 0) set.add(t.owner);
+    const owners = await this.getOwners();
+    return owners.map((owner) => owner.name);
+  }
+
+  async getOwners(): Promise<Owner[]> {
+    return [...this.ownerStore.values()].sort(
+      (a, b) =>
+        Number(a.archived) - Number(b.archived) ||
+        a.order - b.order ||
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
+    );
+  }
+
+  async getOwnerById(id: number): Promise<Owner | undefined> {
+    return this.ownerStore.get(id);
+  }
+
+  async createOwner(insert: InsertOwner): Promise<Owner> {
+    const owner: Owner = {
+      id: ++this.ownerSeq,
+      name: insert.name,
+      key: insert.key ?? null,
+      color: insert.color ?? null,
+      archived: insert.archived ?? false,
+      order: insert.order ?? 0,
+      createdAt: new Date(),
+    };
+    this.ownerStore.set(owner.id, owner);
+    return owner;
+  }
+
+  async updateOwner(id: number, updates: Partial<InsertOwner>): Promise<Owner | undefined> {
+    const current = this.ownerStore.get(id);
+    if (!current) return undefined;
+    const updated: Owner = {
+      ...current,
+      name: updates.name ?? current.name,
+      key: updates.key === undefined ? current.key : updates.key,
+      color: updates.color === undefined ? current.color : updates.color,
+      archived: updates.archived ?? current.archived,
+      order: updates.order ?? current.order,
+    };
+    this.ownerStore.set(id, updated);
+    // A rename reaches every task through the mirror, as the trigger does.
+    if (updated.name !== current.name) {
+      for (const task of this.taskStore.values()) {
+        if (task.ownerId === id) {
+          this.taskStore.set(task.id, { ...task, owner: updated.name });
+        }
+      }
     }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+    return updated;
+  }
+
+  async deleteOwner(id: number): Promise<boolean> {
+    if (!this.ownerStore.has(id)) return false;
+    for (const task of this.taskStore.values()) {
+      if (task.ownerId === id) {
+        this.taskStore.set(task.id, { ...task, ownerId: null, owner: null });
+      }
+    }
+    for (const lane of this.subStageStore.values()) {
+      if (lane.ownerId === id) {
+        this.subStageStore.set(lane.id, { ...lane, ownerId: null });
+      }
+    }
+    this.ownerStore.delete(id);
+    return true;
+  }
+
+  async getOwnerTaskCounts(): Promise<Record<number, number>> {
+    const counts: Record<number, number> = {};
+    for (const task of this.taskStore.values()) {
+      if (task.ownerId == null || task.archived || task.deletedAt !== null) continue;
+      counts[task.ownerId] = (counts[task.ownerId] ?? 0) + 1;
+    }
+    return counts;
   }
 
   async getStages(): Promise<Stage[]> {
@@ -255,6 +338,8 @@ class MemStorage implements IStorage {
       name: insert.name,
       tag: insert.tag,
       bgClass: insert.bgClass,
+      // A lane bound to an owner is that owner's lane (EPIC-06).
+      ownerId: insert.ownerId ?? null,
       opacity: insert.opacity,
       order: insert.order,
       createdAt: new Date(),
@@ -460,6 +545,7 @@ function makeSubStageInput(
     name: 'Morning',
     tag: 'morning',
     bgClass: 'bg-blue-500/20',
+    ownerId: null,
     opacity: 20,
     order: 0,
     ...overrides,
@@ -472,6 +558,10 @@ function makeTaskInput(stageId: number, overrides: Partial<InsertTask> = {}): In
 
 function makeProjectInput(overrides: Partial<InsertProject> = {}): InsertProject {
   return { name: 'Alpha', ...overrides };
+}
+
+function makeOwnerInput(overrides: Partial<InsertOwner> = {}): InsertOwner {
+  return { name: 'Rich', ...overrides };
 }
 
 // ---------------------------------------------------------------------------
@@ -576,6 +666,105 @@ describe('IStorage contract', () => {
 
       expect(counts[alpha.id]).toBe(2);
       expect(counts[beta.id]).toBeUndefined();
+    });
+  });
+
+  // ===== Owners (EPIC-06) =====
+
+  describe('Owner CRUD', () => {
+    it('creates an owner with an id and safe defaults', async () => {
+      const owner = await storage.createOwner(makeOwnerInput({ name: 'Rich' }));
+
+      expect(owner.id).toBeGreaterThan(0);
+      expect(owner.name).toBe('Rich');
+      expect(owner.key).toBeNull();
+      expect(owner.color).toBeNull();
+      expect(owner.archived).toBe(false);
+      expect(owner.order).toBe(0);
+      expect(owner.createdAt).toBeInstanceOf(Date);
+    });
+
+    it('keeps an owner who has no tasks at all', async () => {
+      // The defect EPIC-06 fixes: the list used to be a DISTINCT over tasks,
+      // so a person stopped existing when their last task was binned.
+      const owner = await storage.createOwner(makeOwnerInput({ name: 'Moi' }));
+
+      expect(await storage.getOwners()).toHaveLength(1);
+      expect(await storage.getDistinctOwners()).toEqual(['Moi']);
+      expect((await storage.getOwnerTaskCounts())[owner.id]).toBeUndefined();
+    });
+
+    it('lists active owners before archived ones, then by order and name', async () => {
+      await storage.createOwner(makeOwnerInput({ name: 'Zulu', order: 0 }));
+      await storage.createOwner(makeOwnerInput({ name: 'Gone', archived: true }));
+      await storage.createOwner(makeOwnerInput({ name: 'Bravo', order: 1 }));
+
+      expect((await storage.getOwners()).map((o) => o.name)).toEqual(['Zulu', 'Bravo', 'Gone']);
+    });
+
+    it('renames an owner once, and every task follows', async () => {
+      const stage = await storage.createStage(makeStageInput());
+      const owner = await storage.createOwner(makeOwnerInput({ name: 'Rich' }));
+      const first = await storage.createTask(makeTaskInput(stage.id, { ownerId: owner.id }));
+      const second = await storage.createTask(makeTaskInput(stage.id, { ownerId: owner.id }));
+
+      await storage.updateOwner(owner.id, { name: 'Richard' });
+
+      expect((await storage.getTaskById(first.id))?.owner).toBe('Richard');
+      expect((await storage.getTaskById(second.id))?.owner).toBe('Richard');
+      expect((await storage.getTaskById(first.id))?.ownerId).toBe(owner.id);
+    });
+
+    it('leaves the other fields alone on a partial update', async () => {
+      const owner = await storage.createOwner(makeOwnerInput({ key: 'RC', color: '#0EA5E9' }));
+
+      const updated = await storage.updateOwner(owner.id, { archived: true });
+
+      expect(updated?.key).toBe('RC');
+      expect(updated?.color).toBe('#0EA5E9');
+      expect(updated?.name).toBe('Rich');
+      expect(updated?.archived).toBe(true);
+    });
+
+    it('releases the tasks and unbinds the lanes when an owner is deleted', async () => {
+      const stage = await storage.createStage(makeStageInput());
+      const owner = await storage.createOwner(makeOwnerInput());
+      const lane = await storage.createSubStage(makeSubStageInput(stage.id, { ownerId: owner.id }));
+      const task = await storage.createTask(makeTaskInput(stage.id, { ownerId: owner.id }));
+
+      expect(await storage.deleteOwner(owner.id)).toBe(true);
+
+      const released = await storage.getTaskById(task.id);
+      expect(released?.ownerId).toBeNull();
+      expect(released?.owner).toBeNull();
+      expect(released?.archived).toBe(false);
+      expect((await storage.getSubStages()).find((l) => l.id === lane.id)?.ownerId).toBeNull();
+    });
+
+    it('reports no such owner on a delete that matches nothing', async () => {
+      expect(await storage.deleteOwner(999)).toBe(false);
+    });
+
+    it('counts only live tasks per owner', async () => {
+      const stage = await storage.createStage(makeStageInput());
+      const owner = await storage.createOwner(makeOwnerInput());
+      await storage.createTask(makeTaskInput(stage.id, { ownerId: owner.id }));
+      const archived = await storage.createTask(makeTaskInput(stage.id, { ownerId: owner.id }));
+      const binned = await storage.createTask(makeTaskInput(stage.id, { ownerId: owner.id }));
+      await storage.archiveTask(archived.id);
+      await storage.binTask(binned.id);
+
+      expect((await storage.getOwnerTaskCounts())[owner.id]).toBe(1);
+    });
+
+    it('mirrors the owner name onto a task as it is created', async () => {
+      const stage = await storage.createStage(makeStageInput());
+      const owner = await storage.createOwner(makeOwnerInput({ name: 'Moi' }));
+
+      const task = await storage.createTask(makeTaskInput(stage.id, { ownerId: owner.id }));
+
+      expect(task.ownerId).toBe(owner.id);
+      expect(task.owner).toBe('Moi');
     });
   });
 

@@ -334,28 +334,47 @@ export function useKanbanDragDrop({ tasks, sortedStages, allSubStages }: UseKanb
         subStageTag = '';
       }
 
+      // Dropping on a person's lane says whose the task is, and that is all it
+      // says: the owner moves, no tag is written, because a person's lane is
+      // matched by `ownerId` (EPIC-06 OWN-R12). Dropping on any other lane
+      // writes the tag exactly as before and leaves the owner alone.
+      const targetLane = allSubStages.find(
+        (ss) => ss.stageId === stageId && ss.tag === subStageTag,
+      );
+      const laneOwnerId = targetLane?.ownerId ?? null;
+
       // A task holds at most one sub-stage tag: strip every sub-stage tag
       // (including ones from other stages left over by cross-stage moves)
       // before adding the drop target's tag. Never add an empty tag.
       const allSubStageTags = allSubStages.map((ss) => ss.tag);
       const currentTags = activeTask.tags || [];
       const filteredTags = currentTags.filter((tag) => !allSubStageTags.includes(tag));
-      const newTags = subStageTag ? [...filteredTags, subStageTag] : filteredTags;
+      const newTags =
+        subStageTag && laneOwnerId === null ? [...filteredTags, subStageTag] : filteredTags;
+      const ownerPatch = laneOwnerId === null ? {} : { ownerId: laneOwnerId };
 
       const targetStage = sortedStages.find((s) => s.id === stageId);
       if (targetStage && activeTask.stageId !== stageId) {
         const newStatus = getStatusFromStageName(targetStage.name);
         setActiveTasks((prev) =>
           prev.map((t) =>
-            t.id === activeTask.id ? { ...t, stageId, status: newStatus, tags: newTags } : t,
+            t.id === activeTask.id
+              ? { ...t, stageId, status: newStatus, tags: newTags, ...ownerPatch }
+              : t,
           ),
         );
-        updateTask.mutate({ id: activeTask.id, stageId, status: newStatus, tags: newTags });
+        updateTask.mutate({
+          id: activeTask.id,
+          stageId,
+          status: newStatus,
+          tags: newTags,
+          ...ownerPatch,
+        });
       } else {
         setActiveTasks((prev) =>
-          prev.map((t) => (t.id === activeTask.id ? { ...t, tags: newTags } : t)),
+          prev.map((t) => (t.id === activeTask.id ? { ...t, tags: newTags, ...ownerPatch } : t)),
         );
-        updateTask.mutate({ id: activeTask.id, tags: newTags });
+        updateTask.mutate({ id: activeTask.id, tags: newTags, ...ownerPatch });
       }
 
       setActiveId(null);
@@ -388,13 +407,28 @@ export function useKanbanDragDrop({ tasks, sortedStages, allSubStages }: UseKanb
           .map((ss) => ss.tag);
         const currentTags = activeTask.tags || [];
         const newTags = currentTags.filter((tag) => !stageSubStageTags.includes(tag));
-        if (newTags.length !== currentTags.length) {
+        // Where this stage holds the owner's own lane, leaving the lane is the
+        // only way to say "nobody's" by dragging — the card would otherwise
+        // snap straight back into it, since that lane is defined by the owner
+        // (EPIC-06 OWN-R13).
+        const leavesOwnLane = allSubStages.some(
+          (ss) =>
+            ss.stageId === newStageId && ss.ownerId != null && ss.ownerId === activeTask.ownerId,
+        );
+        const ownerPatch = leavesOwnLane ? { ownerId: null } : {};
+        if (newTags.length !== currentTags.length || leavesOwnLane) {
           setActiveTasks((prev) =>
             prev.map((t) =>
-              t.id === activeTask.id ? { ...t, tags: newTags.length > 0 ? newTags : null } : t,
+              t.id === activeTask.id
+                ? { ...t, tags: newTags.length > 0 ? newTags : null, ...ownerPatch }
+                : t,
             ),
           );
-          updateTask.mutate({ id: activeTask.id, tags: newTags.length > 0 ? newTags : null });
+          updateTask.mutate({
+            id: activeTask.id,
+            tags: newTags.length > 0 ? newTags : null,
+            ...ownerPatch,
+          });
         }
       } else if (newStage) {
         const newStatus = getStatusFromStageName(newStage.name);

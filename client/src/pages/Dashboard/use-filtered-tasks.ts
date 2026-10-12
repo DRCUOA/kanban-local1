@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/prefer-optional-chain, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/no-unnecessary-condition -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { useMemo } from 'react';
 import { type Task, type Stage } from '@shared/schema';
+import { OWNER_FILTER_ALL, ownerFilterMatches, type OwnerFilter } from './owner-view';
 import { richTextToPlainText } from '@/lib/rich-text';
 import {
   TASK_STATUS,
@@ -19,6 +20,8 @@ export interface UseFilteredTasksOptions {
   /** In focus mode, detail view shows only high/critical incomplete tasks; summary keeps the in-progress + next-backlog slice. */
   viewMode: 'detail' | 'summary';
   stages: Stage[];
+  /** Restrict the board to one owner, to nobody's, or to everyone's (EPIC-06). */
+  ownerFilter?: OwnerFilter;
 }
 
 /**
@@ -46,6 +49,7 @@ export function useFilteredTasks({
   focusMode,
   viewMode,
   stages,
+  ownerFilter = OWNER_FILTER_ALL,
 }: UseFilteredTasksOptions): Task[] {
   return useMemo(() => {
     const taskId = parseTaskIdQuery(searchQuery);
@@ -60,9 +64,12 @@ export function useFilteredTasks({
     let filtered =
       tasks?.filter(
         (t) =>
-          t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (t.description &&
-            richTextToPlainText(t.description).toLowerCase().includes(searchQuery.toLowerCase())),
+          ownerFilterMatches(t.ownerId, ownerFilter) &&
+          (t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (t.description &&
+              richTextToPlainText(t.description)
+                .toLowerCase()
+                .includes(searchQuery.toLowerCase()))),
       ) || [];
 
     if (focusMode) {
@@ -92,5 +99,5 @@ export function useFilteredTasks({
     }
 
     return filtered;
-  }, [tasks, archivedTasks, searchQuery, focusMode, viewMode, stages]);
+  }, [tasks, archivedTasks, searchQuery, focusMode, viewMode, stages, ownerFilter]);
 }

@@ -79,7 +79,7 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
       status: TASK_STATUS.BACKLOG,
       priority: TASK_PRIORITY.NORMAL,
       recurrence: TASK_RECURRENCE.NONE,
-      owner: null,
+      ownerId: null,
     },
   });
 
@@ -111,7 +111,7 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
             status: TASK_STATUS.BACKLOG,
             priority: TASK_PRIORITY.NORMAL,
             recurrence: TASK_RECURRENCE.NONE,
-            owner: null,
+            ownerId: null,
           });
         },
         onError: (error) => {
@@ -248,16 +248,12 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
 
             <FormField
               control={form.control}
-              name="owner"
+              name="ownerId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-xs">Owner</FormLabel>
                   <FormControl>
-                    <OwnerSelector
-                      value={field.value}
-                      onChange={(next) => field.onChange(next)}
-                      extraOwners={field.value ? [field.value] : []}
-                    />
+                    <OwnerSelector value={field.value} onChange={(next) => field.onChange(next)} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

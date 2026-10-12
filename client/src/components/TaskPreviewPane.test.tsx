@@ -5,6 +5,38 @@ import React from 'react';
 import type { Stage, SubStage, Task } from '@shared/schema';
 import { TaskPreviewPane } from './TaskPreviewPane';
 
+vi.mock('@/hooks/use-owners', () => ({
+  // The board resolves an owner row for the chip and for the owner sort; these
+  // tests are about layout and selection, so one static owner is enough.
+  useOwners: () => ({
+    data: [
+      {
+        id: 1,
+        name: 'Rich',
+        key: null,
+        color: null,
+        archived: false,
+        order: 0,
+        createdAt: new Date(),
+        taskCount: 1,
+      },
+    ],
+  }),
+  useOwnerById: () => (id: number | null) =>
+    id === 1
+      ? {
+          id: 1,
+          name: 'Rich',
+          key: null,
+          color: null,
+          archived: false,
+          order: 0,
+          createdAt: new Date(),
+          taskCount: 1,
+        }
+      : null,
+}));
+
 const stages: Stage[] = [
   { id: 1, name: 'Backlog', order: 1, color: '#3B82F6', createdAt: new Date() },
   { id: 2, name: 'Waiting ✋️ ', order: 2, color: '#F59E0B', createdAt: new Date() },
@@ -17,6 +49,7 @@ const subStages: SubStage[] = [
     name: 'Waiting on others',
     tag: 'waiting-others',
     bgClass: 'bg-background/20',
+    ownerId: null,
     opacity: 20,
     order: 1,
     createdAt: new Date(),
@@ -27,6 +60,7 @@ const subStages: SubStage[] = [
     name: 'Scheduled action',
     tag: 'scheduled',
     bgClass: 'bg-background/20',
+    ownerId: null,
     opacity: 20,
     order: 2,
     createdAt: new Date(),
@@ -54,6 +88,7 @@ const makeTask = (overrides: Partial<Task> = {}): Task =>
       { status: 'in_progress', timestamp: '2026-08-10T08:00:00.000Z', note: 'kicked off' },
     ],
     owner: 'Rich',
+    ownerId: 1,
     ...overrides,
   }) as Task;
 
@@ -126,6 +161,7 @@ describe('TaskPreviewPane', () => {
           recurrence: 'none',
           history: null,
           owner: null,
+          ownerId: null,
           stageId: 999,
         })}
         stages={stages}

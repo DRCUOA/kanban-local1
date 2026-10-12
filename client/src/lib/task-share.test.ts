@@ -24,6 +24,7 @@ function makeTask(overrides: Partial<Task> = {}): Task {
     recurrence: 'none',
     history: null,
     owner: 'Rich',
+    ownerId: 1,
     ...overrides,
   } as Task;
 }

@@ -3,6 +3,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import type { Task } from '@shared/schema';
 import { useStages, useSubStages } from '@/hooks/use-stages';
 import { useKanbanDragDrop } from '@/hooks/use-kanban-drag-drop';
+import { useOwners } from '@/hooks/use-owners';
 import {
   useColumnWeights,
   PREVIEW_PANE_COLUMN_KEY,
@@ -20,7 +21,7 @@ import { TaskPreviewPane } from './TaskPreviewPane';
 import { TaskSelectionContext } from './task-selection-context';
 import { DEFAULT_STAGE_COLORS, isDoneStageName } from '@shared/constants';
 import { filingTargets } from '@/lib/filing-targets';
-import { sortTasksByDueDate } from '@shared/task-sort';
+import { sortTasksByDueDate, sortTasksByOwner } from '@shared/task-sort';
 import { cn } from '@/lib/utils';
 
 /** Narrowest a column may be dragged before it stops giving up space. */
@@ -64,6 +65,8 @@ export interface KanbanBoardProps {
    * it in the horizontal layout) so a hit that sits off-screen is not missed.
    */
   searchQuery?: string;
+  /** Order cards by owner name instead of by due date (EPIC-06 OWN-R33). */
+  sortByOwner?: boolean;
 }
 
 export function KanbanBoard({
@@ -73,6 +76,7 @@ export function KanbanBoard({
   focusMode = false,
   boardLayout = 'vertical',
   searchQuery = '',
+  sortByOwner = false,
 }: KanbanBoardProps) {
   const { data: stages = [] } = useStages();
   const { data: allSubStages = [] } = useSubStages();
@@ -114,10 +118,17 @@ export function KanbanBoard({
     handleDragCancel,
   } = useKanbanDragDrop({ tasks, sortedStages, allSubStages });
 
-  // Default board order is soonest-due-first. Sorted once here rather than per
-  // column so every stage and sub-stage lane inherits the same order — the
-  // sub-stage grouping downstream preserves the order it receives.
-  const dueSortedTasks = useMemo(() => sortTasksByDueDate(activeTasks), [activeTasks]);
+  // Default board order is soonest-due-first; "sort by owner" groups by owner
+  // name first and keeps that order inside each owner. Sorted once here rather
+  // than per column so every stage and sub-stage lane inherits the same order —
+  // the sub-stage grouping downstream preserves the order it receives.
+  const { data: owners } = useOwners();
+  const dueSortedTasks = useMemo(() => {
+    if (!sortByOwner) return sortTasksByDueDate(activeTasks);
+    const nameOf = (id: number | null) =>
+      id === null ? null : (owners?.find((owner) => owner.id === id)?.name ?? null);
+    return sortTasksByOwner(activeTasks, nameOf);
+  }, [activeTasks, sortByOwner, owners]);
 
   // Shift+drag marquee multi-select; right-click shares the selection.
   const boardRef = useRef<HTMLDivElement>(null);

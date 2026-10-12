@@ -287,16 +287,12 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
 
       <FormField
         control={control}
-        name="owner"
+        name="ownerId"
         render={({ field }) => (
           <FormItem>
             <FormLabel className="text-xs">Owner</FormLabel>
             <FormControl>
-              <OwnerSelector
-                value={field.value}
-                onChange={(next) => field.onChange(next)}
-                extraOwners={field.value ? [field.value] : []}
-              />
+              <OwnerSelector value={field.value} onChange={(next) => field.onChange(next)} />
             </FormControl>
             <FormMessage />
           </FormItem>
