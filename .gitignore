@@ -55,3 +55,6 @@ service-account*.json
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Claude Code local tooling (worktrees, machine-specific launch config)
+.claude/
