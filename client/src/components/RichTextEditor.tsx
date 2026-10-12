@@ -286,7 +286,7 @@ export function RichTextEditor({
 
   return (
     <div
-      className={cn('rich-editor neo-input rounded-xl bg-card text-base', className)}
+      className={cn('rich-editor neo-input rounded-md bg-card text-base', className)}
       data-testid={testId}
     >
       <div className="flex flex-wrap items-center gap-0.5 px-2 pt-2">

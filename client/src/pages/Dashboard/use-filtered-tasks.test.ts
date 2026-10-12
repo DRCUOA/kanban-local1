@@ -22,6 +22,7 @@ const makeTask = (overrides: Partial<Task> = {}): Task => ({
   recurrence: 'none',
   history: null,
   owner: null,
+  ownerId: null,
   projectId: null,
   ...overrides,
 });
@@ -268,5 +269,62 @@ describe('useFilteredTasks', () => {
       useFilteredTasks({ tasks, searchQuery: '', focusMode: true, viewMode: 'detail', stages }),
     );
     expect(result.current).toHaveLength(0);
+  });
+});
+
+describe('useFilteredTasks and the header warning pills', () => {
+  const overdue = makeTask({ id: 1, title: 'Overdue one', dueDate: new Date(2026, 0, 1) });
+  const inProgress = makeTask({ id: 2, title: 'Doing', stageId: 2, status: 'in_progress' });
+  const waiting = makeTask({ id: 3, title: 'Urgent waiting', priority: 'high' });
+
+  const filtered = (options: Parameters<typeof useFilteredTasks>[0]) =>
+    renderHook(() => useFilteredTasks(options)).result.current.map((t) => t.id);
+
+  const base = {
+    tasks: [overdue, inProgress, waiting],
+    searchQuery: '',
+    focusMode: false,
+    viewMode: 'detail' as const,
+    stages,
+  };
+
+  it('shows every task while no pill is pressed', () => {
+    expect(filtered(base)).toEqual([1, 2, 3]);
+    expect(filtered({ ...base, warningFilter: null })).toEqual([1, 2, 3]);
+  });
+
+  it('shows only the tasks behind the pill that is pressed', () => {
+    expect(filtered({ ...base, warningFilter: 'overdue' })).toEqual([1]);
+    expect(filtered({ ...base, warningFilter: 'in-progress' })).toEqual([2]);
+    expect(filtered({ ...base, warningFilter: 'high-priority' })).toEqual([3]);
+  });
+
+  it('narrows with the search box rather than replacing it', () => {
+    expect(filtered({ ...base, warningFilter: 'high-priority', searchQuery: 'urgent' })).toEqual([
+      3,
+    ]);
+    expect(filtered({ ...base, warningFilter: 'high-priority', searchQuery: 'overdue' })).toEqual(
+      [],
+    );
+  });
+
+  it('narrows with the owner filter rather than replacing it', () => {
+    const mine = makeTask({ id: 4, title: 'Mine', priority: 'high', ownerId: 1 });
+    const theirs = makeTask({ id: 5, title: 'Theirs', priority: 'high', ownerId: 2 });
+
+    expect(
+      filtered({
+        ...base,
+        tasks: [mine, theirs],
+        warningFilter: 'high-priority',
+        ownerFilter: 1,
+      }),
+    ).toEqual([4]);
+  });
+
+  it('lets an ID search through, as every other filter does', () => {
+    // The ID lookup is the one search that outranks the filters: asking for
+    // task 2 by number means "show me task 2", wherever it is.
+    expect(filtered({ ...base, warningFilter: 'overdue', searchQuery: '2' })).toEqual([2]);
   });
 });

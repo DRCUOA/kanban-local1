@@ -2,6 +2,7 @@
 
 **Status:** Live — supersedes the loose board chatter as the ordered dev list
 **Last consolidated:** 14 Aug 2026, from board tasks #151–#162 + EPIC-01/03/04
+**Amended:** 12 Oct 2026 — **B-11** added (EPIC-06, owner as an entity); B-01 Q3, B-04, B-05 and B-10 updated where it changes them
 **Convention:** items carry a stable `B-xx` id for tracking; board task ids and epic
 docs are cross-referenced so nothing exists in two places with two meanings.
 
@@ -28,9 +29,13 @@ anything new. Three explicit questions whose answers are audit outputs:
 1. Is task history complete/trustworthy enough to reconstruct past states?
    (→ answers EPIC-04 open Q2, snapshot vs watermark)
 2. What would EPIC-04's witnessed-checkpoint table need that the model lacks?
-3. Owner-as-project (board #153, 13 Aug update): should EPIC-01's project layer be
-   an entity, or collapse into a normalized owner namespace? One recommendation,
-   argued against EPIC-03's assignment findings and the EPIC-02 identity boundary.
+3. ~~Owner-as-project (board #153, 13 Aug update): should EPIC-01's project layer be
+   an entity, or collapse into a normalized owner namespace?~~ **Answered 12 Oct 2026
+   — they stay separate entities, and owner becomes an entity of its own** (see
+   **B-11** / EPIC-06). EPIC-01 shipped a `projects` table on the reasoning that a
+   person works on several projects and a project has several people; EPIC-06 gives
+   owner the same treatment rather than collapsing either into the other. The audit
+   no longer needs to decide this, though it may still disagree in writing.
 Output: audit report in `docs/`, EPIC-03 confirmed/amended, triage of any new finds.
 
 **B-02 — Description link handling** · board #151 · effort 2 · due 26 Aug
@@ -51,13 +56,18 @@ No further EPIC-04 work until B-01 reports.
 Due-date and effort sorts read unambiguous fields and can ship on the current model.
 Owner sort is **excluded** here — `owner` vs swimlane-tag is exactly the ambiguity
 EPIC-03 removes; sorting on it now would sort wrong.
+_12 Oct 2026: the owner sort now has a home — **B-11** / EPIC-06 story OWN-08 — and
+no longer waits on B-05._
 
-**B-05 — EPIC-03: One authoritative state per task** · 2–3 sprints (~34 pts)
+**B-05 — EPIC-03: One authoritative state per task** · 2–3 sprints (~29 pts)
 The big rock. Refine with B-01's report in hand, then implement.
 Sequencing inside the epic: pull the **attachment extraction** story early (it
 unblocks B-06 and removes the 97% payload problem), and the **state collapse +
-board timezone** stories early (they unblock EPIC-04). Owner sort from #162 lands
-as a trailer story once assignment is one namespace.
+board timezone** stories early (they unblock EPIC-04).
+_12 Oct 2026: story 5 (the owner/swimlane overlap, 5 pts) left this epic for **B-11**
+/ EPIC-06 v3.2, taking the target from ~34 to ~29 pts. The owner sort went with it.
+Story 3 (sub-stage FK) still owns the lanes that name a **status**; EPIC-06 takes the
+lanes that name a **person**._
 
 **B-06 — Attachment UX: drag-drop + screenshot paste** · board #161 · effort 1–2
 _Unblocked 28 Sep 2026:_ EPIC-03 story 7 (attachment extraction) landed on its own —
@@ -65,6 +75,21 @@ attachments are `task_attachments` rows referenced by url, and `description` no
 longer carries base64 (the single worst finding in EPIC-03, 533 KB of a 547 KB
 payload). Remaining: drag-drop onto the modal, clipboard paste for screenshots,
 dynamic preview.
+
+**B-11 — EPIC-06: Owner as an entity** · 1–2 sprints (~31 pts) · spec'd 12 Oct 2026
+`tasks.owner` becomes an `owners` table plus an `owner_id` FK, and the sub-stage
+lanes that name a person (`Rich`, `Rich`, `Moi` — sub-stages 2, 3, 4) bind to those
+rows so lane membership is derived from assignment instead of from a tag string.
+Spec: `docs/epics/EPIC-06-owner-as-entity.md`. Decisions are locked; it needs
+refinement against the seven open questions, then build.
+
+Why it does **not** wait on B-01: the audit's job is to re-validate EPIC-03's
+findings against current data, and this item did exactly that for the assignment
+finding — measured against the live dev board on 12 Oct 2026 (16 tasks, `Rich` ×9,
+`Moi` ×3, 4 unassigned, 3 person lanes, topic tags mixed into the same `tags`
+array). It also *removes* a story from B-05 rather than adding one, and carries the
+owner sort that B-04 had to cut. B-01 may still disagree in writing; nothing here
+depends on its other two questions.
 
 ### Later
 
@@ -126,6 +151,11 @@ tags) — inventing a new integrity problem inside the area being repaired. `#ta
 has the same defect: no stable permalink until EPIC-03 adds one. Hence entity
 references stay behind B-01/B-05.
 
+_12 Oct 2026: for `@owner` specifically, **B-11** / EPIC-06 changes the picture —
+after it lands there is one assignment namespace with stable row ids to mention, so
+`@owner` becomes a reference to a real entity rather than a third way of saying the
+same thing. `#task` still waits on EPIC-03's permalink._
+
 **Optional early subset:** a slash menu limited to self-contained content could ship
 before the model work — it proves the interaction and touches no ambiguous field.
 It overlaps B-06's territory (both are description-input UX), so pull it forward
@@ -154,6 +184,7 @@ rectangle "**B-06 · Next**\nAttachments UX\ndrag-drop + paste\n(board #161)" as
 rectangle "**B-08 · Later**\nEPIC-01\nProject layer\n(board #153)" as B08 #FFFFFF
 rectangle "**B-09 · Later**\nEPIC-04\nCatch-up Replay build" as B09 #FFFFFF
 rectangle "**B-07 · Later**\nFreshness markers\n(board #158)" as B07 #FFFFFF
+rectangle "**B-11 · Next**\nEPIC-06\nOwner as an entity\n(spec 12 Oct)" as B11 #C5E1A5
 
 package "Independent — schedule in slack" #E8F5E9 {
   rectangle "**B-02 · Now**\nDescription link fix\n(board #151)" as B02
@@ -167,9 +198,10 @@ B05 --> B08 : owner namespace\nnormalised
 B05 --> B09 : state collapse +\nboard timezone landed
 B05 --> B07 : model stable; add\nviewed-timestamp fact
 
+B11 -[bold]-> B05 : story 5 delegated:\nEPIC-03 drops to ~29 pts
+B11 -[bold]-> B04 : owner sort lands\nhere, not in EPIC-03
 B01 .[#888888].> B08 : decision output:\nowner-as-project?
 B01 .[#888888].> B09 : Q2 answer: snapshot vs\nwatermark + history
-B04 .[#888888].> B05 : owner sort deferred\ninto EPIC-03
 B07 .[#888888]. B09 : co-design one\n"what's new" language
 
 note bottom of B01
@@ -182,6 +214,13 @@ end note
 note bottom of B09
   B-03 (park EPIC-04) already done:
   status "Paused", PR #114 merged.
+end note
+
+note bottom of B11
+  The one item that answers a
+  B-01 question instead of waiting
+  for it — and it takes work out
+  of B-05 rather than adding it.
 end note
 
 legend right
@@ -231,20 +270,27 @@ endlegend
    designed together even though either could ship first.
 7. **The green box is the pressure valve.** B-02, B-04, and B-10 touch nothing on
    the spine and nothing on the spine touches them — pick one up whenever spine work
-   is blocked or a small win is wanted. The one nuance is B-04's dotted line: the
+   is blocked or a small win is wanted. The one nuance is B-04's missing fragment: the
    *owner* sort was deliberately cut from phase 1, because sorting on a field the
-   model can't yet answer honestly would produce confidently wrong orderings; that
-   fragment ships with EPIC-03 once the owner namespace is single.
+   model can't yet answer honestly would produce confidently wrong orderings.
+   _12 Oct 2026: that fragment now ships with **B-11** (EPIC-06) rather than with
+   EPIC-03, because EPIC-06 is what makes the owner namespace single._
 8. **B-03 doesn't appear as a box because it's already history** — EPIC-04 marked
    Paused, PR #114 merged; the diagram records it as a note so the spine reflects
    only live work.
+9. **B-11 runs against the grain of the spine, deliberately.** Everything else in
+   *Next* and *Later* waits on B-01 or B-05. B-11 does neither: it re-measured the
+   assignment finding itself, hands a decision *back* to B-01 (owner-as-project:
+   separate entities), and subtracts a story from B-05. It is the one item whose
+   arrows into the trunk point the other way.
 
 ## Board hygiene actions from this consolidation
 
 - [ ] #160: priority Low → High; link this doc.
 - [ ] #153: fix epic reference (project layer is **EPIC-01**, not 3); note that the
       owner-as-project question moved into the B-01 audit scope.
-- [ ] #162: split — phase 1 (due/effort) is B-04; owner sort noted on EPIC-03.
+- [ ] #162: split — phase 1 (due/effort) is B-04; owner sort is EPIC-06 story OWN-08
+      (was: noted on EPIC-03).
 - [ ] #161: add "blocked by EPIC-03 attachment extraction" so it isn't picked up early.
 - [ ] #158: add "co-design with EPIC-04; needs interaction timestamp" note.
 - [ ] #159: record the library conclusion (`@tiptap/suggestion`, not cmdk/Plate) so

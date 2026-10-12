@@ -5,16 +5,22 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0' +
-    ' neo-button border-0',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0' +
+    ' neo-button',
   {
     variants: {
+      // One filled control per view — the primary. A row of solid red icon
+      // buttons shouts the rarest action the loudest, so destructive is an
+      // outline in the danger colour and fills only where it is the confirm
+      // (the alert dialog's own action sets `variant="destructive"` on a
+      // button that is the point of the dialog).
       variant: {
-        default: 'bg-primary text-primary-foreground',
-        destructive: 'bg-destructive text-destructive-foreground',
+        default: 'bg-primary text-primary-foreground border-primary',
+        destructive: 'bg-card text-destructive border-destructive/40 hover:bg-destructive/10',
+        'destructive-solid': 'bg-destructive text-destructive-foreground border-destructive',
         outline: 'bg-card text-foreground',
         secondary: 'bg-secondary text-secondary-foreground',
-        ghost: 'bg-transparent shadow-none hover:bg-secondary/50',
+        ghost: 'bg-transparent border-transparent hover:bg-secondary',
       },
       // Heights are set as "min" heights, because sometimes Ai will place large amount of content
       // inside buttons. With a min-height they will look appropriate with small amounts of content,

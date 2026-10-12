@@ -140,7 +140,7 @@ export default function Filing() {
                       return (
                         <Card
                           key={task.id}
-                          className="cursor-pointer transition-all duration-200 active:scale-[0.98] rounded-xl"
+                          className="cursor-pointer transition-all duration-200 active:scale-[0.98] rounded-md"
                           onClick={() => {
                             setSelectedTask(task);
                             setIsEditDialogOpen(true);
@@ -174,7 +174,7 @@ export default function Filing() {
                                   e.stopPropagation();
                                   handleArchive(task);
                                 }}
-                                className="text-xs rounded-xl h-9 active:scale-95 transition-transform"
+                                className="text-xs rounded-md h-9 active:scale-95 transition-transform"
                               >
                                 Archive
                               </Button>
@@ -192,7 +192,7 @@ export default function Filing() {
           })}
 
           {doneStages.length === 0 && (
-            <div className="flex flex-col items-center justify-center text-center p-8 neo-container rounded-2xl mx-2 mt-4">
+            <div className="flex flex-col items-center justify-center text-center p-8 neo-container rounded-lg mx-2 mt-4">
               <div className="h-16 w-16 neo-pressed rounded-full flex items-center justify-center mb-4">
                 <FolderInput className="h-8 w-8 text-muted-foreground" />
               </div>

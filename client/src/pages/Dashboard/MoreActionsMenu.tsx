@@ -12,12 +12,29 @@ import {
   Share2,
   Upload,
 } from 'lucide-react';
+import { User, ArrowDownAZ } from 'lucide-react';
 import { MenuPanel } from '@/components/MenuPanel';
+import { BuiltByTk } from '@/components/BuiltByTk';
+import type { OwnerSummary } from '@shared/schema';
+import { DEFAULT_OWNER_COLOR } from '@shared/constants';
+import { OWNER_FILTER_ALL, OWNER_FILTER_NONE, type OwnerFilter } from './owner-view';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
 
 export interface MoreActionsMenuProps {
   viewMode: 'detail' | 'summary';
+  /**
+   * Which owner the board is restricted to (EPIC-06 OWN-R32). Optional so a
+   * caller that does not own this state still gets a working menu: the
+   * defaults are the unfiltered, due-date-ordered board.
+   */
+  ownerFilter?: OwnerFilter;
+  onSetOwnerFilter?: (next: OwnerFilter) => void;
+  /** Order cards by owner name rather than by due date (OWN-R33). */
+  sortByOwner?: boolean;
+  onToggleSortByOwner?: () => void;
+  /** The owners to offer. Absent means the menu shows no owner rows. */
+  owners?: OwnerSummary[];
   focusMode: boolean;
   boardLayout: 'vertical' | 'horizontal';
   onSetViewMode: (mode: 'detail' | 'summary') => void;
@@ -38,6 +55,11 @@ export interface MoreActionsMenuProps {
  */
 export function MoreActionsMenu({
   viewMode,
+  ownerFilter = OWNER_FILTER_ALL,
+  onSetOwnerFilter,
+  sortByOwner = false,
+  onToggleSortByOwner,
+  owners = [],
   focusMode,
   boardLayout,
   onSetViewMode,
@@ -50,6 +72,7 @@ export function MoreActionsMenu({
   onImport,
 }: MoreActionsMenuProps) {
   const [open, setOpen] = useState(false);
+  const activeOwners = owners.filter((owner) => !owner.archived || owner.id === ownerFilter);
 
   const row = 'w-full flex items-center gap-3 p-3 rounded-lg text-sm transition-colors';
   const toggleRow = (active: boolean) =>
@@ -70,7 +93,7 @@ export function MoreActionsMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="More options"
-        className="flex h-10 w-10 items-center justify-center rounded-xl transition-all active:scale-90"
+        className="flex h-10 w-10 items-center justify-center rounded-md transition-all active:scale-90"
         onClick={() => {
           setOpen(!open);
         }}
@@ -87,6 +110,11 @@ export function MoreActionsMenu({
         anchor="below-end"
         label="Board and view options"
         testId="more-actions-menu"
+        footer={
+          <div className="border-t border-border-subtle pt-1">
+            <BuiltByTk />
+          </div>
+        }
       >
         <p className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           View
@@ -126,6 +154,64 @@ export function MoreActionsMenu({
             <Rows className="h-4 w-4" />
           )}
           {boardLayout === 'vertical' ? 'Horiz' : 'Vert'}
+        </button>
+
+        <div className="my-1 border-t border-border-subtle" />
+
+        {/* Whose work the board shows, and whether cards are ordered by owner
+            instead of by due date (EPIC-06 OWN-R32, OWN-R33). */}
+        <p className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Owner
+        </p>
+        <button
+          className={toggleRow(ownerFilter === OWNER_FILTER_ALL)}
+          aria-pressed={ownerFilter === OWNER_FILTER_ALL}
+          onClick={() => {
+            onSetOwnerFilter?.(OWNER_FILTER_ALL);
+          }}
+          data-testid="owner-filter-all"
+        >
+          <User className="h-4 w-4" />
+          Everyone
+        </button>
+        {activeOwners.map((owner) => (
+          <button
+            key={owner.id}
+            className={toggleRow(ownerFilter === owner.id)}
+            aria-pressed={ownerFilter === owner.id}
+            onClick={() => {
+              onSetOwnerFilter?.(owner.id);
+            }}
+            data-testid={`owner-filter-${owner.id}`}
+          >
+            <span
+              className="h-3 w-3 shrink-0 rounded-full"
+              style={{ backgroundColor: owner.color ?? DEFAULT_OWNER_COLOR }}
+              aria-hidden
+            />
+            <span className="truncate">{owner.name}</span>
+            <span className="ml-auto text-[10px] text-muted-foreground">{owner.taskCount}</span>
+          </button>
+        ))}
+        <button
+          className={toggleRow(ownerFilter === OWNER_FILTER_NONE)}
+          aria-pressed={ownerFilter === OWNER_FILTER_NONE}
+          onClick={() => {
+            onSetOwnerFilter?.(OWNER_FILTER_NONE);
+          }}
+          data-testid="owner-filter-none"
+        >
+          <User className="h-4 w-4 opacity-40" />
+          Unassigned
+        </button>
+        <button
+          className={toggleRow(sortByOwner)}
+          aria-pressed={sortByOwner}
+          onClick={() => onToggleSortByOwner?.()}
+          data-testid="owner-sort-toggle"
+        >
+          <ArrowDownAZ className="h-4 w-4" />
+          Sort by owner
         </button>
 
         <div className="my-1 border-t border-border-subtle" />

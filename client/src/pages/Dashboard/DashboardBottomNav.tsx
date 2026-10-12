@@ -4,6 +4,7 @@ import { useLocation } from 'wouter';
 import { CreateTaskDialog } from '@/components/CreateTaskDialog';
 import { MenuPanel } from '@/components/MenuPanel';
 import { useNavDropSlots } from '@/components/nav-drop-slots';
+import { BuiltByTk } from '@/components/BuiltByTk';
 import { filingTargets } from '@/lib/filing-targets';
 import { ROUTES } from '@shared/constants';
 import { useStages } from '@/hooks/use-stages';
@@ -26,7 +27,7 @@ export function DashboardBottomNav() {
   const targets = filingTargets(stages);
 
   const navBtn =
-    'flex flex-col items-center gap-1 py-2 px-3 min-w-[4.25rem] rounded-xl text-fg-secondary transition-[color,box-shadow,background-color,transform] duration-200 hover:text-foreground active:scale-90';
+    'flex flex-col items-center gap-1 py-2 px-3 min-w-[4.25rem] rounded-md text-fg-secondary transition-[color,box-shadow,background-color,transform] duration-200 hover:text-foreground active:scale-90';
 
   return (
     <nav className="mobile-bottom-nav">
@@ -96,6 +97,10 @@ export function DashboardBottomNav() {
           </button>
         </div>
       </div>
+
+      {/* Under the three drop targets, not among them: a credit that sat in
+          the row would be a fourth thing to aim at during a drag. */}
+      <BuiltByTk className="border-t border-border-subtle py-1 text-[9px]" />
     </nav>
   );
 }

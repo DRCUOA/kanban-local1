@@ -5,6 +5,38 @@ import React from 'react';
 import type { Task } from '@shared/schema';
 import { KanbanBoard, HOVER_PREVIEW_DELAY_MS } from './KanbanBoard';
 
+vi.mock('@/hooks/use-owners', () => ({
+  // The board resolves an owner row for the chip and for the owner sort; these
+  // tests are about layout and selection, so one static owner is enough.
+  useOwners: () => ({
+    data: [
+      {
+        id: 1,
+        name: 'Rich',
+        key: null,
+        color: null,
+        archived: false,
+        order: 0,
+        createdAt: new Date(),
+        taskCount: 1,
+      },
+    ],
+  }),
+  useOwnerById: () => (id: number | null) =>
+    id === 1
+      ? {
+          id: 1,
+          name: 'Rich',
+          key: null,
+          color: null,
+          archived: false,
+          order: 0,
+          createdAt: new Date(),
+          taskCount: 1,
+        }
+      : null,
+}));
+
 vi.mock('@/hooks/use-tasks', () => ({
   useUpdateTask: () => ({ mutate: vi.fn() }),
   useArchiveTask: () => ({ mutate: vi.fn() }),

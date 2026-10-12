@@ -4,11 +4,14 @@ import {
   insertStageSchema,
   insertSubStageSchema,
   insertProjectSchema,
+  insertOwnerSchema,
   type Task,
   type Stage,
   type SubStage,
   type Project,
   type ProjectSummary,
+  type Owner,
+  type OwnerSummary,
   type TaskHistoryEntry,
   type TaskAttachment,
 } from './schema';
@@ -116,11 +119,55 @@ export const api = {
         404: z.object({ message: z.string() }),
       },
     },
+    /**
+     * Owner names as plain strings. Superseded by `GET /api/owners`, and kept
+     * only for the consumers that read it before EPIC-06. OWN-10 removes it.
+     * Nothing new should read this.
+     */
     owners: {
       method: 'GET' as const,
       path: '/api/tasks/owners',
       responses: {
         200: z.array(z.string()),
+      },
+    },
+  },
+  owners: {
+    /** Every owner, archived ones last, each with its live task count. */
+    list: {
+      method: 'GET' as const,
+      path: '/api/owners',
+      responses: {
+        200: z.array(z.custom<OwnerSummary>()),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/owners',
+      input: insertOwnerSchema,
+      responses: {
+        201: z.custom<Owner>(),
+        400: z.object({ error: z.string(), status: z.number() }),
+        409: z.object({ error: z.string(), status: z.number() }),
+      },
+    },
+    update: {
+      method: 'PATCH' as const,
+      path: '/api/owners/:id',
+      input: insertOwnerSchema.partial(),
+      responses: {
+        200: z.custom<Owner>(),
+        404: z.object({ error: z.string(), status: z.number() }),
+        409: z.object({ error: z.string(), status: z.number() }),
+      },
+    },
+    /** Deleting an owner releases their tasks and unbinds their lanes. */
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/owners/:id',
+      responses: {
+        204: z.void(),
+        404: z.object({ error: z.string(), status: z.number() }),
       },
     },
   },

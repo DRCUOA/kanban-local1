@@ -167,7 +167,7 @@ export function ProjectSection({ projects, isLoading }: ProjectSectionProps) {
           <DialogTrigger asChild>
             <Button
               size="sm"
-              className="rounded-xl h-10 active:scale-95 transition-transform"
+              className="rounded-md h-10 active:scale-95 transition-transform"
               onClick={() => {
                 setEditingId(null);
                 form.reset(emptyForm());
@@ -204,7 +204,7 @@ export function ProjectSection({ projects, isLoading }: ProjectSectionProps) {
                           placeholder="e.g. Solar install"
                           maxLength={PROJECT_NAME_MAX_LEN}
                           {...field}
-                          className="h-12 rounded-xl text-base"
+                          className="h-12 rounded-md text-base"
                           data-testid="input-project-name"
                         />
                       </FormControl>
@@ -229,7 +229,7 @@ export function ProjectSection({ projects, isLoading }: ProjectSectionProps) {
                           onChange={(e) => {
                             field.onChange(e.target.value.toUpperCase());
                           }}
-                          className="h-12 rounded-xl text-base uppercase"
+                          className="h-12 rounded-md text-base uppercase"
                           data-testid="input-project-key"
                         />
                       </FormControl>
@@ -259,14 +259,14 @@ export function ProjectSection({ projects, isLoading }: ProjectSectionProps) {
                   <Button
                     type="button"
                     variant="outline"
-                    className="flex-1 h-12 rounded-xl"
+                    className="flex-1 h-12 rounded-md"
                     onClick={closeDialog}
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
-                    className="flex-1 h-12 rounded-xl active:scale-95 transition-transform"
+                    className="flex-1 h-12 rounded-md active:scale-95 transition-transform"
                     disabled={createProject.isPending || updateProject.isPending}
                     data-testid="button-submit-project"
                   >
@@ -290,7 +290,7 @@ export function ProjectSection({ projects, isLoading }: ProjectSectionProps) {
           {projects.map((project) => (
             <div
               key={project.id}
-              className="flex items-center justify-between gap-3 p-3 neo-card rounded-xl"
+              className="flex items-center justify-between gap-3 p-3 neo-card rounded-md"
               data-testid={`project-row-${project.id}`}
             >
               <div className="flex min-w-0 items-center gap-3">
@@ -327,7 +327,7 @@ export function ProjectSection({ projects, isLoading }: ProjectSectionProps) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-10 w-10 rounded-xl"
+                  className="h-10 w-10 rounded-md"
                   onClick={() => {
                     openEdit(project);
                   }}
@@ -339,7 +339,7 @@ export function ProjectSection({ projects, isLoading }: ProjectSectionProps) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-10 w-10 rounded-xl"
+                  className="h-10 w-10 rounded-md"
                   onClick={() => {
                     toggleArchived(project);
                   }}
@@ -358,7 +358,7 @@ export function ProjectSection({ projects, isLoading }: ProjectSectionProps) {
                 <Button
                   variant="destructive"
                   size="icon"
-                  className="h-10 w-10 rounded-xl"
+                  className="h-10 w-10 rounded-md"
                   onClick={() => {
                     setPendingDelete(project);
                   }}

@@ -24,6 +24,8 @@ import {
 import { queryClient } from '@/lib/queryClient';
 import { apiPost, apiPatch, apiDelete } from '@/lib/api';
 import { laneShadeStyle } from '@/lib/lane-shade';
+import { useOwners } from '@/hooks/use-owners';
+import { DEFAULT_OWNER_COLOR } from '@shared/constants';
 import { Trash2, Edit } from 'lucide-react';
 import { useState } from 'react';
 import {
@@ -50,10 +52,15 @@ const EMPTY_SUB_STAGE: InsertSubStage = {
   bgClass: '',
   opacity: 20,
   order: 1,
+  ownerId: null,
 };
+
+/** The "no owner" option's value — a Radix SelectItem value cannot be empty. */
+const NO_OWNER = 'none';
 
 export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
   const { toast } = useToast();
+  const { data: owners = [] } = useOwners();
   const [editingSubStageId, setEditingSubStageId] = useState<number | null>(null);
   const [subStageDialogOpen, setSubStageDialogOpen] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState<number | null>(null);
@@ -137,6 +144,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
       bgClass: subStage.bgClass,
       opacity: subStage.opacity,
       order: subStage.order,
+      ownerId: subStage.ownerId ?? null,
     });
     setSubStageDialogOpen(true);
   };
@@ -156,7 +164,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
           <DialogTrigger asChild>
             <Button
               size="sm"
-              className="rounded-xl h-10 active:scale-95 transition-transform"
+              className="rounded-md h-10 active:scale-95 transition-transform"
               onClick={() => {
                 setEditingSubStageId(null);
                 setSelectedStageId(null);
@@ -192,7 +200,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                         }}
                       >
                         <FormControl>
-                          <SelectTrigger className="h-12 rounded-xl">
+                          <SelectTrigger className="h-12 rounded-md">
                             <SelectValue placeholder="Select a stage" />
                           </SelectTrigger>
                         </FormControl>
@@ -217,7 +225,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                         <Input
                           placeholder="e.g. AM"
                           {...field}
-                          className="h-12 rounded-xl text-base"
+                          className="h-12 rounded-md text-base"
                         />
                       </FormControl>
                     </FormItem>
@@ -233,9 +241,51 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                         <Input
                           placeholder="e.g. day-plan-am"
                           {...field}
-                          className="h-12 rounded-xl text-base"
+                          className="h-12 rounded-md text-base"
                         />
                       </FormControl>
+                    </FormItem>
+                  )}
+                />
+                {/* Binding a lane to an owner makes it that person's lane:
+                    it then holds exactly the tasks in this stage they own, the
+                    tag above is not read for it, and dropping a card in sets
+                    the card's owner (EPIC-06 OWN-R11, OWN-R12). */}
+                <FormField
+                  control={subStageForm.control}
+                  name="ownerId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Whose lane is this?</FormLabel>
+                      <Select
+                        value={field.value ? String(field.value) : NO_OWNER}
+                        onValueChange={(value) => {
+                          field.onChange(value === NO_OWNER ? null : parseInt(value));
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger
+                            className="h-12 rounded-md"
+                            data-testid="select-sub-stage-owner"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value={NO_OWNER} className="py-3">
+                            Nobody&apos;s — match on the tag
+                          </SelectItem>
+                          {owners.map((owner) => (
+                            <SelectItem key={owner.id} value={String(owner.id)} className="py-3">
+                              {owner.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground">
+                        A person&apos;s lane holds whatever they own in this stage, and dropping a
+                        card into it assigns them.
+                      </p>
                     </FormItem>
                   )}
                 />
@@ -258,7 +308,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                         </span>
                       </div>
                       <div
-                        className="neo-well relative overflow-hidden rounded-xl"
+                        className="neo-well relative overflow-hidden rounded-md"
                         data-testid="shade-preview"
                         aria-hidden
                       >
@@ -303,7 +353,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                       <FormControl>
                         <Input
                           type="number"
-                          className="h-12 rounded-xl text-base"
+                          className="h-12 rounded-md text-base"
                           {...field}
                           onChange={(e) => {
                             field.onChange(Number(e.target.value));
@@ -318,14 +368,14 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                   <Button
                     type="button"
                     variant="outline"
-                    className="flex-1 h-12 rounded-xl"
+                    className="flex-1 h-12 rounded-md"
                     onClick={closeSubStageDialog}
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
-                    className="flex-1 h-12 rounded-xl active:scale-95 transition-transform"
+                    className="flex-1 h-12 rounded-md active:scale-95 transition-transform"
                     disabled={createSubStageMutation.isPending || updateSubStageMutation.isPending}
                   >
                     {editingSubStageId ? 'Update' : 'Create'}
@@ -354,7 +404,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                   {stageSubStages.map((subStage: any) => (
                     <div
                       key={subStage.id}
-                      className="flex items-center justify-between p-3 neo-card rounded-xl"
+                      className="flex items-center justify-between p-3 neo-card rounded-md"
                     >
                       <div className="flex items-center gap-3">
                         {/* A swatch of the lane at its shade. */}
@@ -369,9 +419,25 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                           />
                         </div>
                         <div>
-                          <p className="font-medium text-sm">{subStage.name}</p>
+                          <p className="flex items-center gap-1.5 font-medium text-sm">
+                            {subStage.ownerId && (
+                              <span
+                                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                                style={{
+                                  backgroundColor:
+                                    owners.find((o) => o.id === subStage.ownerId)?.color ??
+                                    DEFAULT_OWNER_COLOR,
+                                }}
+                                aria-hidden
+                              />
+                            )}
+                            {subStage.name}
+                          </p>
                           <p className="text-[10px] text-muted-foreground">
-                            {subStage.tag} | {subStage.opacity}%
+                            {subStage.ownerId
+                              ? `${owners.find((o) => o.id === subStage.ownerId)?.name ?? 'owner'}’s lane`
+                              : subStage.tag}{' '}
+                            | {subStage.opacity}%
                           </p>
                         </div>
                       </div>
@@ -379,7 +445,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                         <Button
                           variant="outline"
                           size="icon"
-                          className="h-10 w-10 rounded-xl"
+                          className="h-10 w-10 rounded-md"
                           onClick={() => {
                             openEditSubStageDialog(subStage);
                           }}
@@ -391,7 +457,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                         <Button
                           variant="destructive"
                           size="icon"
-                          className="h-10 w-10 rounded-xl"
+                          className="h-10 w-10 rounded-md"
                           onClick={() => {
                             deleteSubStageMutation.mutate(subStage.id);
                           }}

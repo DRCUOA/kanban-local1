@@ -28,7 +28,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useProjectScope } from '@/hooks/use-project-scope';
+import { useOwnerById } from '@/hooks/use-owners';
 import { ProjectChip } from './ProjectChip';
+import { OwnerChip } from './OwnerChip';
 import { RichTextContent } from './RichTextContent';
 import { isRichTextEmpty } from '@/lib/rich-text';
 import { cn } from '@/lib/utils';
@@ -181,7 +183,9 @@ function PreviewBody({
   const subStage = resolveSubStage(task, subStages);
   // The full view always names the project; only the cards drop it when scoped.
   const { projectById } = useProjectScope();
+  const ownerById = useOwnerById();
   const project = projectById(task.projectId);
+  const owner = ownerById(task.ownerId);
   const subStageTags = new Set(subStages.map((s) => s.tag));
   const tags = (Array.isArray(task.tags) ? task.tags : []).filter(
     (tag) => typeof tag === 'string' && tag.length > 0 && !subStageTags.has(tag),
@@ -256,15 +260,24 @@ function PreviewBody({
               testId="task-preview-project"
             />
           )}
-          {task.owner && (
-            <Badge
-              variant="outline"
-              className="h-6 min-h-0 max-w-[180px] gap-1 px-2 py-0 text-xs font-normal"
-              data-testid="task-preview-owner"
-            >
-              <User className="h-3 w-3 shrink-0" aria-hidden />
-              <span className="truncate">{task.owner}</span>
-            </Badge>
+          {owner ? (
+            <OwnerChip
+              owner={owner}
+              full
+              className="h-6 max-w-[180px] px-2"
+              testId="task-preview-owner"
+            />
+          ) : (
+            task.owner && (
+              <Badge
+                variant="outline"
+                className="h-6 min-h-0 max-w-[180px] gap-1 px-2 py-0 text-xs font-normal"
+                data-testid="task-preview-owner"
+              >
+                <User className="h-3 w-3 shrink-0" aria-hidden />
+                <span className="truncate">{task.owner}</span>
+              </Badge>
+            )
           )}
           {recurrence !== TASK_RECURRENCE.NONE && (
             <Badge
@@ -301,7 +314,7 @@ function PreviewBody({
           {isRichTextEmpty(task.description) ? (
             <p className="text-sm italic text-muted-foreground">No description</p>
           ) : (
-            <div className="rounded-xl neo-well px-3 py-2.5">
+            <div className="rounded-md neo-well px-3 py-2.5">
               <RichTextContent
                 value={task.description}
                 className="text-sm"

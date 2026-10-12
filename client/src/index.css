@@ -1,84 +1,90 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+/* Lexend at four weights is the whole type system — one family at every size,
+   with tabular figures for the counts. IBM Plex Sans is loaded only for the
+   "Built by TK Workflow IT" lockup, which is brand-fixed and keeps its own
+   face (see client/src/components/BuiltByTk.tsx). */
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600&family=IBM+Plex+Sans:wght@500;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* =============================================================================
- * Design Tokens
+ * Design Tokens — register 13 "Clinical" (house style, free mode, browser-app)
  *
- * Semantic colour system tuned for high readability across exterior lighting
- * (bright sunlight, dim indoor, office fluorescent). Tokens are kept as raw
- * `H S L%` triplets so Tailwind's `hsl(var(--token) / <alpha-value>)` plumbing
- * keeps working. Shadcn-style aliases (--background, --card, etc.) are mapped
- * onto the semantic tokens below so existing utility classes (`bg-background`,
- * `text-foreground`, …) continue to compile unchanged.
+ * White ground, near-black ink, one teal accent, Lexend at every size. The
+ * board is an instrument panel: dense data, tiny caps labels, minimal chrome.
  *
- * Light mode  : mid-tone grey-blue page with off-white raised surfaces. The
- *               page sits at ~80% lightness so the raised cards (~96%) pop
- *               hard against it — the page is the majority colour on screen
- *               and is deliberately NOT near-white; a light stack washes out
- *               and reads as "everything is white".
- *               Cards stay off-white (not #fff) to avoid glare.
- * Dark mode   : deep blue-tinted near-black (NOT pitch black) with layered
- *               elevation so dialogs/popovers float clearly above the page.
+ * What changed and why: this was a neumorphic ("soft UI") system — a mid-grey
+ * page at 80% lightness so off-white cards would "pop", with every surface
+ * drawn as a white top-left edge plus a dark bottom-right edge instead of a
+ * border. That idiom is what read as uneven grey and amateur shadowing, and it
+ * cannot be tuned out: the grey ground and the double shadow are the idiom.
  *
- * Contrast targets (checked against bg-base):
- *   body text on bg-base  : ≥ 7:1   (WCAG AAA)
- *   secondary on bg-base  : ≥ 4.5:1 (WCAG AA)
- *   accent on bg-base     : ≥ 4.5:1 (WCAG AA)
- *   status text on bg-base: ≥ 4.5:1 (WCAG AA)
- *   focus ring            : highly visible accent colour with 2px offset
+ * The replacement separates surfaces with a 1px hairline and nothing else.
+ * Shadow is spent only on things that genuinely float above the page —
+ * dialogs, popovers, the drag overlay — and never on a resting surface.
+ *
+ * Tokens stay raw `H S L%` triplets so Tailwind's
+ * `hsl(var(--token) / <alpha-value>)` plumbing keeps working, and the
+ * shadcn-style aliases keep every existing utility class compiling unchanged.
+ *
+ * Contrast, measured against the surface each token sits on:
+ *   ink on white           17.4:1
+ *   secondary on white      8.3:1
+ *   muted on white          4.9:1
+ *   accent on white         7.0:1
+ *   accent fill, white text 7.0:1
  * ========================================================================== */
 
 @layer base {
   :root {
-    /* ---- Surfaces (layered from page → most-elevated) ----
-       ~27-point lightness spread (72% → 99%) so each layer is tonally
-       distinct: sunken wells sit below the page, the page below cards,
-       cards below dialogs. */
-    --bg-base: 220 16% 80%; /* #c4c9d4 — page background (majority colour) */
-    --bg-surface: 220 40% 96%; /* #f1f3f9 — cards / columns (off-white) */
-    --bg-elevated: 220 55% 99%; /* #fbfcfe — dialogs, popovers (extra shadow) */
-    --bg-sunken: 220 14% 72%; /* #aeb4c2 — inputs, pressed states */
-    --bg-subtle: 220 14% 76%; /* #b9bfca — subtle hover / inset */
+    /* ---- Surfaces ----
+       The page and its cards are the same white. Depth is a hairline, not a
+       tone: a stack of greys is what made the old board look dirty. Only the
+       sunken tokens carry a tint, and only enough to read as "inside". */
+    --bg-base: 0 0% 100%; /* #ffffff — page */
+    --bg-surface: 0 0% 100%; /* #ffffff — columns, cards, header */
+    --bg-elevated: 0 0% 100%; /* #ffffff — dialogs (shadow does the lifting) */
+    --bg-sunken: 210 20% 98%; /* #f8f9fa — inputs, lanes, wells */
+    --bg-subtle: 210 16% 95%; /* #f0f2f4 — hover */
 
     /* ---- Foreground ---- */
-    --fg-primary: 220 35% 13%; /* #161d2d — body text, 10.2:1 on bg-base */
-    --fg-secondary: 220 18% 26%; /* #363e4e — secondary text, 6.5:1 */
-    --fg-muted: 220 12% 34%; /* #4c5361 — meta / placeholder, 4.7:1 */
-    --fg-on-accent: 0 0% 100%; /* text on accent fill */
+    --fg-primary: 218 22% 10%; /* #14181f — body, 17.4:1 on white */
+    --fg-secondary: 212 14% 32%; /* #46505c — secondary, 8.3:1 */
+    --fg-muted: 210 10% 45%; /* #67707c — meta / placeholder, 4.9:1 */
+    --fg-on-accent: 0 0% 100%;
 
-    /* ---- Borders ---- */
-    --border-subtle: 220 14% 70%; /* #a8afbd — default divider */
-    --border-strong: 220 12% 46%; /* #677183 — input outlines, 3.0:1 on base */
+    /* ---- Borders — the only thing separating one surface from the next ---- */
+    --border-subtle: 214 14% 91%; /* #e3e6ea — hairline */
+    --border-strong: 212 13% 78%; /* #c1c8d0 — input outlines, 3.0:1 */
 
-    /* ---- Accent / brand ---- */
-    --accent-1: 222 78% 42%; /* #184abf — deep vivid blue, 4.6:1 on bg-base */
-    --accent-1-hover: 222 78% 37%; /* #1541a8 */
-    --accent-1-pressed: 222 78% 32%; /* #123891 */
+    /* ---- Accent ---- */
+    --accent-1: 190 100% 23%; /* #005f73 — 7.0:1 on white */
+    --accent-1-hover: 190 100% 18%;
+    --accent-1-pressed: 190 100% 14%;
     --accent-1-fg: 0 0% 100%;
-    --accent-1-soft: 222 45% 84%; /* tinted background for accent surfaces */
+    --accent-1-soft: 190 44% 94%; /* #e8f3f5 — selected rows, tinted fills */
 
-    /* ---- Status ---- */
-    --success: 145 64% 23%; /* #156034 — 4.6:1 on bg-base, 7.6:1 white-on-fill */
+    /* ---- Status — held to the same muted, professional register ---- */
+    --success: 157 84% 22%; /* #09673f — 5.9:1 on white */
     --success-fg: 0 0% 100%;
-    --warning: 38 95% 36%; /* #b37305 — used with dark warning-fg */
-    --warning-fg: 220 35% 13%;
-    --danger: 358 72% 38%; /* #a71b20 — 4.5:1 on bg-base, 7.5:1 white-on-fill */
+    --warning: 32 100% 29%; /* #944700 — 5.9:1 on white */
+    --warning-fg: 0 0% 100%;
+    --danger: 3 72% 41%; /* #b3261e — 6.4:1 on white */
     --danger-fg: 0 0% 100%;
 
     /* ---- Focus ring ---- */
-    --focus-ring: 222 90% 55%; /* highly visible, accent-derived */
+    --focus-ring: 190 100% 27%; /* the accent, one step brighter */
 
-    /* ---- Neumorphic shadow tuning (deltas above/below current surface) ----
-       Neumorphism only reads if both edges are visible: the darker page
-       makes the white highlight land, and the dark edge needs enough alpha
-       to register against the mid-tone page. */
-    --neo-light-edge: 255, 255, 255; /* highlight colour (RGB triplet) */
-    --neo-light-alpha: 0.9; /* light edge strength */
-    --neo-dark-edge: 30, 41, 59; /* shadow colour (RGB triplet — slate-800) */
-    --neo-dark-alpha: 0.22; /* dark edge strength */
+    /* ---- Elevation ----
+       Two levels only, both soft and strictly vertical. A resting surface uses
+       neither: it has a border instead. */
+    --shadow-overlay:
+      0 1px 2px hsl(218 22% 10% / 0.06), 0 8px 24px hsl(218 22% 10% / 0.1);
+    --shadow-drag:
+      0 2px 4px hsl(218 22% 10% / 0.08), 0 16px 32px hsl(218 22% 10% / 0.16);
+    /* The ink the lane shade washes with (RGB triplet for rgba()). */
+    --shade-ink: 20, 24, 31;
 
     /* ---- Shadcn aliases (preserved for existing utility/component usage) ---- */
     --background: var(--bg-base);
@@ -89,9 +95,9 @@
     --popover-foreground: var(--fg-primary);
     --primary: var(--accent-1);
     --primary-foreground: var(--accent-1-fg);
-    --secondary: var(--bg-sunken);
+    --secondary: var(--bg-subtle);
     --secondary-foreground: var(--fg-secondary);
-    --muted: var(--bg-subtle);
+    --muted: var(--bg-sunken);
     --muted-foreground: var(--fg-muted);
     --accent: var(--accent-1);
     --accent-foreground: var(--accent-1-fg);
@@ -100,61 +106,72 @@
     --border: var(--border-subtle);
     --input: var(--border-strong);
     --ring: var(--focus-ring);
-    --radius: 1rem;
+    /* 6px. The old 16px radius on every surface is half of what made the board
+       read as soft; corners are now a control affordance, not a texture. */
+    --radius: 0.375rem;
 
     /* TaskWarnings + matching task borders (kept as separate tokens for the
        inline-border helper at @/lib/task-warning-border). */
-    --warning-accent: 38 92% 50%;
-    --toast-overdue-accent: 358 78% 55%;
-    --toast-info-accent: 217 91% 55%;
+    --warning-accent: 32 100% 29%;
+    --toast-overdue-accent: 3 72% 41%;
+    --toast-info-accent: 190 100% 23%;
 
-    --font-sans: 'Inter', sans-serif;
-    --font-display: 'Space Grotesk', sans-serif;
+    --font-sans: 'Lexend', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --font-display: 'Lexend', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    /* Brand-fixed, and only for the TK lockup in BuiltByTk.tsx. */
+    --font-brand: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+    --tk-rust: #a8452a; /* TK Workflow IT accent, light */
 
     color-scheme: light;
   }
 
   .dark {
-    /* ---- Surfaces ---- */
-    --bg-base: 222 22% 8%; /* #10141d — deep, NOT pitch black */
-    --bg-surface: 222 18% 12%; /* #1a1f2c — cards, clearly above page */
-    --bg-elevated: 222 16% 17%; /* #262d3d — dialogs / popovers */
-    --bg-sunken: 222 26% 5%; /* #0a0d15 — inputs, pressed wells */
-    --bg-subtle: 222 18% 14%; /* #1f2533 — subtle hover */
+    /* The same instrument, unlit: one dark ground, hairlines a shade above it,
+       and the teal lifted until it carries on a dark surface. */
+    --bg-base: 213 24% 8%; /* #0f1419 — page */
+    --bg-surface: 213 22% 11%; /* #161c22 — columns, cards, header */
+    --bg-elevated: 213 19% 15%; /* #1e262e — dialogs */
+    --bg-sunken: 213 25% 9%; /* #111820 — inputs, lanes, wells */
+    --bg-subtle: 213 18% 16%; /* #212a33 — hover */
 
     /* ---- Foreground ---- */
-    --fg-primary: 220 22% 97%; /* #f1f3f8 — 17.1:1 on bg-base */
-    --fg-secondary: 220 14% 80%; /* #c4cad6 — 11.0:1 */
-    --fg-muted: 220 12% 64%; /* #97a0b1 — 5.6:1 */
-    --fg-on-accent: 222 30% 10%;
+    --fg-primary: 206 24% 93%; /* #e8edf1 — 15.2:1 on page */
+    --fg-secondary: 208 16% 76%; /* #b8c2cc — 9.1:1 */
+    --fg-muted: 208 12% 60%; /* #8b97a3 — 5.3:1 */
+    --fg-on-accent: 213 30% 8%;
 
     /* ---- Borders ---- */
-    --border-subtle: 220 14% 24%; /* #333a48 */
-    --border-strong: 220 12% 40%; /* #5b6273 */
+    --border-subtle: 213 15% 22%; /* #303b45 */
+    --border-strong: 212 12% 38%; /* #566069 */
 
-    /* ---- Accent (lighter + slightly less saturated for dark surfaces) ---- */
-    --accent-1: 222 90% 70%; /* #7197f7 — 7.3:1 on bg-base */
-    --accent-1-hover: 222 92% 78%;
-    --accent-1-pressed: 222 92% 62%;
-    --accent-1-fg: 222 35% 10%;
-    --accent-1-soft: 222 60% 22%;
+    /* ---- Accent ---- */
+    --accent-1: 189 58% 58%; /* #51b9cc — 7.4:1 on page */
+    --accent-1-hover: 189 62% 68%;
+    --accent-1-pressed: 189 55% 48%;
+    --accent-1-fg: 213 30% 8%;
+    --accent-1-soft: 190 40% 18%;
 
-    /* ---- Status (lifted brightness for dark surfaces) ---- */
-    --success: 142 55% 60%; /* #57c180 */
-    --success-fg: 222 30% 10%;
-    --warning: 38 92% 64%; /* #f3b558 */
-    --warning-fg: 222 30% 10%;
-    --danger: 358 80% 68%; /* #ed697b */
-    --danger-fg: 222 30% 10%;
+    /* ---- Status ---- */
+    --success: 157 50% 55%; /* #58c795 */
+    --success-fg: 213 30% 8%;
+    --warning: 34 85% 62%; /* #eda553 */
+    --warning-fg: 213 30% 8%;
+    --danger: 4 78% 68%; /* #ef7268 */
+    --danger-fg: 213 30% 8%;
 
-    /* ---- Focus ring (brighter on dark) ---- */
-    --focus-ring: 220 95% 75%;
+    --focus-ring: 189 70% 62%;
 
-    /* ---- Neumorphic shadows re-tuned for near-black surfaces ---- */
-    --neo-light-edge: 255, 255, 255;
-    --neo-light-alpha: 0.04;
-    --neo-dark-edge: 0, 0, 0;
-    --neo-dark-alpha: 0.45;
+    /* Shadow reads as depth on paper, not on a dark ground: dark mode keeps
+       the same two levels but leans on the border instead. */
+    --shadow-overlay: 0 1px 2px hsl(0 0% 0% / 0.4), 0 8px 24px hsl(0 0% 0% / 0.45);
+    --shadow-drag: 0 2px 4px hsl(0 0% 0% / 0.45), 0 16px 32px hsl(0 0% 0% / 0.55);
+    --shade-ink: 232, 237, 241;
+
+    --warning-accent: 34 85% 62%;
+    --toast-overdue-accent: 4 78% 68%;
+    --toast-info-accent: 189 58% 58%;
+
+    --tk-rust: #d9714c; /* TK Workflow IT accent, dark */
 
     color-scheme: dark;
   }
@@ -174,12 +191,11 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
-    /* Subtle, theme-aware page wash. Uses tokens so it transitions cleanly. */
+    /* One flat ground. The two radial washes that used to sit here were half
+       of the "uneven grey": they tinted the page differently at each corner,
+       so no two surfaces ever met the same background. */
     background-color: hsl(var(--bg-base));
-    background-image:
-      radial-gradient(ellipse at top left, hsl(var(--bg-surface) / 0.35), transparent 55%),
-      radial-gradient(ellipse at bottom right, hsl(var(--accent-1-soft) / 0.25), transparent 60%);
-    background-attachment: fixed;
+    font-variant-numeric: tabular-nums;
     overscroll-behavior-y: contain;
     padding-bottom: env(safe-area-inset-bottom);
     padding-top: env(safe-area-inset-top);
@@ -205,6 +221,8 @@
     transition: none !important;
   }
 
+  /* One family at every size, differing by weight and size alone — the
+     register's rule. No second display face, and no negative tracking. */
   h1,
   h2,
   h3,
@@ -212,7 +230,8 @@
   h5,
   h6 {
     font-family: var(--font-display);
-    @apply font-bold tracking-tight;
+    @apply font-semibold;
+    letter-spacing: 0;
   }
 
   /* Accessible focus ring — always visible for keyboard users, never on mouse
@@ -220,12 +239,12 @@
   *:focus-visible {
     outline: 2px solid hsl(var(--focus-ring));
     outline-offset: 2px;
-    border-radius: calc(var(--radius) * 0.75);
+    border-radius: var(--radius);
   }
 
   /* Selection — themed accent at low alpha, readable text. */
   ::selection {
-    background-color: hsl(var(--accent-1) / 0.25);
+    background-color: hsl(var(--accent-1-soft));
     color: hsl(var(--fg-primary));
   }
 
@@ -249,135 +268,143 @@
 
 @layer components {
   /* --------------------------------------------------------------------------
-   * Neomorphic surface helpers
-   * Tuned so cards (--bg-surface) read clearly above the page (--bg-base) in
-   * both modes. Shadow intensities come from theme-aware tokens so the same
-   * helper renders correctly under .dark.
+   * Surfaces
+   *
+   * The class names are the ones the components already use, so the whole app
+   * moves at once; what they mean has changed. A surface is now a fill and a
+   * 1px hairline. Nothing at rest casts a shadow — shadow is reserved for
+   * things that genuinely float (dialogs, popovers, a dragged card), which is
+   * what makes those read as lifted at all.
    * ------------------------------------------------------------------------ */
 
   .neo-raised {
     background: hsl(var(--card));
+    border: 1px solid hsl(var(--border-subtle));
     border-radius: var(--radius);
-    box-shadow:
-      4px 4px 10px rgba(var(--neo-dark-edge), var(--neo-dark-alpha)),
-      -3px -3px 8px rgba(var(--neo-light-edge), var(--neo-light-alpha));
   }
 
+  /* Inside the surface above it: a faint tint plus the same hairline. */
   .neo-pressed {
     background: hsl(var(--bg-sunken));
+    border: 1px solid hsl(var(--border-subtle));
     border-radius: var(--radius);
-    box-shadow:
-      inset 2px 2px 5px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) + 0.04)),
-      inset -2px -2px 5px rgba(var(--neo-light-edge), var(--neo-light-alpha));
   }
 
   .neo-card {
-    @apply neo-raised transition-all duration-200;
+    @apply neo-raised;
+    transition:
+      border-color 120ms ease,
+      background-color 120ms ease;
+  }
+
+  .neo-card:hover {
+    border-color: hsl(var(--border-strong));
   }
 
   .neo-card:active {
-    border-radius: var(--radius);
-    box-shadow:
-      2px 2px 6px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) - 0.02)),
-      -2px -2px 4px rgba(var(--neo-light-edge), calc(var(--neo-light-alpha) - 0.1));
-    transform: scale(0.98);
+    background: hsl(var(--bg-subtle));
   }
 
+  /* The summary board's task circle. Flat fill, one ring — the bevel, the
+     inner glow and the drop shadow are gone; size still carries effort and
+     the ring still carries the warning state. */
   .neo-beveled-circle {
     position: relative;
-    background: hsl(var(--card));
+    background: hsl(var(--bg-sunken));
+    border: 1px solid hsl(var(--border-strong));
     border-radius: 50%;
-    box-shadow:
-      0 3px 7px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) + 0.04)),
-      0 -2px 4px rgba(var(--neo-light-edge), var(--neo-light-alpha)),
-      inset 0 0 12px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) + 0.05)),
-      inset 0 0 6px rgba(var(--neo-dark-edge), var(--neo-dark-alpha));
+    transition:
+      background-color 120ms ease,
+      border-color 120ms ease;
   }
 
-  .neo-beveled-circle:active {
-    box-shadow:
-      inset 0 2px 4px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) + 0.1)),
-      inset 0 1px 2px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) + 0.02)),
-      inset 0 -1px 2px rgba(var(--neo-light-edge), calc(var(--neo-light-alpha) - 0.04)),
-      0 1px 2px rgba(var(--neo-dark-edge), var(--neo-dark-alpha));
+  .neo-beveled-circle:hover {
+    background: hsl(var(--bg-subtle));
+  }
+
+  .neo-beveled-circle:active,
+  .neo-beveled-circle-colored:active {
     transform: scale(0.95);
   }
 
   .neo-beveled-circle-colored {
+    border-radius: 50%;
     transition:
-      box-shadow 0.15s ease,
-      transform 0.15s ease;
-  }
-
-  .neo-beveled-circle-colored:active {
-    box-shadow:
-      inset 0 2px 4px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) + 0.15)),
-      inset 0 1px 2px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) + 0.05)),
-      inset 0 -1px 2px rgba(var(--neo-light-edge), var(--neo-light-alpha)),
-      0 1px 2px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) + 0.02));
-    transform: scale(0.92);
+      transform 120ms ease,
+      filter 120ms ease;
   }
 
   .neo-button {
-    @apply neo-raised transition-all duration-150;
+    @apply neo-raised;
+    transition:
+      border-color 120ms ease,
+      background-color 120ms ease;
   }
 
   .neo-button:active {
-    @apply neo-pressed;
-    transform: scale(0.97);
+    background: hsl(var(--bg-subtle));
+    border-color: hsl(var(--border-strong));
   }
 
   .neo-input {
-    @apply neo-pressed;
+    background: hsl(var(--bg-base));
     color: hsl(var(--fg-primary));
-    border: 1px solid hsl(var(--border-subtle));
+    border: 1px solid hsl(var(--border-strong));
+    border-radius: var(--radius);
+    transition: border-color 120ms ease;
   }
 
   .neo-input:focus,
   .neo-input:focus-visible {
-    @apply neo-raised;
     outline: none;
     border-color: hsl(var(--focus-ring));
-    box-shadow:
-      4px 4px 10px rgba(var(--neo-dark-edge), var(--neo-dark-alpha)),
-      -3px -3px 8px rgba(var(--neo-light-edge), var(--neo-light-alpha)),
-      0 0 0 2px hsl(var(--focus-ring) / 0.4);
+    box-shadow: 0 0 0 3px hsl(var(--accent-1) / 0.15);
   }
 
   .neo-container {
     @apply neo-raised;
   }
 
-  /* Sunken lane — a panel that visibly sits *inside* a raised card (used by
-     sub-stage lanes). Translucent sunken tint over the card plus an inset
-     edge, so the layering reads in both themes: page → stage card → lane →
-     task cards on top. */
+  /* A lane inside a column. It reads as nested because it is tinted and
+     inset by its own hairline, not because it is carved into the card. */
   .neo-well {
-    background: hsl(var(--bg-sunken) / 0.55);
-    border: 1px solid hsl(var(--border-subtle) / 0.7);
-    box-shadow:
-      inset 2px 2px 5px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) * 0.7)),
-      inset -2px -2px 4px rgba(var(--neo-light-edge), calc(var(--neo-light-alpha) * 0.45));
+    background: hsl(var(--bg-sunken));
+    border: 1px solid hsl(var(--border-subtle));
+    border-radius: var(--radius);
   }
 
-  /* Sub-stage lane shade: a wash of the shadow colour over the well, at the
-     strength the Admin "Shade" slider chose (--lane-shade, 0–1, set inline by
-     lib/lane-shade.ts). The shadow token keeps it a shade in both themes
-     rather than a foreign colour. */
+  /* Sub-stage lane shade: a wash of ink over the well at the strength the
+     Admin "Shade" slider chose (--lane-shade, 0–1, set inline by
+     lib/lane-shade.ts). Ink rather than a shadow colour, so it stays a shade
+     of the same grey family in both themes. Halved against the old value —
+     a hairlined lane needs far less tone to read as a lane. */
   .lane-shade {
-    background-color: rgba(var(--neo-dark-edge), var(--lane-shade, 0));
+    background-color: rgba(var(--shade-ink), calc(var(--lane-shade, 0) * 0.5));
   }
 
-  /* Mobile bottom nav — elevated above page with a top edge shadow. */
+  /* Things that genuinely float. */
+  .elevation-overlay {
+    box-shadow: var(--shadow-overlay);
+  }
+
+  .elevation-drag {
+    box-shadow: var(--shadow-drag);
+  }
+
+  /* Tiny caps label — lane headers, column eyebrows, section titles. */
+  .label-caps {
+    @apply text-[10px] font-semibold uppercase;
+    letter-spacing: 0.08em;
+    color: hsl(var(--fg-muted));
+  }
+
+  /* Bottom nav: a surface with a top hairline, no lift. */
   .mobile-bottom-nav {
     @apply fixed bottom-0 left-0 right-0 z-50;
     background: hsl(var(--bg-surface));
     padding-bottom: env(safe-area-inset-bottom);
     border-top: 1px solid hsl(var(--border-subtle));
-    border-radius: 1rem 1rem 0 0;
-    box-shadow:
-      0 -4px 14px rgba(var(--neo-dark-edge), calc(var(--neo-dark-alpha) + 0.02)),
-      0 -1px 3px rgba(var(--neo-dark-edge), var(--neo-dark-alpha));
+    border-radius: 0;
   }
 
   /* Scrollable tabs container */
@@ -403,12 +430,8 @@
    * ------------------------------------------------------------------------ */
 
   .rich-editor:focus-within {
-    @apply neo-raised;
     border-color: hsl(var(--focus-ring));
-    box-shadow:
-      4px 4px 10px rgba(var(--neo-dark-edge), var(--neo-dark-alpha)),
-      -3px -3px 8px rgba(var(--neo-light-edge), var(--neo-light-alpha)),
-      0 0 0 2px hsl(var(--focus-ring) / 0.4);
+    box-shadow: 0 0 0 3px hsl(var(--accent-1) / 0.15);
   }
 
   .rich-text p {

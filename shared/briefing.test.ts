@@ -66,6 +66,17 @@ const subStages: SubStage[] = [
   { id: 9, stageId: 4, name: 'Scheduled Action | On Track', tag: 'Status' },
 ] as unknown as SubStage[];
 
+/**
+ * The same stage, with the person lanes bound to owner rows as EPIC-06's
+ * migration binds them: lane 7 is owner 1's, lane 8 is owner 2's, and the
+ * status lane belongs to nobody and keeps matching its tag.
+ */
+const boundSubStages: SubStage[] = [
+  { id: 7, stageId: 2, name: 'Rich', tag: 'Rich', ownerId: 1 },
+  { id: 8, stageId: 2, name: 'Moi', tag: 'Moi', ownerId: 2 },
+  { id: 9, stageId: 4, name: 'Scheduled Action | On Track', tag: 'Status', ownerId: null },
+] as unknown as SubStage[];
+
 /** Narrows an array's first element without a non-null assertion. */
 function first<T>(items: T[]): T {
   const [item] = items;
@@ -477,6 +488,26 @@ describe('resolveSwimlane', () => {
     expect(resolveSwimlane(fakeTask({ stageId: 1, tags: ['Rich'] }), subStages)).toBeNull();
   });
 
+  it('resolves a person’s lane from the owner, and ignores that lane’s tag', () => {
+    // EPIC-06: a bound lane holds exactly the tasks in its stage that owner
+    // owns, so no tag is needed — and a stale tag cannot move the card.
+    const task = fakeTask({ stageId: 2, ownerId: 2, tags: ['Rich'] });
+
+    expect(resolveSwimlane(task, boundSubStages)).toBe('Moi');
+  });
+
+  it('leaves a task unlaned when its stage holds no lane for its owner', () => {
+    const task = fakeTask({ stageId: 4, ownerId: 1 });
+
+    expect(resolveSwimlane(task, boundSubStages)).toBeNull();
+  });
+
+  it('still matches a tag lane by tag for an owned task', () => {
+    const task = fakeTask({ stageId: 4, ownerId: 1, tags: ['Status'] });
+
+    expect(resolveSwimlane(task, boundSubStages)).toBe('Scheduled Action | On Track');
+  });
+
   it('survives the three shapes tags actually take', () => {
     expect(resolveSwimlane(fakeTask({ tags: null }), subStages)).toBeNull();
     expect(resolveSwimlane(fakeTask({ tags: [] }), subStages)).toBeNull();
@@ -582,12 +613,34 @@ describe('buildBriefing', () => {
     expect(ids).not.toContain(99);
   });
 
-  it('surfaces the owner/swimlane conflict instead of silently picking one', () => {
+  it('reports no owner conflict, because one can no longer exist', () => {
+    // #142 is the row that named the defect: owner "Moi" sitting in the "Rich"
+    // lane. Since EPIC-06 a person's lane holds exactly the tasks that owner
+    // owns, so the lane and the owner cannot disagree and `ownerConflict` is
+    // false for every entry. The field is kept only so the payload's shape
+    // does not change under consumers; OWN-10 removes it.
     const entry = first(digest().overdue.filter((e) => e.id === 142));
 
+    expect(entry.ownerConflict).toBe(false);
+  });
+
+  it('names the owner’s own lane as the swimlane once the lanes are bound', () => {
+    const digestWithBoundLanes = buildBriefing({
+      tasks: annotateTasksWithUrgency(
+        [fakeTask({ ...task142, ownerId: 2, owner: 'Moi', tags: [] })],
+        stages,
+        NOW,
+      ),
+      stages,
+      subStages: boundSubStages,
+      now: NOW,
+      timezone: DEFAULT_TIMEZONE,
+    });
+    const entry = first(digestWithBoundLanes.overdue);
+
     expect(entry.owner).toBe('Moi');
-    expect(entry.swimlane).toBe('Rich');
-    expect(entry.ownerConflict).toBe(true);
+    expect(entry.swimlane).toBe('Moi');
+    expect(entry.ownerConflict).toBe(false);
   });
 
   it('does not read a status lane as a conflicting assignee', () => {

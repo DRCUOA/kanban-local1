@@ -144,7 +144,7 @@ export function ShareDialog({ source, open, onOpenChange }: ShareDialogProps) {
         aria-pressed={selected}
         data-testid={`share-format-${value}`}
         className={cn(
-          'h-12 rounded-xl flex-1',
+          'h-12 rounded-md flex-1',
           selected && 'ring-2 ring-primary text-primary bg-primary/10',
         )}
         onClick={() => {
@@ -176,7 +176,7 @@ export function ShareDialog({ source, open, onOpenChange }: ShareDialogProps) {
           <Button
             type="button"
             disabled={busy}
-            className="h-12 rounded-xl"
+            className="h-12 rounded-md"
             data-testid="share-action-copy"
             onClick={() => void handleCopy()}
           >
@@ -187,7 +187,7 @@ export function ShareDialog({ source, open, onOpenChange }: ShareDialogProps) {
             type="button"
             variant="outline"
             disabled={busy}
-            className="h-12 rounded-xl"
+            className="h-12 rounded-md"
             data-testid="share-action-download"
             onClick={() => void handleDownload()}
           >

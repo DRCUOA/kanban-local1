@@ -41,7 +41,7 @@ export function ProjectSelect({ value, onChange, className, ...triggerProps }: P
         onChange(next === NO_PROJECT ? null : Number(next));
       }}
     >
-      <SelectTrigger className={cn('h-12 rounded-xl', className)} {...triggerProps}>
+      <SelectTrigger className={cn('h-12 rounded-md', className)} {...triggerProps}>
         <SelectValue placeholder="No project" />
       </SelectTrigger>
       <SelectContent>

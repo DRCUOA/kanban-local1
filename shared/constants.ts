@@ -79,8 +79,14 @@ export const EFFORT_MIN = 1;
 export const EFFORT_MAX = 5;
 
 // --- Task Owner ---
-// Free-form owner label, capped at this length at every layer (DB, API, UI).
+// An owner is a row in `owners` (EPIC-06); a task points at one by `ownerId`.
+// This is no longer a storage limit — it is the card's display budget. Above
+// it, the owner chip shows `key` instead of the full name (EPIC-06 OWN-R30).
 export const TASK_OWNER_MAX_LEN = 15;
+export const OWNER_NAME_MAX_LEN = 40;
+// Optional short code shown on chips where the full name would not fit.
+export const OWNER_KEY_MAX_LEN = 4;
+export const DEFAULT_OWNER_COLOR = '#0EA5E9';
 
 // --- Projects ---
 // A project is a set of tasks related to a common goal. It scopes which tasks

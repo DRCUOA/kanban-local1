@@ -18,7 +18,8 @@ import {
   TASK_RECURRENCE,
   EFFORT_MIN,
   EFFORT_MAX,
-  TASK_OWNER_MAX_LEN,
+  OWNER_NAME_MAX_LEN,
+  OWNER_KEY_MAX_LEN,
   PROJECT_NAME_MAX_LEN,
   PROJECT_KEY_MAX_LEN,
 } from './constants';
@@ -49,6 +50,24 @@ export const projects = pgTable('projects', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+/**
+ * A person the board can assign work to (docs/epics/EPIC-06-owner-as-entity.md).
+ * An owner is a label with an identity — a row that can be renamed once and
+ * referenced by many tasks — not an account: no email, no credentials, no
+ * membership. Authentication stays EPIC-02's.
+ */
+export const owners = pgTable('owners', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  // Optional short code (e.g. "RC") for chips where the name would not fit.
+  key: text('key'),
+  color: text('color'),
+  // Archived owners keep their assignments but leave the pickers.
+  archived: boolean('archived').notNull().default(false),
+  order: integer('order').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 export const subStages = pgTable('sub_stages', {
   id: serial('id').primaryKey(),
   stageId: integer('stage_id')
@@ -62,6 +81,10 @@ export const subStages = pgTable('sub_stages', {
   bgClass: text('bg_class').notNull(),
   opacity: integer('opacity').notNull(), // The lane's shade, 0-100 (Admin "Shade" slider)
   order: integer('order').notNull(),
+  // Set = this lane is a person's lane, and it holds exactly the tasks in its
+  // stage owned by them (`tag` is not read for it). Null = a tag lane, matched
+  // against `tasks.tags` as before. See EPIC-06 §5.
+  ownerId: integer('owner_id').references(() => owners.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -121,7 +144,12 @@ export const tasks = pgTable('tasks', {
   parentTaskId: integer('parent_task_id'), // FK to tasks(id) enforced at DB level, not via Drizzle .references() to avoid circular type inference
   recurrence: text('recurrence').default(TASK_RECURRENCE.NONE),
   history: jsonb('history').$type<TaskHistoryEntry[]>(), // Status change history
-  // Free-form owner label (max TASK_OWNER_MAX_LEN chars) — DB-level length enforced via VARCHAR
+  // Null = Unassigned. Deleting an owner releases their tasks rather than
+  // taking them with it (EPIC-06).
+  ownerId: integer('owner_id').references(() => owners.id, { onDelete: 'set null' }),
+  // Legacy mirror of `owners.name`, kept in step by database triggers so
+  // `GET /api/export` and the daily-briefing agent keep reading the field they
+  // read before EPIC-06. Read-only: writes set `ownerId`. Dropped by OWN-10.
   owner: text('owner'),
   // Bin (soft delete). Null = live. Set when a task is dropped on the Bin;
   // cleared by Restore. Only "Delete forever" removes the row.
@@ -219,6 +247,15 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     relationName: 'subtasks',
   }),
   attachments: many(taskAttachments),
+  owner: one(owners, {
+    fields: [tasks.ownerId],
+    references: [owners.id],
+  }),
+}));
+
+export const ownersRelations = relations(owners, ({ many }) => ({
+  tasks: many(tasks),
+  subStages: many(subStages),
 }));
 
 export const taskAttachmentsRelations = relations(taskAttachments, ({ one }) => ({
@@ -237,6 +274,10 @@ export const subStagesRelations = relations(subStages, ({ one }) => ({
   stage: one(stages, {
     fields: [subStages.stageId],
     references: [stages.id],
+  }),
+  owner: one(owners, {
+    fields: [subStages.ownerId],
+    references: [owners.id],
   }),
 }));
 
@@ -286,6 +327,33 @@ export const insertProjectSchema = createInsertSchema(projects)
     order: z.number().int().optional(),
   });
 
+export const insertOwnerSchema = createInsertSchema(owners)
+  .omit({
+    id: true,
+    createdAt: true,
+  })
+  .extend({
+    name: z
+      .string()
+      .trim()
+      .min(1, 'Owner name is required')
+      .max(OWNER_NAME_MAX_LEN, `Owner name must be ${OWNER_NAME_MAX_LEN} characters or less`),
+    key: z
+      .string()
+      .trim()
+      .max(OWNER_KEY_MAX_LEN, `Owner code must be ${OWNER_KEY_MAX_LEN} characters or less`)
+      .optional()
+      .nullable()
+      .transform((v) => {
+        if (v == null) return v;
+        const upper = v.toUpperCase();
+        return upper.length === 0 ? null : upper;
+      }),
+    color: hexColorSchema.optional().nullable(),
+    archived: z.boolean().optional(),
+    order: z.number().int().optional(),
+  });
+
 export const insertSubStageSchema = createInsertSchema(subStages)
   .omit({
     id: true,
@@ -295,6 +363,8 @@ export const insertSubStageSchema = createInsertSchema(subStages)
     // Blank tags would make every tagged task match every sub-stage of a stage
     tag: z.string().trim().min(1),
     opacity: z.number().min(0).max(100), // Store as 0-100 integer
+    // Set = a person's lane; null = a tag lane (EPIC-06 OWN-R11).
+    ownerId: z.number().int().positive().optional().nullable(),
   });
 
 // Explicit overrides for every field — `createInsertSchema(tasks)` infers `any`
@@ -306,6 +376,9 @@ export const insertTaskSchema = createInsertSchema(tasks)
     updatedAt: true,
     // Bin state is owned by the bin/restore endpoints, never by a task write.
     deletedAt: true,
+    // `owner` is a mirror of the owner's name maintained by the database;
+    // a task write sets `ownerId` (EPIC-06 OWN-R1).
+    owner: true,
   })
   .extend({
     title: z.string().min(1),
@@ -330,19 +403,11 @@ export const insertTaskSchema = createInsertSchema(tasks)
       )
       .optional()
       .nullable(),
-    owner: z
-      .string()
-      .max(TASK_OWNER_MAX_LEN, `Owner must be ${TASK_OWNER_MAX_LEN} characters or less`)
-      .optional()
-      .nullable()
-      .transform((v) => {
-        if (v == null) return v;
-        const trimmed = v.trim();
-        return trimmed.length === 0 ? null : trimmed;
-      }),
+    ownerId: z.number().int().positive().optional().nullable(),
   });
 
 export type Stage = typeof stages.$inferSelect;
+export type Owner = typeof owners.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
 export type SubStage = typeof subStages.$inferSelect;
 export type Project = typeof projects.$inferSelect;
@@ -359,7 +424,10 @@ export interface InsertAttachment {
 }
 /** A project plus how many live (unarchived, unbinned) tasks it holds. */
 export type ProjectSummary = Project & { taskCount: number };
+/** An owner plus how many live (unarchived, unbinned) tasks they hold. */
+export type OwnerSummary = Owner & { taskCount: number };
 export type InsertStage = z.infer<typeof insertStageSchema>;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type InsertSubStage = z.infer<typeof insertSubStageSchema>;
 export type InsertProject = z.infer<typeof insertProjectSchema>;
+export type InsertOwner = z.infer<typeof insertOwnerSchema>;

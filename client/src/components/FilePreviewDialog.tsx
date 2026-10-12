@@ -26,7 +26,7 @@ export function FilePreviewDialog({ file, onOpenChange }: FilePreviewDialogProps
   return (
     <Dialog open={file !== null} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-[95vw] sm:max-w-2xl p-4 rounded-2xl"
+        className="max-w-[95vw] sm:max-w-2xl p-4 rounded-lg"
         data-testid="dialog-file-preview"
         onClick={(e) => {
           e.stopPropagation();
@@ -68,7 +68,7 @@ export function FilePreviewDialog({ file, onOpenChange }: FilePreviewDialogProps
           <p className="text-sm text-muted-foreground">No inline preview for this file.</p>
         )}
         {file && (
-          <Button asChild variant="outline" className="h-11 rounded-xl w-full gap-2">
+          <Button asChild variant="outline" className="h-11 rounded-md w-full gap-2">
             <a
               href={attachmentDownloadUrl(file.src)}
               download={file.name}

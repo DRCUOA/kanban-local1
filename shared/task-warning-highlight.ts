@@ -1,6 +1,7 @@
 import { differenceInDays } from 'date-fns';
 import { isTaskOverdueOn } from './briefing';
 import { TASK_STATUS, TASK_PRIORITY, getStatusFromStageName } from './constants';
+import { STALE_AFTER_DAYS } from './board-warnings';
 import type { Task, Stage } from './schema';
 
 export type TaskWarningHighlightKind = 'overdue' | 'high_priority_backlog' | 'stale';
@@ -39,7 +40,7 @@ export function getTaskWarningHighlight(
 
   if (task.updatedAt) {
     const updated = new Date(task.updatedAt);
-    if (differenceInDays(new Date(), updated) >= 14) return 'stale';
+    if (differenceInDays(new Date(), updated) >= STALE_AFTER_DAYS) return 'stale';
   }
 
   return null;

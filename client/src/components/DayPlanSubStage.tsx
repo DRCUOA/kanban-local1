@@ -16,6 +16,8 @@ interface DayPlanSubStageProps {
     tag: string;
     /** The lane's shade, 0–100, as the Admin slider stores it. */
     opacity: number;
+    /** Set = this is that owner's lane, and a drop here assigns them. */
+    ownerId?: number | null;
   };
   tasks: Task[];
   stageColor: string;
@@ -50,7 +52,7 @@ export function DayPlanSubStage({
     <div
       ref={setNodeRef}
       className={cn(
-        'neo-well relative overflow-hidden rounded-xl transition-colors',
+        'neo-well relative overflow-hidden rounded-md transition-colors',
         // Side by side across a strip, wrapping when the band gets narrow.
         layout === 'strip' && 'flex-1 basis-[280px] min-w-0',
         isOver && 'ring-2 ring-primary/50',

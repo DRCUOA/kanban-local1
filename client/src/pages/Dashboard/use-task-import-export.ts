@@ -15,6 +15,7 @@ import { logger } from '@shared/logger';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateTask } from '@/hooks/use-tasks';
 import { useProjectScope } from '@/hooks/use-project-scope';
+import { useOwners } from '@/hooks/use-owners';
 
 export interface UseTaskImportExportOptions {
   tasks: Task[] | undefined;
@@ -25,6 +26,7 @@ export function useTaskImportExport({ tasks, stages }: UseTaskImportExportOption
   const { toast } = useToast();
   const createTask = useCreateTask();
   const { scope, projects } = useProjectScope();
+  const { data: owners = [] } = useOwners();
 
   const downloadBundle = (bundle: TaskExportBundle) => {
     const dataBlob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
@@ -127,6 +129,23 @@ export function useTaskImportExport({ tasks, stages }: UseTaskImportExportOption
               ? candidate
               : fallbackProjectId;
 
+          // Owners are matched by name, not by id: the file may come from
+          // another board, or from an export written before EPIC-06 when the
+          // owner was a bare string. A name this board does not have is left
+          // Unassigned and reported rather than quietly creating a person
+          // (EPIC-06 OWN-R27, OWN-R28).
+          const unmatchedOwners = new Set<string>();
+          const resolveOwnerId = (record: any): number | null => {
+            const name = typeof record.owner === 'string' ? record.owner.trim() : '';
+            if (name.length === 0) return null;
+            const match = owners.find(
+              (owner) => owner.name.trim().toLowerCase() === name.toLowerCase(),
+            );
+            if (match) return match.id;
+            unmatchedOwners.add(name);
+            return null;
+          };
+
           // Imported records are unvalidated JSON; each field is defaulted below.
           for (const taskData of imported as any[]) {
             try {
@@ -144,6 +163,7 @@ export function useTaskImportExport({ tasks, stages }: UseTaskImportExportOption
                 dueDate: taskData.dueDate ? new Date(taskData.dueDate) : undefined,
                 tags: Array.isArray(taskData.tags) ? taskData.tags : [],
                 recurrence: taskData.recurrence || TASK_RECURRENCE.NONE,
+                ownerId: resolveOwnerId(taskData),
               } as InsertTask;
 
               if (!stagesData.find((s: any) => s.id === taskToCreate.stageId)) {
@@ -161,9 +181,13 @@ export function useTaskImportExport({ tasks, stages }: UseTaskImportExportOption
           }
 
           if (successCount > 0) {
+            const unmatched =
+              unmatchedOwners.size > 0
+                ? ` No owner here is named ${[...unmatchedOwners].join(', ')} — those tasks are Unassigned.`
+                : '';
             toast({
               title: 'Import completed',
-              description: `Successfully imported ${successCount} task${successCount > 1 ? 's' : ''}${errorCount > 0 ? `. ${errorCount} failed.` : '.'}`,
+              description: `Successfully imported ${successCount} task${successCount > 1 ? 's' : ''}${errorCount > 0 ? `. ${errorCount} failed.` : '.'}${unmatched}`,
             });
           }
           if (errorCount > 0 && successCount === 0) {

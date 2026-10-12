@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
-import type { Task, Stage, SubStage, Project } from '@shared/schema';
+import type { Task, Stage, SubStage, Project, Owner } from '@shared/schema';
 
 // ---------------------------------------------------------------------------
 // Mock the storage module so route handlers use vi.fn() stubs instead of the
@@ -35,6 +35,13 @@ const mockStorage = vi.hoisted(() => ({
   updateProject: vi.fn(),
   deleteProject: vi.fn(),
   getProjectTaskCounts: vi.fn(),
+  getOwners: vi.fn(),
+  getOwnerById: vi.fn(),
+  createOwner: vi.fn(),
+  updateOwner: vi.fn(),
+  deleteOwner: vi.fn(),
+  getOwnerTaskCounts: vi.fn(),
+  getDistinctOwners: vi.fn(),
   createAttachment: vi.fn(),
   getAttachment: vi.fn(),
   getAttachmentsMeta: vi.fn(),
@@ -79,6 +86,7 @@ function fakeTask(overrides: Partial<Task> = {}): Task {
     recurrence: 'none',
     history: [{ status: 'backlog', timestamp: NOW.toISOString() }],
     owner: null,
+    ownerId: null,
     projectId: null,
     ...overrides,
   };
@@ -90,6 +98,19 @@ function fakeProject(overrides: Partial<Project> = {}): Project {
     name: 'Alpha',
     key: 'ALP',
     color: '#6366F1',
+    archived: false,
+    order: 0,
+    createdAt: NOW,
+    ...overrides,
+  };
+}
+
+function fakeOwner(overrides: Partial<Owner> = {}): Owner {
+  return {
+    id: 1,
+    name: 'Rich',
+    key: 'RC',
+    color: '#0EA5E9',
     archived: false,
     order: 0,
     createdAt: NOW,
@@ -115,6 +136,7 @@ function fakeSubStage(overrides: Partial<SubStage> = {}): SubStage {
     name: 'Morning',
     tag: 'morning',
     bgClass: 'bg-blue-500/20',
+    ownerId: null,
     opacity: 20,
     order: 0,
     createdAt: NOW,
@@ -863,6 +885,204 @@ describe('Project routes', () => {
 });
 
 // ===========================================================================
+// Owner routes (EPIC-06)
+// ===========================================================================
+
+describe('Owner routes', () => {
+  describe('GET /api/owners', () => {
+    it('returns every owner with its live task count', async () => {
+      mockStorage.getOwners.mockResolvedValue([
+        fakeOwner({ id: 1, name: 'Rich' }),
+        fakeOwner({ id: 2, name: 'Moi' }),
+      ]);
+      mockStorage.getOwnerTaskCounts.mockResolvedValue({ 1: 9 });
+
+      const res = await request(app).get(api.owners.list.path);
+
+      expect(res.status).toBe(200);
+      expect(res.body[0]).toMatchObject({ id: 1, name: 'Rich', taskCount: 9 });
+      // An owner with no work is still an owner, counted at zero.
+      expect(res.body[1]).toMatchObject({ id: 2, name: 'Moi', taskCount: 0 });
+    });
+  });
+
+  describe('POST /api/owners', () => {
+    it('returns 201 and upper-cases the short code', async () => {
+      mockStorage.getOwners.mockResolvedValue([]);
+      mockStorage.createOwner.mockResolvedValue(fakeOwner());
+
+      const res = await request(app)
+        .post(api.owners.list.path)
+        .send({ name: 'Rich', key: 'rc', color: '#0EA5E9' });
+
+      expect(res.status).toBe(201);
+      expect(mockStorage.createOwner).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Rich', key: 'RC', color: '#0EA5E9' }),
+      );
+    });
+
+    it('returns 409 for a name that differs only by case or padding', async () => {
+      mockStorage.getOwners.mockResolvedValue([fakeOwner({ id: 1, name: 'Rich' })]);
+
+      const res = await request(app).post(api.owners.list.path).send({ name: '  rich ' });
+
+      expect(res.status).toBe(409);
+      expect(mockStorage.createOwner).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 for a blank name', async () => {
+      mockStorage.getOwners.mockResolvedValue([]);
+
+      const res = await request(app).post(api.owners.list.path).send({ name: '   ' });
+
+      expect(res.status).toBe(400);
+      expect(mockStorage.createOwner).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('PATCH /api/owners/:id', () => {
+    it('renames an owner', async () => {
+      mockStorage.getOwners.mockResolvedValue([fakeOwner({ id: 1, name: 'Rich' })]);
+      mockStorage.updateOwner.mockResolvedValue(fakeOwner({ name: 'Richard' }));
+
+      const res = await request(app).patch('/api/owners/1').send({ name: 'Richard' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.name).toBe('Richard');
+    });
+
+    it('returns 409 when the new name collides with another owner', async () => {
+      mockStorage.getOwners.mockResolvedValue([
+        fakeOwner({ id: 1, name: 'Rich' }),
+        fakeOwner({ id: 2, name: 'Moi' }),
+      ]);
+
+      const res = await request(app).patch('/api/owners/2').send({ name: 'RICH' });
+
+      expect(res.status).toBe(409);
+      expect(mockStorage.updateOwner).not.toHaveBeenCalled();
+    });
+
+    it('returns 404 when the owner does not exist', async () => {
+      mockStorage.getOwners.mockResolvedValue([]);
+      mockStorage.updateOwner.mockResolvedValue(undefined);
+
+      const res = await request(app).patch('/api/owners/999').send({ archived: true });
+
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe('DELETE /api/owners/:id', () => {
+    it('returns 204 on success', async () => {
+      mockStorage.deleteOwner.mockResolvedValue(true);
+
+      const res = await request(app).delete('/api/owners/1');
+
+      expect(res.status).toBe(204);
+      expect(mockStorage.deleteOwner).toHaveBeenCalledWith(1);
+    });
+
+    it('returns 404 when the owner does not exist', async () => {
+      mockStorage.deleteOwner.mockResolvedValue(false);
+
+      const res = await request(app).delete('/api/owners/999');
+
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe('owner assignment on a task write', () => {
+    it('refuses a task naming an owner that has no row, and names it', async () => {
+      mockStorage.getOwnerById.mockResolvedValue(undefined);
+
+      const res = await request(app)
+        .post(api.tasks.list.path)
+        .send({ title: 'T', stageId: 1, ownerId: 42 });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('42');
+      expect(mockStorage.createTask).not.toHaveBeenCalled();
+    });
+
+    it('accepts a task assigned to an owner that exists', async () => {
+      mockStorage.getOwnerById.mockResolvedValue(fakeOwner({ id: 1 }));
+      mockStorage.createTask.mockResolvedValue(fakeTask({ ownerId: 1, owner: 'Rich' }));
+
+      const res = await request(app)
+        .post(api.tasks.list.path)
+        .send({ title: 'T', stageId: 1, ownerId: 1 });
+
+      expect(res.status).toBe(201);
+      expect(mockStorage.createTask).toHaveBeenCalledWith(expect.objectContaining({ ownerId: 1 }));
+    });
+
+    it('refuses an update naming an owner that has no row', async () => {
+      mockStorage.getOwnerById.mockResolvedValue(undefined);
+
+      const res = await request(app).patch('/api/tasks/1').send({ ownerId: 42 });
+
+      expect(res.status).toBe(400);
+      expect(mockStorage.updateTask).not.toHaveBeenCalled();
+    });
+
+    it('accepts clearing the owner', async () => {
+      mockStorage.updateTask.mockResolvedValue(fakeTask({ ownerId: null, owner: null }));
+
+      const res = await request(app).patch('/api/tasks/1').send({ ownerId: null });
+
+      expect(res.status).toBe(200);
+      expect(mockStorage.getOwnerById).not.toHaveBeenCalled();
+      expect(mockStorage.updateTask).toHaveBeenCalledWith(1, { ownerId: null });
+    });
+  });
+
+  describe('one lane per owner per stage', () => {
+    it('refuses a second lane in one stage bound to the same owner', async () => {
+      mockStorage.getOwnerById.mockResolvedValue(fakeOwner({ id: 1, name: 'Rich' }));
+      mockStorage.getSubStages.mockResolvedValue([
+        fakeSubStage({ id: 5, stageId: 1, name: 'Rich', ownerId: 1 }),
+      ]);
+
+      const res = await request(app).post(api.subStages.create.path).send({
+        stageId: 1,
+        name: 'Rich again',
+        tag: 'rich-again',
+        bgClass: '',
+        opacity: 20,
+        order: 9,
+        ownerId: 1,
+      });
+
+      expect(res.status).toBe(409);
+      expect(mockStorage.createSubStage).not.toHaveBeenCalled();
+    });
+
+    it('allows the same owner a lane in a different stage', async () => {
+      mockStorage.getOwnerById.mockResolvedValue(fakeOwner({ id: 1, name: 'Rich' }));
+      mockStorage.getSubStages.mockResolvedValue([
+        fakeSubStage({ id: 5, stageId: 1, name: 'Rich', ownerId: 1 }),
+      ]);
+      mockStorage.createSubStage.mockResolvedValue(
+        fakeSubStage({ id: 6, stageId: 2, name: 'Rich', ownerId: 1 }),
+      );
+
+      const res = await request(app).post(api.subStages.create.path).send({
+        stageId: 2,
+        name: 'Rich',
+        tag: 'rich-doing',
+        bgClass: '',
+        opacity: 20,
+        order: 1,
+        ownerId: 1,
+      });
+
+      expect(res.status).toBe(201);
+    });
+  });
+});
+
+// ===========================================================================
 // Stage routes
 // ===========================================================================
 
@@ -1068,6 +1288,7 @@ describe('Sub-stage routes', () => {
       name: 'Morning',
       tag: 'morning',
       bgClass: 'bg-blue-500/20',
+      ownerId: null,
       opacity: 20,
       order: 0,
     };

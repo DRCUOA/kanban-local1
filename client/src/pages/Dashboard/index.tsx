@@ -17,7 +17,10 @@ import { NavDropSlotsProvider } from '@/components/nav-drop-slots';
 import { DashboardHeader } from './DashboardHeader';
 import { DashboardContent } from './DashboardContent';
 import { DashboardBottomNav } from './DashboardBottomNav';
+import { useOwners } from '@/hooks/use-owners';
 import { useFilteredTasks } from './use-filtered-tasks';
+import { OWNER_FILTER_ALL, type OwnerFilter } from './owner-view';
+import type { BoardWarningKind } from '@shared/board-warnings';
 import { useTaskImportExport } from './use-task-import-export';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- page component; props will grow during Phase 5 decomposition
@@ -41,8 +44,14 @@ export default function Dashboard(_props: DashboardProps) {
   const { boardLayout, toggleBoardLayout } = useBoardLayout();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [isShareBoardOpen, setIsShareBoardOpen] = useState(false);
+  // Whose work the board shows, and whether it is ordered by owner (EPIC-06).
+  const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>(OWNER_FILTER_ALL);
+  const [sortByOwner, setSortByOwner] = useState(false);
+  // Which header warning pill is filtering the board, if any.
+  const [warningFilter, setWarningFilter] = useState<BoardWarningKind | null>(null);
 
   const { data: stages = [] } = useStages();
+  const { data: owners = [] } = useOwners();
 
   const filteredTasks = useFilteredTasks({
     tasks,
@@ -51,6 +60,8 @@ export default function Dashboard(_props: DashboardProps) {
     focusMode,
     viewMode,
     stages,
+    ownerFilter,
+    warningFilter,
   });
   const { handleExport, handleImport } = useTaskImportExport({ tasks, stages });
 
@@ -91,7 +102,7 @@ export default function Dashboard(_props: DashboardProps) {
             onClick={() => {
               window.location.reload();
             }}
-            className="text-primary font-medium text-sm py-3 px-6 neo-raised rounded-xl active:scale-95 transition-transform"
+            className="text-primary font-medium text-sm py-3 px-6 neo-raised rounded-md active:scale-95 transition-transform"
           >
             Try Refreshing
           </button>
@@ -104,6 +115,13 @@ export default function Dashboard(_props: DashboardProps) {
     viewMode,
     focusMode,
     boardLayout,
+    owners,
+    ownerFilter,
+    onSetOwnerFilter: setOwnerFilter,
+    sortByOwner,
+    onToggleSortByOwner: () => {
+      setSortByOwner(!sortByOwner);
+    },
     onSetViewMode: setViewMode,
     onToggleFocusMode: () => {
       setFocusMode(!focusMode);
@@ -144,7 +162,15 @@ export default function Dashboard(_props: DashboardProps) {
             {/* Warnings ride in the chip row (right-aligned, wrapping under the
               chips when narrow) instead of stacking as banners above the board. */}
             <StageHeaders tasks={tasks}>
-              <TaskWarnings tasks={tasks} />
+              {/* Counted against the whole board, so a pill's number does not
+                  change under the filter it is applying. */}
+              <TaskWarnings
+                tasks={tasks}
+                activeKind={warningFilter}
+                onToggleKind={(kind) => {
+                  setWarningFilter((current) => (current === kind ? null : kind));
+                }}
+              />
             </StageHeaders>
           </div>
         )}
@@ -154,6 +180,8 @@ export default function Dashboard(_props: DashboardProps) {
           focusMode={focusMode}
           viewMode={viewMode}
           boardLayout={boardLayout}
+          sortByOwner={sortByOwner}
+          isFiltered={warningFilter !== null || ownerFilter !== OWNER_FILTER_ALL}
           searchQuery={searchQuery}
           onTaskClick={handleTaskClick}
         />

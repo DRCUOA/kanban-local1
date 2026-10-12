@@ -25,6 +25,8 @@ export interface MenuPanelProps {
   label?: string;
   /** Test id of the menu; the element that places it gets `<testId>-placement`. */
   testId?: string;
+  /** Pinned under the list, outside the scroll area. */
+  footer?: ReactNode;
   children: ReactNode;
 }
 
@@ -44,6 +46,7 @@ export function MenuPanel({
   widthClass = 'lg:w-52',
   label,
   testId,
+  footer,
   children,
 }: MenuPanelProps) {
   useEffect(() => {
@@ -83,13 +86,19 @@ export function MenuPanel({
           data-testid={testId}
           className={cn(
             // Leaves the bottom nav's height clear beneath a full-height card.
-            'pointer-events-auto max-h-[calc(100dvh-10rem)] w-full max-w-xs overflow-y-auto neo-raised rounded-2xl p-2',
+            'pointer-events-auto flex max-h-[calc(100dvh-10rem)] w-full max-w-xs flex-col neo-raised elevation-overlay rounded-md p-1.5',
             'animate-in fade-in-0 zoom-in-95',
-            'lg:max-h-[calc(100dvh-5rem)] lg:max-w-none lg:rounded-xl lg:animate-slide-up',
+            // Wide screens: the panel hangs below the header and must clear the
+            // bottom nav as well, or its last rows (and its footer) render
+            // underneath the bar and cannot be reached.
+            'lg:max-h-[calc(100dvh-10rem)] lg:max-w-none lg:rounded-md lg:animate-slide-up',
             widthClass,
           )}
         >
-          {children}
+          <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+          {/* Outside the scroll area on purpose: a footer that scrolls away
+              with a long list is a footer nobody ever sees. */}
+          {footer !== undefined && <div className="shrink-0">{footer}</div>}
         </div>
       </div>
     </>

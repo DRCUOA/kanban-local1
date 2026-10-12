@@ -1,29 +1,60 @@
 import type { Task } from '@shared/schema';
-import { TASK_STATUS, TASK_PRIORITY } from '@shared/constants';
-import { resolveTaskStatusForWarnings } from '@shared/task-warning-highlight';
+import {
+  BOARD_WARNING_KINDS,
+  countBoardWarnings,
+  STALE_AFTER_DAYS,
+  type BoardWarningKind,
+} from '@shared/board-warnings';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Clock } from 'lucide-react';
-import { isTaskOverdueOn } from '@shared/briefing';
-import { differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useStages } from '@/hooks/use-stages';
 
 interface TaskWarningsProps {
   tasks: Task[];
+  /** The warning the board is currently filtered to, if any. */
+  activeKind?: BoardWarningKind | null;
+  /** Called with the pill pressed; the same pill again means "stop filtering". */
+  onToggleKind?: (kind: BoardWarningKind) => void;
   className?: string;
 }
 
 type WarningTone = 'info' | 'warning' | 'destructive';
 
-interface BoardWarning {
-  kind: 'in-progress' | 'high-priority' | 'overdue' | 'stale';
+interface WarningPill {
   tone: WarningTone;
   icon: typeof AlertCircle;
   title: string;
-  count: number;
   /** Full sentence — the pill shows only title + count, this is its tooltip. */
-  message: string;
+  message: (count: number) => string;
 }
+
+const PILLS: Record<BoardWarningKind, WarningPill> = {
+  'in-progress': {
+    tone: 'info',
+    icon: AlertCircle,
+    title: 'Many in progress',
+    message: (count) => `${count} tasks in progress. Focus on fewer.`,
+  },
+  'high-priority': {
+    tone: 'warning',
+    icon: AlertCircle,
+    title: 'High-priority waiting',
+    message: (count) => `${count} high-priority in backlog.`,
+  },
+  overdue: {
+    tone: 'destructive',
+    icon: Clock,
+    title: 'Overdue',
+    message: (count) => `${count} task${count > 1 ? 's' : ''} overdue.`,
+  },
+  stale: {
+    tone: 'info',
+    icon: AlertCircle,
+    title: 'Stale tasks',
+    message: (count) => `${count} not updated in ${STALE_AFTER_DAYS}+ days.`,
+  },
+};
 
 const TONE_CLASS: Record<WarningTone, string> = {
   destructive: 'text-danger',
@@ -32,82 +63,41 @@ const TONE_CLASS: Record<WarningTone, string> = {
 };
 
 /**
+ * The pressed pill. The tone's own colour washes the pill and rings it, so the
+ * one that is filtering reads as switched on at a glance rather than by its
+ * text alone — and `aria-pressed` says the same thing to a screen reader.
+ * Written out per tone because Tailwind only keeps class names it can see.
+ */
+const TONE_ACTIVE_CLASS: Record<WarningTone, string> = {
+  destructive: 'neo-pressed bg-danger/15 ring-1 ring-danger/50',
+  warning: 'neo-pressed bg-warning/15 ring-1 ring-warning/50',
+  info: 'neo-pressed bg-primary/15 ring-1 ring-primary/50',
+};
+
+/**
  * Board-level warnings as compact pills — icon, title, count — meant to sit in
  * the stage-chip row so they cost no vertical space on a wide viewport. The
  * full sentence is the pill's tooltip and accessible name. Colours match the
  * task-border accents these warnings share (overdue red, high-priority gold,
  * info blue).
+ *
+ * A pill is also the filter for what it counts: pressing it shows only those
+ * tasks, pressing it again shows everything. Counts are taken from the whole
+ * board, not from what is currently shown, so they stay put while filtering
+ * and you can move from one pill to the next.
  */
-export function TaskWarnings({ tasks, className }: TaskWarningsProps) {
+export function TaskWarnings({
+  tasks,
+  activeKind = null,
+  onToggleKind,
+  className,
+}: TaskWarningsProps) {
   const { data: stages = [] } = useStages();
 
-  const activeTasks = tasks.filter((t) => !t.archived);
+  const counts = countBoardWarnings(tasks, stages, new Date());
+  const kinds = BOARD_WARNING_KINDS.filter((kind) => counts[kind] !== undefined);
 
-  const inProgressTasks = activeTasks.filter(
-    (t) => resolveTaskStatusForWarnings(t, stages) === TASK_STATUS.IN_PROGRESS,
-  );
-  const highPriorityBacklog = activeTasks.filter(
-    (t) =>
-      resolveTaskStatusForWarnings(t, stages) === TASK_STATUS.BACKLOG &&
-      (t.priority === TASK_PRIORITY.HIGH || t.priority === TASK_PRIORITY.CRITICAL),
-  );
-
-  // Same helper as the card highlight and the export's `overdue` list.
-  const overdueTasks = activeTasks.filter((t) => isTaskOverdueOn(t, stages, new Date()));
-
-  const staleTasks = activeTasks.filter((t) => {
-    if (!t.updatedAt) return false;
-    const updated = new Date(t.updatedAt);
-    return differenceInDays(new Date(), updated) >= 14;
-  });
-
-  const warnings: BoardWarning[] = [];
-
-  if (inProgressTasks.length > 3) {
-    warnings.push({
-      kind: 'in-progress',
-      tone: 'info',
-      icon: AlertCircle,
-      title: 'Many in progress',
-      count: inProgressTasks.length,
-      message: `${inProgressTasks.length} tasks in progress. Focus on fewer.`,
-    });
-  }
-
-  if (highPriorityBacklog.length > 0) {
-    warnings.push({
-      kind: 'high-priority',
-      tone: 'warning',
-      icon: AlertCircle,
-      title: 'High-priority waiting',
-      count: highPriorityBacklog.length,
-      message: `${highPriorityBacklog.length} high-priority in backlog.`,
-    });
-  }
-
-  if (overdueTasks.length > 0) {
-    warnings.push({
-      kind: 'overdue',
-      tone: 'destructive',
-      icon: Clock,
-      title: 'Overdue',
-      count: overdueTasks.length,
-      message: `${overdueTasks.length} task${overdueTasks.length > 1 ? 's' : ''} overdue.`,
-    });
-  }
-
-  if (staleTasks.length > 0) {
-    warnings.push({
-      kind: 'stale',
-      tone: 'info',
-      icon: AlertCircle,
-      title: 'Stale tasks',
-      count: staleTasks.length,
-      message: `${staleTasks.length} not updated in 14+ days.`,
-    });
-  }
-
-  if (warnings.length === 0) return null;
+  if (kinds.length === 0) return null;
 
   return (
     <ul
@@ -118,29 +108,43 @@ export function TaskWarnings({ tasks, className }: TaskWarningsProps) {
       // list than as ragged right-aligned rows.
       className={cn('flex flex-wrap items-center gap-1.5 lg:justify-end', className)}
     >
-      {warnings.map((warning) => {
-        const Icon = warning.icon;
+      {kinds.map((kind) => {
+        const pill = PILLS[kind];
+        const count = counts[kind] ?? 0;
+        const Icon = pill.icon;
+        const isActive = activeKind === kind;
+        const message = pill.message(count);
+
         return (
-          <li
-            key={warning.kind}
-            title={warning.message}
-            aria-label={`${warning.title}: ${warning.message}`}
-            data-testid={`task-warning-${warning.kind}`}
-            className={cn(
-              'flex flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 neo-raised',
-              TONE_CLASS[warning.tone],
-            )}
-          >
-            <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            <span className="whitespace-nowrap font-display text-[11px] font-bold uppercase tracking-wider">
-              {warning.title}
-            </span>
-            <Badge
-              variant="secondary"
-              className="font-mono text-[10px] neo-pressed rounded-md px-1.5 py-0 min-h-0 min-w-0 h-5"
+          <li key={kind} className="flex-shrink-0">
+            <button
+              type="button"
+              title={message}
+              aria-pressed={isActive}
+              aria-label={`${pill.title}: ${message} ${
+                isActive
+                  ? 'Showing only these. Press to show every task.'
+                  : 'Press to show only these.'
+              }`}
+              onClick={() => onToggleKind?.(kind)}
+              data-testid={`task-warning-${kind}`}
+              className={cn(
+                'flex items-center gap-1.5 rounded-full px-3 py-1.5 transition-all active:scale-95',
+                isActive ? TONE_ACTIVE_CLASS[pill.tone] : 'neo-raised',
+                TONE_CLASS[pill.tone],
+              )}
             >
-              {warning.count}
-            </Badge>
+              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span className="whitespace-nowrap font-display text-[11px] font-bold uppercase tracking-wider">
+                {pill.title}
+              </span>
+              <Badge
+                variant="secondary"
+                className="font-mono text-[10px] neo-pressed rounded-md px-1.5 py-0 min-h-0 min-w-0 h-5"
+              >
+                {count}
+              </Badge>
+            </button>
           </li>
         );
       })}

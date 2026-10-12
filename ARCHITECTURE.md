@@ -32,7 +32,7 @@ kanban-local1 is a local-first Kanban board application built as a single-proces
                              │ pg
 ┌────────────────────────────┴────────────────────────────┐
 │  PostgreSQL                                             │
-│  Tables: projects, stages, sub_stages, tasks            │
+│  Tables: projects, owners, stages, sub_stages, tasks    │
 │  Schema: shared/schema.ts (Drizzle)                     │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -215,6 +215,20 @@ A project is a set of tasks related to a common goal. It scopes which tasks the 
 | order | integer | Default 0 |
 | created_at | timestamp | Default now |
 
+### owners
+
+A person work can be assigned to (`docs/epics/EPIC-06-owner-as-entity.md`). An owner is a label with an identity — one row, renameable once, referenced by many tasks — not an account: no email, no credentials, no membership. Authentication stays EPIC-02's.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | serial PK | |
+| name | text | Not null; unique case-insensitively in the database (`owners_name_lower_uniq`) as well as at the API (409) |
+| key | text | Optional short code shown on a chip when the name is longer than the card's budget, upper-cased |
+| color | text | Hex colour, nullable |
+| archived | boolean | Default false; archived owners keep their assignments but leave the pickers |
+| order | integer | Default 0 |
+| created_at | timestamp | Default now |
+
 ### stages
 
 | Column | Type | Notes |
@@ -232,7 +246,8 @@ A project is a set of tasks related to a common goal. It scopes which tasks the 
 | id | serial PK | |
 | stage_id | integer FK → stages | Cascade delete |
 | name | text | |
-| tag | text | Unique identifier, e.g. `"day-plan-am"` |
+| tag | text | Unique identifier, e.g. `"day-plan-am"`. Not read for a lane with an `owner_id` |
+| owner_id | integer FK → owners | Nullable. Set = this is that owner's lane, holding exactly the tasks in its stage they own; null = a tag lane, matched against `tasks.tags` as before. `ON DELETE SET NULL`; at most one lane per owner per stage (`sub_stages_stage_owner_uniq`) |
 | bg_class | text | Legacy: once a Tailwind class for the lane tint; no longer read, blank on new rows. Drop in a later migration |
 | opacity | integer | 0–100, the lane's shade (Admin "Shade" slider) |
 | order | integer | Display order |
@@ -256,6 +271,8 @@ A project is a set of tasks related to a common goal. It scopes which tasks the 
 | parent_task_id | integer FK → tasks | Self-referential (subtasks) |
 | recurrence | text | `none` / `daily` / `weekly` / `monthly` |
 | history | jsonb | `TaskHistoryEntry[]` (status change log) |
+| owner_id | integer FK → owners | Nullable — null is "Unassigned". `ON DELETE SET NULL`; indexed with `stage_id` |
+| owner | text | **Read-only mirror** of `owners.name`, kept in step by two triggers so `GET /api/export` and the daily-briefing agent read the field they read before EPIC-06. A task write sets `owner_id`; EPIC-06 story OWN-10 drops this column and its triggers |
 | updated_at | timestamp | |
 | created_at | timestamp | |
 
