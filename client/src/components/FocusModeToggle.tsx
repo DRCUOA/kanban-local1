@@ -11,7 +11,7 @@ export function FocusModeToggle({ enabled, onToggle }: FocusModeToggleProps) {
     <Button
       variant={enabled ? 'default' : 'outline'}
       size="icon"
-      className="rounded-xl h-11 w-11 active:scale-90 transition-transform"
+      className="rounded-md h-11 w-11 active:scale-90 transition-transform"
       onClick={() => {
         if ('vibrate' in navigator) navigator.vibrate(5);
         onToggle(!enabled);

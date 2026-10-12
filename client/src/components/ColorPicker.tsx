@@ -124,7 +124,7 @@ export function ColorPicker({ value = '#3B82F6', onChange, label }: ColorPickerP
             <button
               type="button"
               className={cn(
-                'w-12 h-12 rounded-xl border-2 border-border neo-raised cursor-pointer transition-all hover:scale-105',
+                'w-12 h-12 rounded-md border-2 border-border neo-raised cursor-pointer transition-all hover:scale-105',
                 'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2',
               )}
               style={{ backgroundColor: displayValue }}
@@ -164,7 +164,7 @@ export function ColorPicker({ value = '#3B82F6', onChange, label }: ColorPickerP
                   onChange={(e) => {
                     handleColorChange(e.target.value);
                   }}
-                  className="w-full h-10 rounded-xl cursor-pointer"
+                  className="w-full h-10 rounded-md cursor-pointer"
                 />
               </div>
             </div>

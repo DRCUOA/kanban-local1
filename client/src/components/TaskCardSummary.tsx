@@ -49,7 +49,14 @@ export function TaskCardSummary({ task, onClick, stageColor }: TaskCardSummaryPr
     transition,
   };
 
-  // Create beveled gradient background
+  /**
+   * The circle in its stage's colour: a flat tint with a solid ring of the
+   * same hue, and nothing else. It used to be a six-stop radial gradient
+   * inside a bevel — a drop shadow, a white top edge and two inner glows —
+   * which is what made a board of them look like moulded plastic. Size still
+   * carries effort and the ring still carries the warning state, so no
+   * information was in the bevel.
+   */
   const getGradientStyle = (color: string): React.CSSProperties => {
     if (!color?.startsWith('#')) return {};
 
@@ -65,13 +72,8 @@ export function TaskCardSummary({ task, onClick, stageColor }: TaskCardSummaryPr
     };
 
     return {
-      background: `radial-gradient(circle, ${hexToRgba(color, 0.7)} 0%, ${hexToRgba(color, 0.65)} 8%, ${hexToRgba(color, 0.5)} 20%, ${hexToRgba(color, 0.3)} 45%, ${hexToRgba(color, 0.15)} 75%, ${hexToRgba(color, 0.05)} 100%)`,
-      boxShadow: `
-        0 3px 6px rgba(0, 0, 0, 0.15),
-        0 -2px 4px rgba(255, 255, 255, 0.2),
-        inset 0 0 15px rgba(0, 0, 0, 0.18),
-        inset 0 0 8px rgba(0, 0, 0, 0.1)
-      `,
+      background: hexToRgba(color, 0.12),
+      border: `1px solid ${hexToRgba(color, 0.55)}`,
     };
   };
 

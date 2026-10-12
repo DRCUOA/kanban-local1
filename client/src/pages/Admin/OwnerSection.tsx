@@ -166,7 +166,7 @@ export function OwnerSection({ owners, isLoading }: OwnerSectionProps) {
           <DialogTrigger asChild>
             <Button
               size="sm"
-              className="rounded-xl h-10 active:scale-95 transition-transform"
+              className="rounded-md h-10 active:scale-95 transition-transform"
               onClick={() => {
                 setEditingId(null);
                 form.reset(emptyForm());
@@ -203,7 +203,7 @@ export function OwnerSection({ owners, isLoading }: OwnerSectionProps) {
                           placeholder="e.g. Rich"
                           maxLength={OWNER_NAME_MAX_LEN}
                           {...field}
-                          className="h-12 rounded-xl text-base"
+                          className="h-12 rounded-md text-base"
                           data-testid="input-owner-name"
                         />
                       </FormControl>
@@ -229,7 +229,7 @@ export function OwnerSection({ owners, isLoading }: OwnerSectionProps) {
                           onChange={(e) => {
                             field.onChange(e.target.value.toUpperCase());
                           }}
-                          className="h-12 rounded-xl text-base uppercase"
+                          className="h-12 rounded-md text-base uppercase"
                           data-testid="input-owner-key"
                         />
                       </FormControl>
@@ -259,14 +259,14 @@ export function OwnerSection({ owners, isLoading }: OwnerSectionProps) {
                   <Button
                     type="button"
                     variant="outline"
-                    className="flex-1 h-12 rounded-xl"
+                    className="flex-1 h-12 rounded-md"
                     onClick={closeDialog}
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
-                    className="flex-1 h-12 rounded-xl active:scale-95 transition-transform"
+                    className="flex-1 h-12 rounded-md active:scale-95 transition-transform"
                     disabled={createOwner.isPending || updateOwner.isPending}
                     data-testid="button-submit-owner"
                   >
@@ -290,7 +290,7 @@ export function OwnerSection({ owners, isLoading }: OwnerSectionProps) {
           {owners.map((owner) => (
             <div
               key={owner.id}
-              className="flex items-center justify-between gap-3 p-3 neo-card rounded-xl"
+              className="flex items-center justify-between gap-3 p-3 neo-card rounded-md"
               data-testid={`owner-row-${owner.id}`}
             >
               <div className="flex min-w-0 items-center gap-3">
@@ -330,7 +330,7 @@ export function OwnerSection({ owners, isLoading }: OwnerSectionProps) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-10 w-10 rounded-xl"
+                  className="h-10 w-10 rounded-md"
                   onClick={() => {
                     openEdit(owner);
                   }}
@@ -342,7 +342,7 @@ export function OwnerSection({ owners, isLoading }: OwnerSectionProps) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-10 w-10 rounded-xl"
+                  className="h-10 w-10 rounded-md"
                   onClick={() => {
                     toggleArchived(owner);
                   }}
@@ -359,7 +359,7 @@ export function OwnerSection({ owners, isLoading }: OwnerSectionProps) {
                 <Button
                   variant="destructive"
                   size="icon"
-                  className="h-10 w-10 rounded-xl"
+                  className="h-10 w-10 rounded-md"
                   onClick={() => {
                     setPendingDelete(owner);
                   }}

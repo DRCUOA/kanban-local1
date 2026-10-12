@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { User, ArrowDownAZ } from 'lucide-react';
 import { MenuPanel } from '@/components/MenuPanel';
+import { BuiltByTk } from '@/components/BuiltByTk';
 import type { OwnerSummary } from '@shared/schema';
 import { DEFAULT_OWNER_COLOR } from '@shared/constants';
 import { OWNER_FILTER_ALL, OWNER_FILTER_NONE, type OwnerFilter } from './owner-view';
@@ -92,7 +93,7 @@ export function MoreActionsMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="More options"
-        className="flex h-10 w-10 items-center justify-center rounded-xl transition-all active:scale-90"
+        className="flex h-10 w-10 items-center justify-center rounded-md transition-all active:scale-90"
         onClick={() => {
           setOpen(!open);
         }}
@@ -231,6 +232,10 @@ export function MoreActionsMenu({
           <Upload className="h-4 w-4" />
           Import Tasks
         </button>
+
+        <div className="mt-1 border-t border-border-subtle pt-1">
+          <BuiltByTk />
+        </div>
       </MenuPanel>
     </div>
   );

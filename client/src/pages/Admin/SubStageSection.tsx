@@ -164,7 +164,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
           <DialogTrigger asChild>
             <Button
               size="sm"
-              className="rounded-xl h-10 active:scale-95 transition-transform"
+              className="rounded-md h-10 active:scale-95 transition-transform"
               onClick={() => {
                 setEditingSubStageId(null);
                 setSelectedStageId(null);
@@ -200,7 +200,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                         }}
                       >
                         <FormControl>
-                          <SelectTrigger className="h-12 rounded-xl">
+                          <SelectTrigger className="h-12 rounded-md">
                             <SelectValue placeholder="Select a stage" />
                           </SelectTrigger>
                         </FormControl>
@@ -225,7 +225,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                         <Input
                           placeholder="e.g. AM"
                           {...field}
-                          className="h-12 rounded-xl text-base"
+                          className="h-12 rounded-md text-base"
                         />
                       </FormControl>
                     </FormItem>
@@ -241,7 +241,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                         <Input
                           placeholder="e.g. day-plan-am"
                           {...field}
-                          className="h-12 rounded-xl text-base"
+                          className="h-12 rounded-md text-base"
                         />
                       </FormControl>
                     </FormItem>
@@ -265,7 +265,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                       >
                         <FormControl>
                           <SelectTrigger
-                            className="h-12 rounded-xl"
+                            className="h-12 rounded-md"
                             data-testid="select-sub-stage-owner"
                           >
                             <SelectValue />
@@ -308,7 +308,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                         </span>
                       </div>
                       <div
-                        className="neo-well relative overflow-hidden rounded-xl"
+                        className="neo-well relative overflow-hidden rounded-md"
                         data-testid="shade-preview"
                         aria-hidden
                       >
@@ -353,7 +353,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                       <FormControl>
                         <Input
                           type="number"
-                          className="h-12 rounded-xl text-base"
+                          className="h-12 rounded-md text-base"
                           {...field}
                           onChange={(e) => {
                             field.onChange(Number(e.target.value));
@@ -368,14 +368,14 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                   <Button
                     type="button"
                     variant="outline"
-                    className="flex-1 h-12 rounded-xl"
+                    className="flex-1 h-12 rounded-md"
                     onClick={closeSubStageDialog}
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
-                    className="flex-1 h-12 rounded-xl active:scale-95 transition-transform"
+                    className="flex-1 h-12 rounded-md active:scale-95 transition-transform"
                     disabled={createSubStageMutation.isPending || updateSubStageMutation.isPending}
                   >
                     {editingSubStageId ? 'Update' : 'Create'}
@@ -404,7 +404,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                   {stageSubStages.map((subStage: any) => (
                     <div
                       key={subStage.id}
-                      className="flex items-center justify-between p-3 neo-card rounded-xl"
+                      className="flex items-center justify-between p-3 neo-card rounded-md"
                     >
                       <div className="flex items-center gap-3">
                         {/* A swatch of the lane at its shade. */}
@@ -445,7 +445,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                         <Button
                           variant="outline"
                           size="icon"
-                          className="h-10 w-10 rounded-xl"
+                          className="h-10 w-10 rounded-md"
                           onClick={() => {
                             openEditSubStageDialog(subStage);
                           }}
@@ -457,7 +457,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                         <Button
                           variant="destructive"
                           size="icon"
-                          className="h-10 w-10 rounded-xl"
+                          className="h-10 w-10 rounded-md"
                           onClick={() => {
                             deleteSubStageMutation.mutate(subStage.id);
                           }}

@@ -105,7 +105,7 @@ export function DashboardHeader({
               aria-label="Search tasks"
               aria-expanded={searchVisible}
               aria-controls="dashboard-search"
-              className="flex h-10 w-10 items-center justify-center rounded-xl transition-all active:scale-90 lg:hidden"
+              className="flex h-10 w-10 items-center justify-center rounded-md transition-all active:scale-90 lg:hidden"
               onClick={searchVisible ? closeSearch : openSearch}
               data-testid="button-search-toggle"
             >
@@ -133,7 +133,7 @@ export function DashboardHeader({
             type="text"
             placeholder="Search tasks or enter a task ID..."
             aria-label="Search tasks or enter a task ID"
-            className={cn('h-10 rounded-xl pl-10', searchVisible && 'pr-10')}
+            className={cn('h-10 rounded-md pl-10', searchVisible && 'pr-10')}
             value={searchQuery}
             onChange={(e) => {
               onSearchChange(e.target.value);

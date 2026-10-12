@@ -62,7 +62,7 @@ export function OwnerSelector({
             role="combobox"
             aria-expanded={open}
             className={cn(
-              'flex-1 h-12 justify-between text-left font-normal rounded-xl',
+              'flex-1 h-12 justify-between text-left font-normal rounded-md',
               !selected && 'text-muted-foreground',
             )}
             data-testid="owner-selector-trigger"

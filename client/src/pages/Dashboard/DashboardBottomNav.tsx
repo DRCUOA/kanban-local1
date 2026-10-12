@@ -26,7 +26,7 @@ export function DashboardBottomNav() {
   const targets = filingTargets(stages);
 
   const navBtn =
-    'flex flex-col items-center gap-1 py-2 px-3 min-w-[4.25rem] rounded-xl text-fg-secondary transition-[color,box-shadow,background-color,transform] duration-200 hover:text-foreground active:scale-90';
+    'flex flex-col items-center gap-1 py-2 px-3 min-w-[4.25rem] rounded-md text-fg-secondary transition-[color,box-shadow,background-color,transform] duration-200 hover:text-foreground active:scale-90';
 
   return (
     <nav className="mobile-bottom-nav">

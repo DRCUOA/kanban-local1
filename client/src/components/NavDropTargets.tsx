@@ -58,7 +58,7 @@ function FilingDropZone({
         ref={setNodeRef}
         data-testid="filing-drop-zone"
         className={cn(
-          'pointer-events-none absolute -inset-1 rounded-xl transition-all duration-150',
+          'pointer-events-none absolute -inset-1 rounded-md transition-all duration-150',
           active && 'bg-primary/15 ring-2 ring-primary/60',
         )}
       />
@@ -69,7 +69,7 @@ function FilingDropZone({
       {menuOpen && (
         <div
           data-testid="filing-drop-menu"
-          className="pointer-events-none absolute bottom-full left-0 z-[60] mb-1 w-52 animate-in fade-in-0 duration-150 neo-raised rounded-xl p-2"
+          className="pointer-events-none absolute bottom-full left-0 z-[60] mb-1 w-52 animate-in fade-in-0 duration-150 neo-raised rounded-md p-2"
         >
           <p className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             File as
@@ -115,7 +115,7 @@ function BinDropZone({ active }: { active: boolean }) {
         ref={setNodeRef}
         data-testid="bin-drop-zone"
         className={cn(
-          'pointer-events-none absolute -inset-1 rounded-xl transition-all duration-150',
+          'pointer-events-none absolute -inset-1 rounded-md transition-all duration-150',
           active && 'bg-destructive/15 ring-2 ring-destructive/60',
         )}
       />

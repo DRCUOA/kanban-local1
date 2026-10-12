@@ -314,7 +314,7 @@ function PreviewBody({
           {isRichTextEmpty(task.description) ? (
             <p className="text-sm italic text-muted-foreground">No description</p>
           ) : (
-            <div className="rounded-xl neo-well px-3 py-2.5">
+            <div className="rounded-md neo-well px-3 py-2.5">
               <RichTextContent
                 value={task.description}
                 className="text-sm"

@@ -36,7 +36,7 @@ export function EditTaskDialogActions({
           <Button
             type="button"
             variant="outline"
-            className="h-12 rounded-xl flex-1"
+            className="h-12 rounded-md flex-1"
             onClick={onViewHistory}
           >
             <History className="h-4 w-4 mr-2" />
@@ -47,7 +47,7 @@ export function EditTaskDialogActions({
           <Button
             type="button"
             variant="outline"
-            className="h-12 rounded-xl flex-1"
+            className="h-12 rounded-md flex-1"
             onClick={onShare}
             data-testid="button-share-task"
           >
@@ -60,14 +60,14 @@ export function EditTaskDialogActions({
             <Button
               type="button"
               variant="destructive"
-              className="h-12 rounded-xl flex-1"
+              className="h-12 rounded-md flex-1"
               data-testid="button-delete-task"
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Delete
             </Button>
           </AlertDialogTrigger>
-          <AlertDialogContent className="mx-4 rounded-2xl">
+          <AlertDialogContent className="mx-4 rounded-lg">
             <AlertDialogHeader>
               <AlertDialogTitle className="text-lg">Delete task?</AlertDialogTitle>
               <AlertDialogDescription className="text-sm">
@@ -75,10 +75,10 @@ export function EditTaskDialogActions({
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-row gap-3">
-              <AlertDialogCancel className="flex-1 h-12 rounded-xl m-0">Cancel</AlertDialogCancel>
+              <AlertDialogCancel className="flex-1 h-12 rounded-md m-0">Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={onDelete}
-                className="flex-1 h-12 rounded-xl m-0 bg-destructive text-destructive-foreground active:bg-destructive/90"
+                className="flex-1 h-12 rounded-md m-0 bg-destructive text-destructive-foreground active:bg-destructive/90"
               >
                 Delete
               </AlertDialogAction>
@@ -91,7 +91,7 @@ export function EditTaskDialogActions({
         <Button
           type="button"
           variant="outline"
-          className="flex-1 h-12 rounded-xl"
+          className="flex-1 h-12 rounded-md"
           onClick={onCancel}
         >
           Cancel
@@ -99,7 +99,7 @@ export function EditTaskDialogActions({
         <Button
           type="submit"
           disabled={isSaving}
-          className="flex-1 h-12 rounded-xl active:scale-95 transition-transform"
+          className="flex-1 h-12 rounded-md active:scale-95 transition-transform"
           data-testid="button-save-task"
         >
           {isSaving ? 'Saving...' : 'Save'}

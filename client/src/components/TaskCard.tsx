@@ -75,7 +75,7 @@ export function TaskCard({ task, onClick, stageColor, onInlineEdit }: TaskCardPr
         ref={setNodeRef}
         style={style}
         data-task-id={task.id}
-        className="opacity-30 bg-primary/10 border-2 border-primary border-dashed rounded-xl h-[100px]"
+        className="opacity-30 bg-primary/10 border-2 border-primary border-dashed rounded-md h-[100px]"
       />
     );
   }

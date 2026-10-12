@@ -73,7 +73,7 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
                   field.onChange(appendTranscript(field.value, transcript));
                 }}
                 fieldLabel="title"
-                className="h-12 text-base rounded-xl"
+                className="h-12 text-base rounded-md"
                 data-testid="input-edit-title"
                 micTestId="button-dictate-edit-title"
               />
@@ -95,7 +95,7 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
               value={field.value?.toString()}
             >
               <FormControl>
-                <SelectTrigger className="h-12 rounded-xl">
+                <SelectTrigger className="h-12 rounded-md">
                   <SelectValue />
                 </SelectTrigger>
               </FormControl>
@@ -154,7 +154,7 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
                   }}
                 >
                   <FormControl>
-                    <SelectTrigger className="h-12 rounded-xl" data-testid="select-edit-substage">
+                    <SelectTrigger className="h-12 rounded-md" data-testid="select-edit-substage">
                       <SelectValue />
                     </SelectTrigger>
                   </FormControl>
@@ -212,14 +212,14 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
                 <button
                   type="button"
                   onClick={() => setEditingDescription(true)}
-                  className="w-full text-left neo-input rounded-xl px-4 py-3 min-h-[64px] text-base text-muted-foreground italic bg-card"
+                  className="w-full text-left neo-input rounded-md px-4 py-3 min-h-[64px] text-base text-muted-foreground italic bg-card"
                   data-testid="text-edit-description"
                 >
                   Tap to add a description...
                 </button>
               ) : (
                 // Read mode: links open in a new tab, image chips open a preview.
-                <div className="neo-input rounded-xl px-4 py-3 bg-card">
+                <div className="neo-input rounded-md px-4 py-3 bg-card">
                   <RichTextContent
                     value={field.value}
                     className="text-base"
@@ -242,7 +242,7 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
               <FormLabel className="text-xs">Status</FormLabel>
               <Select onValueChange={field.onChange} value={field.value || TASK_STATUS.BACKLOG}>
                 <FormControl>
-                  <SelectTrigger className="h-12 rounded-xl">
+                  <SelectTrigger className="h-12 rounded-md">
                     <SelectValue />
                   </SelectTrigger>
                 </FormControl>
@@ -267,7 +267,7 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
               <FormLabel className="text-xs">Priority</FormLabel>
               <Select onValueChange={field.onChange} value={field.value || TASK_PRIORITY.NORMAL}>
                 <FormControl>
-                  <SelectTrigger className="h-12 rounded-xl">
+                  <SelectTrigger className="h-12 rounded-md">
                     <SelectValue />
                   </SelectTrigger>
                 </FormControl>
@@ -319,7 +319,7 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
                       type="button"
                       onClick={() => field.onChange(val)}
                       className={cn(
-                        'flex-1 h-12 rounded-xl text-base font-semibold transition-colors',
+                        'flex-1 h-12 rounded-md text-base font-semibold transition-colors',
                         field.value === val
                           ? 'bg-primary text-primary-foreground neo-raised'
                           : 'bg-secondary/50 text-secondary-foreground hover:bg-secondary',
@@ -351,7 +351,7 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
                         <Button
                           variant="outline"
                           className={cn(
-                            'flex-1 h-12 justify-start text-left font-normal rounded-xl',
+                            'flex-1 h-12 justify-start text-left font-normal rounded-md',
                             !hasDate && 'text-muted-foreground',
                           )}
                         >
@@ -376,7 +376,7 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
                       type="button"
                       variant="outline"
                       size="icon"
-                      className="h-12 w-12 rounded-xl shrink-0"
+                      className="h-12 w-12 rounded-md shrink-0"
                       onClick={() => field.onChange(null)}
                       aria-label="Clear due date"
                     >

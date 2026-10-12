@@ -123,7 +123,7 @@ export function StageSection({ stages, isLoading }: StageSectionProps) {
           <DialogTrigger asChild>
             <Button
               size="sm"
-              className="rounded-xl h-10 active:scale-95 transition-transform"
+              className="rounded-md h-10 active:scale-95 transition-transform"
               onClick={() => {
                 setEditingId(null);
                 form.reset({ name: '', order: 1, color: '#3B82F6' });
@@ -154,7 +154,7 @@ export function StageSection({ stages, isLoading }: StageSectionProps) {
                         <Input
                           placeholder="e.g. Backlog"
                           {...field}
-                          className="h-12 rounded-xl text-base"
+                          className="h-12 rounded-md text-base"
                           data-testid="input-stage-name"
                         />
                       </FormControl>
@@ -170,7 +170,7 @@ export function StageSection({ stages, isLoading }: StageSectionProps) {
                       <FormControl>
                         <Input
                           type="number"
-                          className="h-12 rounded-xl text-base"
+                          className="h-12 rounded-md text-base"
                           {...field}
                           onChange={(e) => {
                             field.onChange(Number(e.target.value));
@@ -208,14 +208,14 @@ export function StageSection({ stages, isLoading }: StageSectionProps) {
                   <Button
                     type="button"
                     variant="outline"
-                    className="flex-1 h-12 rounded-xl"
+                    className="flex-1 h-12 rounded-md"
                     onClick={closeDialog}
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
-                    className="flex-1 h-12 rounded-xl active:scale-95 transition-transform"
+                    className="flex-1 h-12 rounded-md active:scale-95 transition-transform"
                     disabled={createMutation.isPending || updateMutation.isPending}
                     data-testid="button-submit-stage"
                   >
@@ -239,7 +239,7 @@ export function StageSection({ stages, isLoading }: StageSectionProps) {
           {stages.map((stage: any) => (
             <div
               key={stage.id}
-              className="flex items-center justify-between p-3 neo-card rounded-xl"
+              className="flex items-center justify-between p-3 neo-card rounded-md"
             >
               <div className="flex items-center gap-3">
                 {stage.color && (
@@ -254,7 +254,7 @@ export function StageSection({ stages, isLoading }: StageSectionProps) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-10 w-10 rounded-xl"
+                  className="h-10 w-10 rounded-md"
                   onClick={() => {
                     openEditDialog(stage);
                   }}
@@ -265,7 +265,7 @@ export function StageSection({ stages, isLoading }: StageSectionProps) {
                 <Button
                   variant="destructive"
                   size="icon"
-                  className="h-10 w-10 rounded-xl"
+                  className="h-10 w-10 rounded-md"
                   onClick={() => {
                     deleteMutation.mutate(stage.id);
                   }}

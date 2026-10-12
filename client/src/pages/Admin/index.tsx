@@ -4,6 +4,7 @@ import { ROUTES } from '@shared/constants';
 import { useStages, useSubStages } from '@/hooks/use-stages';
 import { useProjects } from '@/hooks/use-projects';
 import { useOwners } from '@/hooks/use-owners';
+import { BuiltByTk } from '@/components/BuiltByTk';
 import { AdminHeader } from './AdminHeader';
 import { ProjectSection } from './ProjectSection';
 import { OwnerSection } from './OwnerSection';
@@ -32,6 +33,7 @@ export default function Admin(_props: AdminProps) {
         <OwnerSection owners={owners} isLoading={isLoadingOwners} />
         <StageSection stages={stages} isLoading={isLoading} />
         <SubStageSection stages={stages} subStages={subStages} />
+        <BuiltByTk className="pb-2 pt-1" />
       </div>
     </div>
   );

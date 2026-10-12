@@ -80,7 +80,7 @@ export default function Archive() {
             onClick={() => {
               window.location.reload();
             }}
-            className="text-primary font-medium text-sm py-3 px-6 neo-raised rounded-xl active:scale-95 transition-transform"
+            className="text-primary font-medium text-sm py-3 px-6 neo-raised rounded-md active:scale-95 transition-transform"
           >
             Try Refreshing
           </button>
@@ -128,7 +128,7 @@ export default function Archive() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
               <Input
                 placeholder="Search archived tasks..."
-                className="pl-10 h-11 rounded-xl"
+                className="pl-10 h-11 rounded-md"
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -162,7 +162,7 @@ export default function Archive() {
                 return (
                   <Card
                     key={task.id}
-                    className="cursor-pointer transition-all duration-200 active:scale-[0.98] rounded-xl"
+                    className="cursor-pointer transition-all duration-200 active:scale-[0.98] rounded-md"
                     onClick={() => {
                       handleTaskClick(task);
                     }}
@@ -198,7 +198,7 @@ export default function Archive() {
                             e.stopPropagation();
                             handleUnarchive(task);
                           }}
-                          className="text-xs rounded-xl h-9 active:scale-95 transition-transform"
+                          className="text-xs rounded-md h-9 active:scale-95 transition-transform"
                         >
                           Restore
                         </Button>
@@ -209,7 +209,7 @@ export default function Archive() {
               })}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center text-center p-8 neo-container rounded-2xl mx-2 mt-4">
+            <div className="flex flex-col items-center justify-center text-center p-8 neo-container rounded-lg mx-2 mt-4">
               <div className="h-16 w-16 neo-pressed rounded-full flex items-center justify-center mb-4">
                 <ArchiveIcon className="h-8 w-8 text-muted-foreground" />
               </div>

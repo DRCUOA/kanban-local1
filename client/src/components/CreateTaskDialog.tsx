@@ -136,7 +136,7 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
           </button>
         ) : (
           <Button
-            className="gap-2 rounded-xl active:scale-95 transition-transform w-full"
+            className="gap-2 rounded-md active:scale-95 transition-transform w-full"
             data-testid="button-add-task"
           >
             <Plus className="h-5 w-5" />
@@ -170,7 +170,7 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
                         field.onChange(appendTranscript(field.value, transcript));
                       }}
                       fieldLabel="title"
-                      className="h-12 text-base rounded-xl"
+                      className="h-12 text-base rounded-md"
                       data-testid="input-task-title"
                       micTestId="button-dictate-title"
                     />
@@ -192,7 +192,7 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
                     defaultValue={field.value?.toString()}
                   >
                     <FormControl>
-                      <SelectTrigger className="h-12 rounded-xl">
+                      <SelectTrigger className="h-12 rounded-md">
                         <SelectValue placeholder="Select stage" />
                       </SelectTrigger>
                     </FormControl>
@@ -272,7 +272,7 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
                       value={field.value || TASK_PRIORITY.NORMAL}
                     >
                       <FormControl>
-                        <SelectTrigger className="h-12 rounded-xl">
+                        <SelectTrigger className="h-12 rounded-md">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -308,7 +308,7 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
                             type="button"
                             onClick={() => field.onChange(val)}
                             className={cn(
-                              'flex-1 h-12 rounded-xl text-base font-semibold transition-colors',
+                              'flex-1 h-12 rounded-md text-base font-semibold transition-colors',
                               field.value === val
                                 ? 'bg-primary text-primary-foreground neo-raised'
                                 : 'bg-secondary/50 text-secondary-foreground hover:bg-secondary',
@@ -341,7 +341,7 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
                             <Button
                               variant="outline"
                               className={cn(
-                                'flex-1 h-12 justify-start text-left font-normal rounded-xl',
+                                'flex-1 h-12 justify-start text-left font-normal rounded-md',
                                 !hasDate && 'text-muted-foreground',
                               )}
                             >
@@ -366,7 +366,7 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
                           type="button"
                           variant="outline"
                           size="icon"
-                          className="h-12 w-12 rounded-xl shrink-0"
+                          className="h-12 w-12 rounded-md shrink-0"
                           onClick={() => field.onChange(null)}
                           aria-label="Clear due date"
                         >
@@ -387,7 +387,7 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1 h-12 rounded-xl"
+                className="flex-1 h-12 rounded-md"
                 onClick={() => {
                   setOpen(false);
                 }}
@@ -397,7 +397,7 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
               <Button
                 type="submit"
                 disabled={createTask.isPending}
-                className="flex-1 h-12 rounded-xl active:scale-95 transition-transform"
+                className="flex-1 h-12 rounded-md active:scale-95 transition-transform"
                 data-testid="button-submit-task"
               >
                 {createTask.isPending ? 'Creating...' : 'Create Task'}

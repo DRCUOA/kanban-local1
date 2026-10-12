@@ -102,7 +102,7 @@ export default function Dashboard(_props: DashboardProps) {
             onClick={() => {
               window.location.reload();
             }}
-            className="text-primary font-medium text-sm py-3 px-6 neo-raised rounded-xl active:scale-95 transition-transform"
+            className="text-primary font-medium text-sm py-3 px-6 neo-raised rounded-md active:scale-95 transition-transform"
           >
             Try Refreshing
           </button>

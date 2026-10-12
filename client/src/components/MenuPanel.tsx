@@ -83,9 +83,9 @@ export function MenuPanel({
           data-testid={testId}
           className={cn(
             // Leaves the bottom nav's height clear beneath a full-height card.
-            'pointer-events-auto max-h-[calc(100dvh-10rem)] w-full max-w-xs overflow-y-auto neo-raised rounded-2xl p-2',
+            'pointer-events-auto max-h-[calc(100dvh-10rem)] w-full max-w-xs overflow-y-auto neo-raised elevation-overlay rounded-md p-1.5',
             'animate-in fade-in-0 zoom-in-95',
-            'lg:max-h-[calc(100dvh-5rem)] lg:max-w-none lg:rounded-xl lg:animate-slide-up',
+            'lg:max-h-[calc(100dvh-5rem)] lg:max-w-none lg:rounded-md lg:animate-slide-up',
             widthClass,
           )}
         >

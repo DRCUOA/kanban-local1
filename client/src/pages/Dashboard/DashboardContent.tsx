@@ -31,7 +31,7 @@ export function DashboardContent({
     <main className="flex-1 overflow-y-auto flex flex-col">
       <div className="flex-1 flex flex-col min-h-0 px-3 pt-2">
         {focusMode && (
-          <div className="mb-3 p-3 neo-container rounded-xl border-l-4 border-l-primary flex-shrink-0">
+          <div className="mb-3 p-3 neo-container rounded-md border-l-4 border-l-primary flex-shrink-0">
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 bg-primary rounded-full animate-pulse" />
               <p className="text-xs font-medium">Focus Mode Active</p>
@@ -52,7 +52,7 @@ export function DashboardContent({
             />
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 neo-container rounded-2xl mx-2 my-4">
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 neo-container rounded-lg mx-2 my-4">
             <div className="h-16 w-16 neo-pressed rounded-full flex items-center justify-center mb-4">
               <LayoutDashboard className="h-8 w-8 text-muted-foreground" />
             </div>
