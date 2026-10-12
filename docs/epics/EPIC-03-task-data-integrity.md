@@ -1,10 +1,12 @@
 # EPIC-03: One authoritative state per task
 
-**Version:** 3.1
+**Version:** 3.2
 **Epic type:** Enabler
 **Status:** Ready for refinement
 **Owner:** Platform
-**Target:** 2–3 sprints (≈34 pts)
+**Target:** 2–3 sprints (≈29 pts)
+
+**v3.2 (12 Oct 2026) — story 5 delegated.** The owner/swimlane overlap is now specified in full as [EPIC-06: Owner as an entity](EPIC-06-owner-as-entity.md), which makes `owner` a first-class row rather than normalising a label. Story 5 (5 pts) leaves this epic, taking the target from ≈34 to ≈29 pts; the out-of-scope note on identity and the sub-stage FK finding are amended below. The cost estimate in the final section predates this change and has not been recut.
 
 ## Epic hypothesis statement
 
@@ -27,7 +29,7 @@ But that fix is a _projection over ambiguous storage_. It works by choosing a wi
 
 1. **`status` and `stage_id` are two contradictory state machines.** Three of 22 tasks disagree: #126 is `status: in_progress` but sits in Backlog; #128 and #139 are `status: backlog` but sit in Waiting. The `status` enum has no value that can represent the Waiting column at all, so `getStatusFromStageName('Waiting ✋️ ')` folds it to `backlog`. The UI renders by `stage_id`; an agent filtering `status == 'in_progress'` gets a different set.
 2. **Assignment lives in two namespaces that contradict each other.** #142 has `owner: "Moi"` but sits in the **Rich** swimlane, because swimlane membership is encoded in `tags`, not `owner`. A per-person briefing attributes it to the wrong human.
-3. **Sub-stage membership has no foreign key.** It is a string match of `tasks.tags[]` against `sub_stages.tag`, which is only unique _within a stage_ — tag `"Rich"` exists on stage 2 and means nothing on stage 1. Tag `"Status"` resolves to a sub-stage actually named "Scheduled Action | On Track", so the stored token carries none of the meaning.
+3. **Sub-stage membership has no foreign key.** *(v3.2: EPIC-06 fixes this for the lanes that name a person, by binding them to an owner row and deriving their membership from `tasks.owner_id`. Lanes that name a status keep tag-matching, and story 3 below still owns them.)* It is a string match of `tasks.tags[]` against `sub_stages.tag`, which is only unique _within a stage_ — tag `"Rich"` exists on stage 2 and means nothing on stage 1. Tag `"Status"` resolves to a sub-stage actually named "Scheduled Action | On Track", so the stored token carries none of the meaning.
 4. **`tags` is tri-state.** 11 tasks store `null`, 3 store `[]`, 8 store an array — and the flattened tag set contains `null` entries. `task.tags.includes(x)` throws on half the board.
 5. **Stage display names are load-bearing.** `getStatusFromStageName` substring-matches user-editable names to infer status. Renaming a column silently changes task semantics. Names also carry emoji and stray whitespace (`"Waiting ✋️ "`, `"Done  ✔"`), and stages 2 and 4 both have `order: 2`, so column order is non-deterministic.
 6. **`due_date` is a date wearing a timestamp's clothes.** Every value is noon UTC — a date, stored as an instant. Nothing in the schema or payload declares a timezone, so "is this overdue?" has a different answer in UTC than in `Pacific/Auckland`. The board cuts days in server-local time; that was an undocumented convention until the export started declaring it.
@@ -40,7 +42,7 @@ But that fix is a _projection over ambiguous storage_. It works by choosing a wi
 - Collapse `status` / `stage_id` to a single stored state, with stage-kind classification that does not depend on display names.
 - `tasks.sub_stage_id` FK replacing tag-string matching for swimlane membership.
 - `tags` normalisation: `NOT NULL DEFAULT '[]'`, no null elements.
-- Assignment as one field, with the swimlane/owner overlap resolved.
+- ~~Assignment as one field, with the swimlane/owner overlap resolved.~~ → **EPIC-06** (v3.2).
 - `due_date` typed as a date with an explicit board timezone setting.
 - Attachment extraction: base64 blobs out of `description`, plus a plain-text projection.
 - Stage `order` uniqueness and a `kind` discriminator.
@@ -49,7 +51,7 @@ But that fix is a _projection over ambiguous storage_. It works by choosing a wi
 ## Out of scope (explicitly)
 
 - Project scoping → **EPIC-01**.
-- Authentication and a real `users` table → **EPIC-02: Identity & membership**. This epic normalises `owner` into one namespace but keeps it a free-form label; turning labels into user records is EPIC-02's job.
+- Authentication and sign-in → **EPIC-02**. *Amended v3.2:* owner records are **EPIC-06**'s, not EPIC-02's. An owner is a row with a name, colour and short code — a label with an identity, not an account — so EPIC-02 reduces to authentication, accounts, membership and permissions. This epic no longer touches `owner` at all.
 - Changing the briefing digest's shape or ranking rules. `shared/briefing.ts` is the consumer contract and stays stable; it simply stops having conflicts to report.
 - Recurrence as a working feature. `recurrence` is uniformly `'none'` across all 22 tasks; this epic leaves the column alone (see open question 3).
 - Any change to the board's visual design.
@@ -93,7 +95,7 @@ Each change ships expand → backfill → contract so no deploy has a broken win
 | 2   | Collapse `tasks.status` into stage-derived state; reconcile the 3 conflicting rows (enabler) | 5   |
 | 3   | Add `tasks.sub_stage_id` FK; backfill from tag matching; writers set it (enabler)            | 5   |
 | 4   | Make `tags` `NOT NULL DEFAULT '[]'` and strip null elements (enabler)                        | 2   |
-| 5   | Resolve the owner/swimlane overlap into one assignment field                                 | 5   |
+| ~~5~~ | ~~Resolve the owner/swimlane overlap into one assignment field~~ → **EPIC-06** (v3.2)       | —   |
 | 6   | Type `due_date` as a date; add a board timezone setting surfaced in Admin                    | 3   |
 | 7   | Extract base64 attachments out of `description` into `task_attachments`                      | 5   |
 | 8   | Add `description_text` plain-text projection; export omits raw HTML by default               | 3   |
@@ -109,12 +111,14 @@ Each change ships expand → backfill → contract so no deploy has a broken win
 - **Given** an import file written before this epic, **when** it is imported, **then** a legacy `status` field is accepted and mapped to a stage, or defaulted, without error.
 - No consumer reads `getStatusFromStageName` after this story; the function is deleted.
 
-### Story 5 — acceptance criteria
+### Story 5 — delegated to EPIC-06 (v3.2)
 
-- **Given** task #142 (`owner: "Moi"`, Rich swimlane), **when** an operator opens it, **then** they are prompted once to pick the authoritative assignee, and the choice is stored in one field.
-- **Given** any task, **when** the export is built, **then** `briefing.*[].ownerConflict` is `false` for every entry.
-- **Given** a sub-stage that names a person, **when** a task is moved into it, **then** the assignment field updates — a card cannot sit in the "Rich" lane while assigned to someone else.
-- **Given** a sub-stage that names a status (e.g. "Scheduled Action | On Track"), **when** a task is moved into it, **then** the assignment field is unchanged.
+The criteria below are superseded by [EPIC-06](EPIC-06-owner-as-entity.md) §7, which keeps all four and settles what this epic left open — #142's assignee is decided by rule (the lane wins) rather than by prompting an operator, so no story here needs a human decision mid-migration.
+
+- ~~**Given** task #142 (`owner: "Moi"`, Rich swimlane), **when** an operator opens it, **then** they are prompted once to pick the authoritative assignee, and the choice is stored in one field.~~ → EPIC-06 OWN-S12: the lane wins, and every overwrite is reported.
+- **Given** any task, **when** the export is built, **then** `briefing.*[].ownerConflict` is `false` for every entry. → EPIC-06 OWN-R26.
+- **Given** a sub-stage that names a person, **when** a task is moved into it, **then** the assignment field updates — a card cannot sit in the "Rich" lane while assigned to someone else. → EPIC-06 OWN-R12.
+- **Given** a sub-stage that names a status (e.g. "Scheduled Action | On Track"), **when** a task is moved into it, **then** the assignment field is unchanged. → EPIC-06 OWN-05 criteria.
 
 ### Story 7 — acceptance criteria
 
