@@ -12,6 +12,8 @@ export interface DashboardContentProps {
   searchQuery: string;
   /** Order cards by owner name instead of by due date (EPIC-06 OWN-R33). */
   sortByOwner?: boolean;
+  /** True while a warning pill or an owner is narrowing the board. */
+  isFiltered?: boolean;
   onTaskClick: (task: Task) => void;
 }
 
@@ -22,6 +24,7 @@ export function DashboardContent({
   boardLayout,
   searchQuery,
   sortByOwner = false,
+  isFiltered = false,
   onTaskClick,
 }: DashboardContentProps) {
   return (
@@ -55,11 +58,15 @@ export function DashboardContent({
             </div>
             <h3 className="text-lg font-bold mb-2 text-foreground">No tasks found</h3>
             <p className="text-muted-foreground text-sm mb-6">
-              {searchQuery
-                ? 'No tasks match your search.'
-                : 'Create your first task to get started.'}
+              {searchQuery && isFiltered
+                ? 'No tasks match your search within the current filter.'
+                : searchQuery
+                  ? 'No tasks match your search.'
+                  : isFiltered
+                    ? 'Nothing is left once the filter is applied. Press the pill again to show every task.'
+                    : 'Create your first task to get started.'}
             </p>
-            {!searchQuery && <CreateTaskDialog />}
+            {!searchQuery && !isFiltered && <CreateTaskDialog />}
           </div>
         )}
       </div>

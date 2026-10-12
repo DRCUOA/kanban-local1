@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import type { Task } from '@shared/schema';
 import { TaskWarnings } from './TaskWarnings';
@@ -98,6 +98,71 @@ describe('TaskWarnings (compact pills)', () => {
     );
 
     expect(screen.queryByTestId('task-warning-overdue')).toBeNull();
+  });
+
+  describe('as a filter', () => {
+    const manyInProgress = [
+      makeTask({ id: 4, stageId: 2, status: 'in_progress' }),
+      makeTask({ id: 5, stageId: 2, status: 'in_progress' }),
+      makeTask({ id: 6, stageId: 2, status: 'in_progress' }),
+      makeTask({ id: 7, stageId: 2, status: 'in_progress' }),
+    ];
+
+    it('reports the pill pressed', () => {
+      const onToggleKind = vi.fn();
+      render(<TaskWarnings tasks={manyInProgress} onToggleKind={onToggleKind} />);
+
+      fireEvent.click(screen.getByTestId('task-warning-in-progress'));
+
+      expect(onToggleKind).toHaveBeenCalledWith('in-progress');
+    });
+
+    it('reports the active pill too, so pressing it again clears the filter', () => {
+      const onToggleKind = vi.fn();
+      render(
+        <TaskWarnings
+          tasks={manyInProgress}
+          activeKind="in-progress"
+          onToggleKind={onToggleKind}
+        />,
+      );
+
+      fireEvent.click(screen.getByTestId('task-warning-in-progress'));
+
+      expect(onToggleKind).toHaveBeenCalledWith('in-progress');
+    });
+
+    it('shows which pill is filtering, in its own tone and to a screen reader', () => {
+      const tasks = [...manyInProgress, makeTask({ id: 1, priority: 'high' })];
+      render(<TaskWarnings tasks={tasks} activeKind="high-priority" />);
+
+      const active = screen.getByTestId('task-warning-high-priority');
+      expect(active.getAttribute('aria-pressed')).toBe('true');
+      expect(active.className).toContain('bg-warning/15');
+      expect(active.getAttribute('aria-label')).toContain('Showing only these');
+
+      const inactive = screen.getByTestId('task-warning-in-progress');
+      expect(inactive.getAttribute('aria-pressed')).toBe('false');
+      expect(inactive.className).toContain('neo-raised');
+      expect(inactive.getAttribute('aria-label')).toContain('Press to show only these');
+    });
+
+    it('counts the whole board, so a count does not move under its own filter', () => {
+      // The caller passes every task whatever the filter is; a pill reading
+      // "Overdue 6" over a board showing five would be worse than no pill.
+      const tasks = [...manyInProgress, makeTask({ id: 1, priority: 'high' })];
+      const { rerender } = render(<TaskWarnings tasks={tasks} />);
+      expect(screen.getByTestId('task-warning-in-progress').textContent).toContain('4');
+
+      rerender(<TaskWarnings tasks={tasks} activeKind="high-priority" />);
+      expect(screen.getByTestId('task-warning-in-progress').textContent).toContain('4');
+    });
+
+    it('is a button, so it is reachable by keyboard', () => {
+      render(<TaskWarnings tasks={manyInProgress} />);
+
+      expect(screen.getByTestId('task-warning-in-progress').tagName).toBe('BUTTON');
+    });
   });
 
   it('rides in the stage-chip row, after the chips', () => {

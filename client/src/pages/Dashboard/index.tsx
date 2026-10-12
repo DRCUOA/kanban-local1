@@ -20,6 +20,7 @@ import { DashboardBottomNav } from './DashboardBottomNav';
 import { useOwners } from '@/hooks/use-owners';
 import { useFilteredTasks } from './use-filtered-tasks';
 import { OWNER_FILTER_ALL, type OwnerFilter } from './owner-view';
+import type { BoardWarningKind } from '@shared/board-warnings';
 import { useTaskImportExport } from './use-task-import-export';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- page component; props will grow during Phase 5 decomposition
@@ -46,6 +47,8 @@ export default function Dashboard(_props: DashboardProps) {
   // Whose work the board shows, and whether it is ordered by owner (EPIC-06).
   const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>(OWNER_FILTER_ALL);
   const [sortByOwner, setSortByOwner] = useState(false);
+  // Which header warning pill is filtering the board, if any.
+  const [warningFilter, setWarningFilter] = useState<BoardWarningKind | null>(null);
 
   const { data: stages = [] } = useStages();
   const { data: owners = [] } = useOwners();
@@ -58,6 +61,7 @@ export default function Dashboard(_props: DashboardProps) {
     viewMode,
     stages,
     ownerFilter,
+    warningFilter,
   });
   const { handleExport, handleImport } = useTaskImportExport({ tasks, stages });
 
@@ -158,7 +162,15 @@ export default function Dashboard(_props: DashboardProps) {
             {/* Warnings ride in the chip row (right-aligned, wrapping under the
               chips when narrow) instead of stacking as banners above the board. */}
             <StageHeaders tasks={tasks}>
-              <TaskWarnings tasks={tasks} />
+              {/* Counted against the whole board, so a pill's number does not
+                  change under the filter it is applying. */}
+              <TaskWarnings
+                tasks={tasks}
+                activeKind={warningFilter}
+                onToggleKind={(kind) => {
+                  setWarningFilter((current) => (current === kind ? null : kind));
+                }}
+              />
             </StageHeaders>
           </div>
         )}
@@ -169,6 +181,7 @@ export default function Dashboard(_props: DashboardProps) {
           viewMode={viewMode}
           boardLayout={boardLayout}
           sortByOwner={sortByOwner}
+          isFiltered={warningFilter !== null || ownerFilter !== OWNER_FILTER_ALL}
           searchQuery={searchQuery}
           onTaskClick={handleTaskClick}
         />

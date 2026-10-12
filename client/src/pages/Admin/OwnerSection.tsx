@@ -299,7 +299,10 @@ export function OwnerSection({ owners, isLoading }: OwnerSectionProps) {
                   style={{ backgroundColor: owner.color ?? DEFAULT_OWNER_COLOR }}
                 />
                 <div className="min-w-0">
-                  <p className="flex items-center gap-2 font-medium text-sm">
+                  {/* A div, not a p: the badges below render as divs, and a
+                      div inside a p is invalid HTML the browser silently
+                      restructures. */}
+                  <div className="flex items-center gap-2 font-medium text-sm">
                     <span className="truncate">{owner.name}</span>
                     {owner.key && (
                       <Badge
@@ -317,7 +320,7 @@ export function OwnerSection({ owners, isLoading }: OwnerSectionProps) {
                         Archived
                       </Badge>
                     )}
-                  </p>
+                  </div>
                   <p className="text-[10px] text-muted-foreground">
                     {owner.taskCount} {owner.taskCount === 1 ? 'task' : 'tasks'}
                   </p>

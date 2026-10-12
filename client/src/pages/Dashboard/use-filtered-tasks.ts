@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/prefer-optional-chain, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/no-unnecessary-condition -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { useMemo } from 'react';
 import { type Task, type Stage } from '@shared/schema';
+import { matchesBoardWarning, type BoardWarningKind } from '@shared/board-warnings';
 import { OWNER_FILTER_ALL, ownerFilterMatches, type OwnerFilter } from './owner-view';
 import { richTextToPlainText } from '@/lib/rich-text';
 import {
@@ -22,6 +23,8 @@ export interface UseFilteredTasksOptions {
   stages: Stage[];
   /** Restrict the board to one owner, to nobody's, or to everyone's (EPIC-06). */
   ownerFilter?: OwnerFilter;
+  /** Restrict the board to the tasks behind one header warning pill. */
+  warningFilter?: BoardWarningKind | null;
 }
 
 /**
@@ -50,6 +53,7 @@ export function useFilteredTasks({
   viewMode,
   stages,
   ownerFilter = OWNER_FILTER_ALL,
+  warningFilter = null,
 }: UseFilteredTasksOptions): Task[] {
   return useMemo(() => {
     const taskId = parseTaskIdQuery(searchQuery);
@@ -61,10 +65,14 @@ export function useFilteredTasks({
       return match ? [match] : [];
     }
 
+    // The warning pills, the owner filter and the search box narrow the board
+    // together: each one is a condition, not a mode that replaces the others.
+    const now = new Date();
     let filtered =
       tasks?.filter(
         (t) =>
           ownerFilterMatches(t.ownerId, ownerFilter) &&
+          (warningFilter === null || matchesBoardWarning(t, warningFilter, stages, now)) &&
           (t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (t.description &&
               richTextToPlainText(t.description)
@@ -99,5 +107,5 @@ export function useFilteredTasks({
     }
 
     return filtered;
-  }, [tasks, archivedTasks, searchQuery, focusMode, viewMode, stages, ownerFilter]);
+  }, [tasks, archivedTasks, searchQuery, focusMode, viewMode, stages, ownerFilter, warningFilter]);
 }
