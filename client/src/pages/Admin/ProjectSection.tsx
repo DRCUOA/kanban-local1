@@ -299,7 +299,10 @@ export function ProjectSection({ projects, isLoading }: ProjectSectionProps) {
                   style={{ backgroundColor: project.color ?? DEFAULT_PROJECT_COLOR }}
                 />
                 <div className="min-w-0">
-                  <p className="flex items-center gap-2 font-medium text-sm">
+                  {/* A div, not a p: the badges below render as divs, and a
+                      div inside a p is invalid HTML the browser silently
+                      restructures. */}
+                  <div className="flex items-center gap-2 font-medium text-sm">
                     <span className="truncate">{project.name}</span>
                     {project.key && (
                       <Badge
@@ -317,7 +320,7 @@ export function ProjectSection({ projects, isLoading }: ProjectSectionProps) {
                         Archived
                       </Badge>
                     )}
-                  </p>
+                  </div>
                   <p className="text-[10px] text-muted-foreground">
                     {project.taskCount} {project.taskCount === 1 ? 'task' : 'tasks'}
                   </p>
