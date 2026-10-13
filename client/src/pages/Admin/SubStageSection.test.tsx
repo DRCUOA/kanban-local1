@@ -22,8 +22,15 @@ function wrapper({ children }: { children: React.ReactNode }) {
 }
 
 const mockStages: Stage[] = [
-  { id: 1, name: 'Backlog', order: 0, color: '#3B82F6', createdAt: new Date() },
-  { id: 2, name: 'In Progress', order: 1, color: '#10B981', createdAt: new Date() },
+  { id: 1, name: 'Backlog', order: 0, kind: 'backlog', color: '#3B82F6', createdAt: new Date() },
+  {
+    id: 2,
+    name: 'In Progress',
+    order: 1,
+    kind: 'in_progress',
+    color: '#10B981',
+    createdAt: new Date(),
+  },
 ];
 
 const mockSubStages: SubStage[] = [

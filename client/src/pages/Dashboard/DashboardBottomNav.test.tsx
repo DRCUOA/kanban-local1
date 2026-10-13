@@ -17,8 +17,8 @@ vi.mock('wouter', () => ({
 vi.mock('@/hooks/use-stages', () => ({
   useStages: () => ({
     data: [
-      { id: 1, name: 'To Do', order: 1, color: null, createdAt: new Date() },
-      { id: 2, name: 'Done  ✔', order: 2, color: null, createdAt: new Date() },
+      { id: 1, name: 'To Do', order: 1, kind: 'backlog', color: null, createdAt: new Date() },
+      { id: 2, name: 'Done  ✔', order: 2, kind: 'done', color: null, createdAt: new Date() },
     ],
   }),
 }));

@@ -46,9 +46,16 @@ vi.mock('@/hooks/use-tasks', () => ({
 vi.mock('@/hooks/use-stages', () => ({
   useStages: () => ({
     data: [
-      { id: 1, name: 'To Do', order: 1, color: '#3B82F6', createdAt: new Date() },
-      { id: 2, name: 'Doing', order: 2, color: '#10B981', createdAt: new Date() },
-      { id: 3, name: 'Done  ✔', order: 3, color: '#84CC16', createdAt: new Date() },
+      { id: 1, name: 'To Do', order: 1, kind: 'backlog', color: '#3B82F6', createdAt: new Date() },
+      {
+        id: 2,
+        name: 'Doing',
+        order: 2,
+        kind: 'in_progress',
+        color: '#10B981',
+        createdAt: new Date(),
+      },
+      { id: 3, name: 'Done  ✔', order: 3, kind: 'done', color: '#84CC16', createdAt: new Date() },
     ],
   }),
   useSubStages: () => ({ data: [] }),
@@ -74,7 +81,6 @@ const makeTask = (id: number, stageId: number, title = `Task ${id}`): Task =>
     description: null,
     stageId,
     archived: false,
-    status: 'backlog',
     priority: 'normal',
     effort: 1,
     dueDate: new Date(2030, 0, 1 + id),

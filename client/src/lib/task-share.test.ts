@@ -30,8 +30,8 @@ function makeTask(overrides: Partial<Task> = {}): Task {
 }
 
 const stages: Stage[] = [
-  { id: 1, name: 'To Do', order: 1, color: null, createdAt: new Date() },
-  { id: 2, name: 'In Progress', order: 2, color: null, createdAt: new Date() },
+  { id: 1, name: 'To Do', order: 1, kind: 'backlog', color: null, createdAt: new Date() },
+  { id: 2, name: 'In Progress', order: 2, kind: 'in_progress', color: null, createdAt: new Date() },
 ] as Stage[];
 
 function tasksScope(tasks: Task[]) {

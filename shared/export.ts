@@ -14,8 +14,14 @@ import {
 /**
  * Bump when the envelope shape changes in a way importers must react to.
  * Adding an optional key is not a breaking change and does not need a bump.
+ *
+ * v2 (EPIC-03 story 2): `tasks[].status` is gone. A task's state is the `kind`
+ * of the stage it sits in, which `stages[].kind` and `briefing.*[].stage` both
+ * carry. `briefing.*[].storedStatus` and `.statusConflict` remain at null and
+ * false so the digest's shape does not move; nothing new should read them.
+ * This importer still accepts a v1 file and maps its `status` to a column.
  */
-export const EXPORT_FORMAT_VERSION = 1;
+export const EXPORT_FORMAT_VERSION = 2;
 
 export const EXPORT_GENERATOR = 'kanban-local';
 
@@ -40,8 +46,8 @@ export type ExportAttachment = TaskAttachment & { url: string; data?: string };
  *
  * `tasks[].urgency` and `briefing` are derived, read-only views of the same
  * data — added for the daily-briefing agent, which cannot be trusted to do
- * date arithmetic or reconcile `status` against `stageId` on its own. Importers
- * ignore both; every stored task field is still present and unmodified.
+ * date arithmetic on its own. Importers ignore both; every stored task field
+ * is still present and unmodified.
  */
 export interface TaskExportBundle {
   formatVersion: number;

@@ -1,12 +1,6 @@
 import { format } from 'date-fns';
 import type { Task } from '@shared/schema';
-import {
-  EFFORT_MAX,
-  TASK_PRIORITY_LABEL,
-  TASK_STATUS_LABEL,
-  type TaskPriorityValue,
-  type TaskStatusValue,
-} from '@shared/constants';
+import { EFFORT_MAX, TASK_PRIORITY_LABEL, type TaskPriorityValue } from '@shared/constants';
 import {
   absolutizeAttachmentLinks,
   isRichTextEmpty,
@@ -73,13 +67,13 @@ function escapeHtml(text: string): string {
 
 /** Detail rows, in reading order; entries with no value are dropped. */
 function buildDetails(task: Task, options: TaskEmailOptions): [string, string][] {
-  const status = task.status ? TASK_STATUS_LABEL[task.status as TaskStatusValue] : null;
   const priority = task.priority ? TASK_PRIORITY_LABEL[task.priority as TaskPriorityValue] : null;
   const tags = Array.isArray(task.tags) ? task.tags.filter((tag) => tag.trim() !== '') : [];
 
   const rows: [string, string | null][] = [
+    // Stage alone. There used to be a Status row beside it, and the two could
+    // print different answers in the same email (EPIC-03 finding #1).
     ['Stage', options.stageName ?? null],
-    ['Status', status ?? null],
     ['Priority', priority ?? null],
     ['Owner', task.owner && task.owner.trim() !== '' ? task.owner : null],
     ['Effort', task.effort ? `${task.effort} of ${EFFORT_MAX}` : null],

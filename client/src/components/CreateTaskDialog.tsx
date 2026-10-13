@@ -3,13 +3,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { insertTaskSchema, type InsertTask } from '@shared/schema';
 import {
-  TASK_STATUS,
   TASK_PRIORITY,
   TASK_PRIORITY_LABEL,
   TASK_RECURRENCE,
   EFFORT_MIN,
   EFFORT_MAX,
-  getStatusFromStageName,
   type TaskPriorityValue,
 } from '@shared/constants';
 import { useCreateTask } from '@/hooks/use-tasks';
@@ -76,7 +74,6 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
       description: '',
       stageId: defaultStageId,
       projectId: defaultProjectId,
-      status: TASK_STATUS.BACKLOG,
       priority: TASK_PRIORITY.NORMAL,
       recurrence: TASK_RECURRENCE.NONE,
       ownerId: null,
@@ -89,36 +86,30 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
     if (open) form.setValue('projectId', defaultProjectId);
   }, [open, defaultProjectId]);
 
+  // The stage picked below is the task's state — there is no separate status
+  // to reconcile with it any more (EPIC-03 story 2). Creating a task in a Done
+  // column therefore creates a done task, which is what the old code looked
+  // like it did and did not: the form's status default won over the stage.
   const onSubmit = (data: InsertTask) => {
-    const selectedStage = stages.find((s: any) => s.id === data.stageId);
-    let status = data.status;
-    if (!status && selectedStage) {
-      status = getStatusFromStageName(selectedStage.name);
-    }
-
-    createTask.mutate(
-      { ...data, status: status || TASK_STATUS.BACKLOG },
-      {
-        onSuccess: () => {
-          if ('vibrate' in navigator) navigator.vibrate(10);
-          toast({ title: 'Task created', description: 'Your new task has been added.' });
-          setOpen(false);
-          form.reset({
-            stageId: defaultStageId,
-            projectId: defaultProjectId,
-            title: '',
-            description: '',
-            status: TASK_STATUS.BACKLOG,
-            priority: TASK_PRIORITY.NORMAL,
-            recurrence: TASK_RECURRENCE.NONE,
-            ownerId: null,
-          });
-        },
-        onError: (error) => {
-          toast({ title: 'Error', description: error.message, variant: 'destructive' });
-        },
+    createTask.mutate(data, {
+      onSuccess: () => {
+        if ('vibrate' in navigator) navigator.vibrate(10);
+        toast({ title: 'Task created', description: 'Your new task has been added.' });
+        setOpen(false);
+        form.reset({
+          stageId: defaultStageId,
+          projectId: defaultProjectId,
+          title: '',
+          description: '',
+          priority: TASK_PRIORITY.NORMAL,
+          recurrence: TASK_RECURRENCE.NONE,
+          ownerId: null,
+        });
       },
-    );
+      onError: (error) => {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      },
+    });
   };
 
   return (

@@ -26,7 +26,6 @@ const makeTask = (overrides: Partial<Task> = {}): Task =>
     description: null,
     stageId: 1,
     archived: false,
-    status: 'backlog',
     priority: 'normal',
     effort: null,
     dueDate: null,
@@ -42,8 +41,8 @@ const makeTask = (overrides: Partial<Task> = {}): Task =>
   }) as Task;
 
 const stages: Stage[] = [
-  { id: 1, name: 'Backlog', order: 1, color: null, createdAt: new Date() },
-  { id: 2, name: 'In Progress', order: 2, color: null, createdAt: new Date() },
+  { id: 1, name: 'Backlog', order: 1, kind: 'backlog', color: null, createdAt: new Date() },
+  { id: 2, name: 'In Progress', order: 2, kind: 'in_progress', color: null, createdAt: new Date() },
 ] as Stage[];
 
 const subStages: SubStage[] = [
@@ -135,7 +134,6 @@ describe('useKanbanDragDrop handleDragEnd', () => {
     expect(updateMutate).toHaveBeenCalledWith({
       id: 5,
       stageId: 1,
-      status: 'backlog',
       tags: ['moi'],
     });
   });
@@ -153,7 +151,6 @@ describe('useKanbanDragDrop handleDragEnd', () => {
     expect(updateMutate).toHaveBeenCalledWith({
       id: 5,
       stageId: 2,
-      status: 'in_progress',
       tags: null,
     });
   });
@@ -232,7 +229,6 @@ describe('useKanbanDragDrop and a person’s lane (EPIC-06)', () => {
     expect(updateMutate).toHaveBeenCalledWith({
       id: 5,
       stageId: 2,
-      status: 'in_progress',
       tags: [],
       ownerId: 2,
     });

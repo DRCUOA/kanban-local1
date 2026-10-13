@@ -17,7 +17,6 @@ import {
 } from '@dnd-kit/core';
 import { useUpdateTask, useArchiveTask, useBinTask } from '@/hooks/use-tasks';
 import { overflowAncestors, withClippedDroppableRects } from '@/lib/clip-droppable-rects';
-import { getStatusFromStageName } from '@shared/constants';
 import { BIN_DROPPABLE_ID, FILING_DROPPABLE_ID, isFilingId } from '@/lib/filing-targets';
 
 /** How long a drag must rest on the Filing button before its submenu appears. */
@@ -220,15 +219,17 @@ export function useKanbanDragDrop({ tasks, sortedStages, allSubStages }: UseKanb
   }
 
   /**
-   * Move `task` into `stageId`, applying the same status and sub-stage tag
-   * rules a drop on the stage's own column would. Used by the Filing submenu,
-   * which files to a stage without that column being on the board any more.
+   * Move `task` into `stageId`, applying the same sub-stage tag rules a drop on
+   * the stage's own column would. Used by the Filing submenu, which files to a
+   * stage without that column being on the board any more.
+   *
+   * Writing `stageId` is the whole move: the stage's `kind` is the task's
+   * state, so there is no second field to keep in step (EPIC-03 story 2).
    */
   function moveTaskToStage(task: Task, stageId: number) {
     const targetStage = sortedStages.find((s) => s.id === stageId);
     if (!targetStage || task.stageId === stageId) return;
 
-    const newStatus = getStatusFromStageName(targetStage.name);
     const targetSubStages = allSubStages.filter((ss) => ss.stageId === stageId);
     const targetTags = targetSubStages.map((ss) => ss.tag);
     const otherTags = allSubStages.filter((ss) => ss.stageId !== stageId).map((ss) => ss.tag);
@@ -238,15 +239,12 @@ export function useKanbanDragDrop({ tasks, sortedStages, allSubStages }: UseKanb
 
     setActiveTasks((prev) =>
       prev.map((t) =>
-        t.id === task.id
-          ? { ...t, stageId, status: newStatus, tags: newTags.length > 0 ? newTags : null }
-          : t,
+        t.id === task.id ? { ...t, stageId, tags: newTags.length > 0 ? newTags : null } : t,
       ),
     );
     updateTask.mutate({
       id: task.id,
       stageId,
-      status: newStatus,
       tags: newTags.length > 0 ? newTags : null,
     });
   }
@@ -355,18 +353,14 @@ export function useKanbanDragDrop({ tasks, sortedStages, allSubStages }: UseKanb
 
       const targetStage = sortedStages.find((s) => s.id === stageId);
       if (targetStage && activeTask.stageId !== stageId) {
-        const newStatus = getStatusFromStageName(targetStage.name);
         setActiveTasks((prev) =>
           prev.map((t) =>
-            t.id === activeTask.id
-              ? { ...t, stageId, status: newStatus, tags: newTags, ...ownerPatch }
-              : t,
+            t.id === activeTask.id ? { ...t, stageId, tags: newTags, ...ownerPatch } : t,
           ),
         );
         updateTask.mutate({
           id: activeTask.id,
           stageId,
-          status: newStatus,
           tags: newTags,
           ...ownerPatch,
         });
@@ -431,7 +425,6 @@ export function useKanbanDragDrop({ tasks, sortedStages, allSubStages }: UseKanb
           });
         }
       } else if (newStage) {
-        const newStatus = getStatusFromStageName(newStage.name);
         let newTags = activeTask.tags || [];
         const newStageSubStages = allSubStages.filter((ss) => ss.stageId === newStageId);
         if (newStageSubStages.length === 0) {
@@ -453,7 +446,6 @@ export function useKanbanDragDrop({ tasks, sortedStages, allSubStages }: UseKanb
               ? {
                   ...t,
                   stageId: newStageId,
-                  status: newStatus,
                   tags: newTags.length > 0 ? newTags : null,
                 }
               : t,
@@ -462,7 +454,6 @@ export function useKanbanDragDrop({ tasks, sortedStages, allSubStages }: UseKanb
         updateTask.mutate({
           id: activeTask.id,
           stageId: newStageId,
-          status: newStatus,
           tags: newTags.length > 0 ? newTags : null,
         });
       }

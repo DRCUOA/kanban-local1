@@ -13,7 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { richTextToPlainText } from '@/lib/rich-text';
-import { isDoneStageName, ROUTES } from '@shared/constants';
+import { ROUTES } from '@shared/constants';
+import { closedStages } from '@shared/stage-state';
 import { PROJECT_SCOPE_NONE } from '@shared/project-scope';
 import { sortTasksByDueDate } from '@shared/task-sort';
 import type { Task } from '@shared/schema';
@@ -39,9 +40,8 @@ export default function Filing() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  const doneStages = [...stages]
-    .sort((a, b) => a.order - b.order)
-    .filter((s) => isDoneStageName(s.name));
+  // Done and abandoned both: the page files work that has stopped.
+  const doneStages = closedStages(stages);
 
   const handleArchive = (task: Task) => {
     if ('vibrate' in navigator) navigator.vibrate(10);

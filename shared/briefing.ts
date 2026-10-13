@@ -1,19 +1,16 @@
 import { z } from 'zod';
-import {
-  TASK_STATUS,
-  getStatusFromStageName,
-  isInProgressStageName,
-  isWaitingStageName,
-} from './constants';
+import { STAGE_KIND, STAGE_KIND_VALUES, isClosedStageKind, type StageKindValue } from './constants';
+import { taskStageKind } from './stage-state';
 import type { Task, Stage, SubStage } from './schema';
 
 /**
  * Derived urgency + a pre-built digest for the daily-briefing agent.
  *
- * The raw export makes an LLM do three things it does badly: date arithmetic
- * against `exportedAt`, reconciling `status` with `stageId`, and joining
- * `tags` against `subStages[].tag`. Everything here is computed server-side so
- * the agent reads a field instead of inferring one.
+ * The raw export makes an LLM do two things it does badly: date arithmetic
+ * against `exportedAt`, and joining `tags` against `subStages[].tag`.
+ * Everything here is computed server-side so the agent reads a field instead
+ * of inferring one. Reconciling `status` against `stageId` used to be the
+ * third; EPIC-03 story 2 removed the conflict rather than projecting over it.
  */
 
 // --- Due buckets ---
@@ -62,7 +59,7 @@ export const MUST_SURFACE_RANK = BRIEFING_RANK.DUE_TODAY;
  * the labeled day at local midnight. See `dueDayFor`.
  */
 export function overdueRuleFor(timeZone: string): string {
-  return `A task’s due day is \`dueDay\`, its labeled calendar date — do not derive a date from the \`dueDate\` instant, whose UTC date part is a day earlier. A task is overdue when \`dueDay\` falls before the day of \`now\`, evaluated in ${timeZone}, and the task is still open. A task due today is never overdue. A closed task — status done or abandoned, or sitting in a Done column — is never overdue, however old its due date. Matches the board’s own overdue highlight.`;
+  return `A task’s due day is \`dueDay\`, its labeled calendar date — do not derive a date from the \`dueDate\` instant, whose UTC date part is a day earlier. A task is overdue when \`dueDay\` falls before the day of \`now\`, evaluated in ${timeZone}, and the task is still open. A task due today is never overdue. A closed task — one sitting in a done or abandoned column — is never overdue, however old its due date. Matches the board’s own overdue highlight.`;
 }
 
 export interface TaskUrgency {
@@ -90,12 +87,23 @@ export type ExportTask = Task & { urgency: TaskUrgency };
 export interface BriefingEntry {
   id: number;
   title: string;
-  /** Status resolved from the task's stage — what the board actually shows. */
-  stage: string;
+  /**
+   * The task's state: the `kind` of the column it sits in. Since EPIC-03 this
+   * is the only state a task has. `waiting` is among the values — the old
+   * status enum could not express it and folded those tasks into `backlog`.
+   */
+  stage: StageKindValue;
   stageLabel: string;
-  /** The stored `status` column, which can disagree with `stage`. */
+  /**
+   * Always null since EPIC-03 story 2 dropped `tasks.status`. Retained so the
+   * payload's shape does not change under consumers; nothing new should read
+   * it.
+   */
   storedStatus: string | null;
-  /** True when `storedStatus` and `stage` disagree; the board renders `stage`. */
+  /**
+   * Always false since EPIC-03 story 2: there is no second state left to
+   * disagree with `stage`. Retained for payload stability.
+   */
   statusConflict: boolean;
   priority: string | null;
   /** The owner's name, mirrored from `owners.name`. Null = Unassigned. */
@@ -136,19 +144,21 @@ export interface BriefingDigest {
   /** Tasks parked in a waiting/blocked column. */
   blocked: BriefingEntry[];
   /**
-   * Tasks sitting in a Backlog column — not yet started. May overlap
-   * `overdue`/`dueToday` by design. Excludes waiting/blocked columns, which
-   * the stage-name status inference would otherwise fold into backlog.
+   * Tasks sitting in a backlog column — not yet started. May overlap
+   * `overdue`/`dueToday` by design. Waiting columns are a kind of their own
+   * and appear in `blocked` instead, so no subtraction is needed here.
    */
   backlog: BriefingEntry[];
 }
 
 // --- Resolution helpers ---
 
-/** Stage-first status. The board renders by stage, so a briefing should too. */
-export function resolveStageStatus(task: Task, stages: Stage[]): string {
-  const stage = stages.find((s) => s.id === task.stageId);
-  return stage ? getStatusFromStageName(stage.name) : getStatusFromStageName('');
+/**
+ * The task's state. A thin re-export of `taskStageKind` under the name the
+ * export's consumers already know.
+ */
+export function resolveStageStatus(task: Task, stages: Stage[]): StageKindValue {
+  return taskStageKind(task, stages);
 }
 
 /** Human-facing stage name, with the emoji and padding the board carries stripped. */
@@ -194,10 +204,6 @@ export function cleanLabel(name: string): string {
     .replace(/[\p{Extended_Pictographic}️‍]/gu, '')
     .replace(/\s+/g, ' ')
     .trim();
-}
-
-function isBlank(value: string | null | undefined): boolean {
-  return value === null || value === undefined || value.trim().length === 0;
 }
 
 // --- Calendar days in a zone ---
@@ -310,20 +316,16 @@ export function isOverdueOn(
   return dueDay !== null && dueDay < zonedDayKey(now, timeZone);
 }
 
-/** Statuses under which a task's clock has stopped. */
-const CLOSED_STATUSES: readonly string[] = [TASK_STATUS.DONE, TASK_STATUS.ABANDONED];
-
 /**
- * True when the task's life is over: its stored `status` is done/abandoned, or
- * the stage the board shows it in resolves to done/abandoned. Either signal
- * closes it — the two can disagree (see `statusConflict`), and a card sitting
- * in a Done column must not stay flagged whatever its stale status says, nor
- * the other way round.
+ * True when the task's life is over — it sits in a done or abandoned column.
+ *
+ * This used to take the two state fields and close the task if *either* said
+ * so, because they could disagree and a card sitting in Done must not stay
+ * flagged whatever a stale status claimed. With `tasks.status` gone there is
+ * one answer to read.
  */
 export function isClosedTask(task: Task, stages: Stage[] = []): boolean {
-  if (typeof task.status === 'string' && CLOSED_STATUSES.includes(task.status)) return true;
-  const stageName = stages.find((s) => s.id === task.stageId)?.name;
-  return stageName !== undefined && CLOSED_STATUSES.includes(getStatusFromStageName(stageName));
+  return isClosedStageKind(taskStageKind(task, stages));
 }
 
 /**
@@ -367,8 +369,9 @@ export function formatDueDayLabel(
  * Per-task urgency relative to `now`. Calendar-day based, so a task due at any
  * time today is "today" rather than "overdue by a few hours".
  *
- * `stages` sharpens the closed-task check with the stage the board shows;
- * callers without stages in hand still get the stored-status half.
+ * `stages` is what the closed-task check and the in-progress rank read. A
+ * caller without stages in hand gets no closed-task gate and no in-progress
+ * promotion — every task looks like backlog — so pass them where it matters.
  */
 export function computeTaskUrgency(
   task: Task,
@@ -388,7 +391,7 @@ export function computeTaskUrgency(
   const isOverdue = dueBucket === DUE_BUCKET.OVERDUE;
   const daysOverdue = isOverdue && daysUntilDue !== null ? -daysUntilDue : 0;
 
-  const briefingRank = rankFor(task, dueBucket);
+  const briefingRank = rankFor(task, dueBucket, stages);
 
   return {
     dueDay,
@@ -419,14 +422,15 @@ function dueBucketFor(
   return { dueBucket: DUE_BUCKET.LATER, daysUntilDue, dueDay };
 }
 
-function rankFor(task: Task, dueBucket: DueBucketValue): number {
+function rankFor(task: Task, dueBucket: DueBucketValue, stages: Stage[]): number {
   // Archived work is never briefing material regardless of its due date.
   if (task.archived) return BRIEFING_RANK.ROUTINE;
 
   if (dueBucket === DUE_BUCKET.OVERDUE) {
-    // Stage is the signal here, not `status`: an overdue card the human can see
-    // sitting in an In Progress column is the single most surfaceable item.
-    return isInProgressStatus(task) ? BRIEFING_RANK.OVERDUE_IN_PROGRESS : BRIEFING_RANK.OVERDUE;
+    // An overdue card the human can see sitting in an In Progress column is
+    // the single most surfaceable item there is.
+    const inProgress = taskStageKind(task, stages) === STAGE_KIND.IN_PROGRESS;
+    return inProgress ? BRIEFING_RANK.OVERDUE_IN_PROGRESS : BRIEFING_RANK.OVERDUE;
   }
   if (dueBucket === DUE_BUCKET.TODAY) return BRIEFING_RANK.DUE_TODAY;
   if (dueBucket === DUE_BUCKET.TOMORROW) return BRIEFING_RANK.DUE_TOMORROW;
@@ -436,34 +440,22 @@ function rankFor(task: Task, dueBucket: DueBucketValue): number {
 }
 
 /**
- * Rank-time in-progress check. Stages are not in scope here, so fall back to
- * the stored status; `buildBriefing` re-ranks with stage context.
+ * Attaches `urgency` to every task without otherwise altering it.
+ *
+ * There was a second ranking pass here, re-ranking overdue work once stages
+ * were in hand because `rankFor` could only see the stored status. `rankFor`
+ * takes the stages now, so one pass is the whole answer.
  */
-function isInProgressStatus(task: Task): boolean {
-  return task.status === 'in_progress';
-}
-
-/** Attaches `urgency` to every task without otherwise altering it. */
 export function annotateTasksWithUrgency(
   tasks: Task[],
   stages: Stage[],
   now: Date,
   timeZone: string = DEFAULT_TIMEZONE,
 ): ExportTask[] {
-  return tasks.map((task) => {
-    const urgency = computeTaskUrgency(task, now, timeZone, stages);
-    // Re-rank with stage context so the board's own view of "in progress" wins.
-    if (urgency.dueBucket === DUE_BUCKET.OVERDUE && !task.archived) {
-      const inProgress = isInProgressStageName(stageNameFor(task, stages));
-      urgency.briefingRank = inProgress ? BRIEFING_RANK.OVERDUE_IN_PROGRESS : BRIEFING_RANK.OVERDUE;
-      urgency.mustSurface = urgency.briefingRank <= MUST_SURFACE_RANK;
-    }
-    return { ...task, urgency };
-  });
-}
-
-function stageNameFor(task: Task, stages: Stage[]): string {
-  return stages.find((s) => s.id === task.stageId)?.name ?? '';
+  return tasks.map((task) => ({
+    ...task,
+    urgency: computeTaskUrgency(task, now, timeZone, stages),
+  }));
 }
 
 // --- Digest ---
@@ -478,8 +470,11 @@ function toEntry(task: ExportTask, stages: Stage[], subStages: SubStage[]): Brie
     title: task.title,
     stage,
     stageLabel: resolveStageLabel(task, stages),
-    storedStatus: task.status ?? null,
-    statusConflict: !isBlank(task.status) && task.status !== stage,
+    // Both dead since EPIC-03 story 2 dropped `tasks.status`: there is no
+    // second state to report, and no way for one to conflict. Kept at their
+    // settled values so the payload's shape does not move under consumers.
+    storedStatus: null,
+    statusConflict: false,
     priority: task.priority ?? null,
     owner,
     swimlane,
@@ -545,14 +540,11 @@ export function buildBriefing({
     overdueRule: overdueRuleFor(timezone),
     overdue: pick((_, task) => task.urgency.isOverdue),
     dueToday: pick((_, task) => task.urgency.dueBucket === DUE_BUCKET.TODAY),
-    inProgress: pick((entry) => isInProgressStageName(entry.stageLabel)),
-    blocked: pick((entry) => isWaitingStageName(entry.stageLabel)),
-    // `stage` folds waiting columns into 'backlog' (the status enum has no
-    // waiting value), so a true backlog is backlog-by-stage minus the columns
-    // already reported as blocked.
-    backlog: pick(
-      (entry) => entry.stage === TASK_STATUS.BACKLOG && !isWaitingStageName(entry.stageLabel),
-    ),
+    // Each bucket is now one equality against the column's own kind, rather
+    // than a substring match on its display name.
+    inProgress: pick((entry) => entry.stage === STAGE_KIND.IN_PROGRESS),
+    blocked: pick((entry) => entry.stage === STAGE_KIND.WAITING),
+    backlog: pick((entry) => entry.stage === STAGE_KIND.BACKLOG),
   };
 }
 
@@ -578,7 +570,7 @@ export const taskUrgencySchema = z.object({
 export const briefingEntrySchema = z.object({
   id: z.number(),
   title: z.string(),
-  stage: z.string(),
+  stage: z.enum(STAGE_KIND_VALUES),
   stageLabel: z.string(),
   storedStatus: z.string().nullable(),
   statusConflict: z.boolean(),

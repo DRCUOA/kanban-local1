@@ -53,12 +53,21 @@ const duePicked = (y: number, m: number, d: number, offset = '+12:00') =>
 
 const day = (y: number, m: number, d: number) => duePicked(y, m, d) as unknown as Date;
 
+// The kinds, not the names, are what the briefing reads. The decorative names
+// stay as they are in production so `stageLabel` is still exercised.
 const stages: Stage[] = [
-  { id: 1, name: 'Backlog' },
-  { id: 2, name: 'In Progress' },
-  { id: 4, name: 'Waiting ✋️ ' },
-  { id: 3, name: 'Done  ✔' },
+  { id: 1, name: 'Backlog', kind: 'backlog' },
+  { id: 2, name: 'In Progress', kind: 'in_progress' },
+  { id: 4, name: 'Waiting ✋️ ', kind: 'waiting' },
+  { id: 3, name: 'Done  ✔', kind: 'done' },
+  { id: 5, name: 'Cancelled', kind: 'abandoned' },
 ] as unknown as Stage[];
+
+const IN_BACKLOG = 1;
+const IN_PROGRESS = 2;
+const IN_DONE = 3;
+const IN_WAITING = 4;
+const IN_ABANDONED = 5;
 
 const subStages: SubStage[] = [
   { id: 7, stageId: 2, name: 'Rich', tag: 'Rich' },
@@ -88,9 +97,8 @@ function fakeTask(overrides: Partial<Task> = {}): Task {
   return {
     id: 1,
     title: 'A task',
-    stageId: 1,
+    stageId: IN_BACKLOG,
     archived: false,
-    status: 'backlog',
     priority: 'normal',
     dueDate: null,
     tags: null,
@@ -104,8 +112,7 @@ function fakeTask(overrides: Partial<Task> = {}): Task {
 const task142 = fakeTask({
   id: 142,
   title: 'Check remaining gas - will it last to Sept 23',
-  stageId: 2,
-  status: 'in_progress',
+  stageId: IN_PROGRESS,
   priority: 'normal',
   dueDate: day(2026, 8, 9) as unknown as Task['dueDate'],
   tags: ['Rich'],
@@ -168,7 +175,12 @@ describe('done beats the due date', () => {
   const pastDue = duePicked(2026, 8, 9);
 
   it('never flags a done task as overdue, without the due date being cleared', () => {
-    const urgency = computeTaskUrgency(fakeTask({ status: 'done', dueDate: pastDue }), NOW);
+    const urgency = computeTaskUrgency(
+      fakeTask({ stageId: IN_DONE, dueDate: pastDue }),
+      NOW,
+      DEFAULT_TIMEZONE,
+      stages,
+    );
 
     expect(urgency.isOverdue).toBe(false);
     expect(urgency.daysOverdue).toBe(0);
@@ -180,19 +192,31 @@ describe('done beats the due date', () => {
   });
 
   it('treats abandoned work as closed the same way', () => {
-    const urgency = computeTaskUrgency(fakeTask({ status: 'abandoned', dueDate: pastDue }), NOW);
+    const urgency = computeTaskUrgency(
+      fakeTask({ stageId: IN_ABANDONED, dueDate: pastDue }),
+      NOW,
+      DEFAULT_TIMEZONE,
+      stages,
+    );
 
     expect(urgency.isOverdue).toBe(false);
     expect(urgency.dueBucket).toBe(DUE_BUCKET.NONE);
   });
 
-  it('unflags a card sitting in a Done column whose stored status is stale', () => {
-    // Either signal closes the task: the board renders the stage, so a card in
-    // the Done strip must not glow overdue because `status` lags behind.
-    const task = fakeTask({ stageId: 3, status: 'in_progress', dueDate: pastDue });
+  it('unflags a card by the column it sits in, whatever it is called', () => {
+    // "Done  ✔" carries a tick and double space; the kind is what is read.
+    const task = fakeTask({ stageId: IN_DONE, dueDate: pastDue });
 
     expect(isTaskOverdueOn(task, stages, NOW)).toBe(false);
     expect(first(annotateTasksWithUrgency([task], stages, NOW)).urgency.isOverdue).toBe(false);
+  });
+
+  it('keeps flagging a card parked in a waiting column', () => {
+    // Parked is not closed. The old status enum had no waiting value and folded
+    // these into backlog; the kind says it outright.
+    const task = fakeTask({ stageId: IN_WAITING, dueDate: pastDue });
+
+    expect(isTaskOverdueOn(task, stages, NOW)).toBe(true);
   });
 
   it('keeps flagging open past-due tasks', () => {
@@ -203,8 +227,10 @@ describe('done beats the due date', () => {
   it('leaves a done task due today in the today bucket', () => {
     // Scope guard: closing gates only the overdue flag, not the calendar.
     const urgency = computeTaskUrgency(
-      fakeTask({ status: 'done', dueDate: duePicked(2026, 8, 11) }),
+      fakeTask({ stageId: IN_DONE, dueDate: duePicked(2026, 8, 11) }),
       NOW,
+      DEFAULT_TIMEZONE,
+      stages,
     );
 
     expect(urgency.dueBucket).toBe(DUE_BUCKET.TODAY);
@@ -213,7 +239,7 @@ describe('done beats the due date', () => {
   it('keeps done tasks out of the briefing overdue section', () => {
     const digest = buildBriefing({
       tasks: annotateTasksWithUrgency(
-        [task142, fakeTask({ id: 200, stageId: 3, status: 'done', dueDate: pastDue })],
+        [task142, fakeTask({ id: 200, stageId: IN_DONE, dueDate: pastDue })],
         stages,
         NOW,
       ),
@@ -420,14 +446,15 @@ describe('briefingRank', () => {
     expect(overdueNormal).toBeLessThan(Number(futureHigh));
   });
 
-  it('ranks by the stage the board shows, not the stored status', () => {
-    // Stored status says in_progress; the card actually sits in Backlog.
+  it('ranks an overdue backlog card below an overdue in-progress one', () => {
+    // The promotion is the in-progress column's, so a card in Backlog does not
+    // get it however urgent it looks. This used to be the place a stored
+    // `status: in_progress` could lie and claim the higher rank.
     const task = first(
       annotateTasksWithUrgency(
         [
           fakeTask({
-            stageId: 1,
-            status: 'in_progress',
+            stageId: IN_BACKLOG,
             dueDate: day(2026, 8, 9) as unknown as Task['dueDate'],
           }),
         ],
@@ -463,8 +490,7 @@ describe('briefingRank', () => {
 
     expect(task).toMatchObject({
       id: 142,
-      stageId: 2,
-      status: 'in_progress',
+      stageId: IN_PROGRESS,
       priority: 'normal',
       owner: 'Moi',
       tags: ['Rich'],
@@ -525,8 +551,7 @@ describe('buildBriefing', () => {
     task142,
     fakeTask({
       id: 107,
-      stageId: 2,
-      status: 'in_progress',
+      stageId: IN_PROGRESS,
       priority: 'high',
       owner: 'Rich',
       tags: ['Rich'],
@@ -534,21 +559,19 @@ describe('buildBriefing', () => {
     }),
     fakeTask({
       id: 150,
-      stageId: 2,
-      status: 'in_progress',
+      stageId: IN_PROGRESS,
       priority: 'high',
       tags: ['Rich'],
       dueDate: duePicked(2026, 8, 11),
     }),
     fakeTask({
       id: 128,
-      stageId: 4,
-      status: 'backlog',
+      stageId: IN_WAITING,
       owner: 'Rich',
       tags: ['Status'],
       dueDate: day(2026, 9, 10) as unknown as Task['dueDate'],
     }),
-    fakeTask({ id: 146, stageId: 1, status: 'backlog' }),
+    fakeTask({ id: 146, stageId: IN_BACKLOG }),
     fakeTask({
       id: 99,
       stageId: 2,
@@ -589,10 +612,10 @@ describe('buildBriefing', () => {
     expect(digest().blocked.map((e) => e.id)).toEqual([128]);
   });
 
-  it('collects backlog-column work, excluding waiting columns', () => {
-    // #146 sits in Backlog; #128 resolves to stage 'backlog' too (the status
-    // enum has no waiting value) but sits in a Waiting column and is already
-    // reported as blocked — it must not appear as backlog.
+  it('collects backlog-column work, and waiting work is not backlog work', () => {
+    // #146 sits in Backlog. #128 sits in a Waiting column, whose kind is
+    // `waiting` — so it is reported as blocked and nothing has to subtract it
+    // from the backlog, as it did while the status enum folded the two.
     const { backlog } = digest();
 
     expect(backlog.map((e) => e.id)).toEqual([146]);
@@ -653,30 +676,28 @@ describe('buildBriefing', () => {
     expect(entry.ownerConflict).toBe(false);
   });
 
-  it('flags a stored status that disagrees with the board', () => {
-    const conflicted = buildBriefing({
-      tasks: annotateTasksWithUrgency(
-        [
-          fakeTask({
-            id: 126,
-            stageId: 1,
-            status: 'in_progress',
-            dueDate: day(2026, 8, 9) as unknown as Task['dueDate'],
-          }),
-        ],
-        stages,
-        NOW,
-      ),
-      stages,
-      subStages,
-      now: NOW,
-      timezone: 'Pacific/Auckland',
-    });
-    const entry = first(conflicted.overdue);
+  it('reports no status conflict, because one can no longer exist', () => {
+    // Task #126 named this defect: `status: in_progress` while sitting in
+    // Backlog. EPIC-03 story 2 dropped the stored status, so there is no
+    // second state to disagree with the column. Both fields are kept at their
+    // settled values purely so the payload's shape does not move.
+    const d = digest();
+    const everyEntry = [...d.overdue, ...d.dueToday, ...d.inProgress, ...d.blocked, ...d.backlog];
+    expect(everyEntry.length).toBeGreaterThan(0);
 
-    expect(entry.stage).toBe('backlog');
-    expect(entry.storedStatus).toBe('in_progress');
-    expect(entry.statusConflict).toBe(true);
+    for (const entry of everyEntry) {
+      expect(entry.storedStatus).toBe(null);
+      expect(entry.statusConflict).toBe(false);
+    }
+  });
+
+  it("states each task's stage as the kind of its column", () => {
+    const { overdue, blocked, backlog } = digest();
+
+    expect(first(overdue.filter((e) => e.id === 142)).stage).toBe('in_progress');
+    // `waiting` is a state the old status enum could not express at all.
+    expect(first(blocked).stage).toBe('waiting');
+    expect(first(backlog).stage).toBe('backlog');
   });
 
   it('strips emoji and padding from stage labels', () => {

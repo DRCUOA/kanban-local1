@@ -4,8 +4,22 @@ import { resolveStageId } from './stage-resolve';
 
 describe('resolveStageId', () => {
   const stages = [
-    { id: 1, name: SEED_STAGE_NAMES.BACKLOG, order: 1, color: null, createdAt: null },
-    { id: 2, name: SEED_STAGE_NAMES.IN_PROGRESS, order: 2, color: null, createdAt: null },
+    {
+      id: 1,
+      name: SEED_STAGE_NAMES.BACKLOG,
+      order: 1,
+      kind: 'backlog',
+      color: null,
+      createdAt: null,
+    },
+    {
+      id: 2,
+      name: SEED_STAGE_NAMES.IN_PROGRESS,
+      order: 2,
+      kind: 'in_progress',
+      color: null,
+      createdAt: null,
+    },
   ];
 
   it('matches exact normalized stage name', () => {

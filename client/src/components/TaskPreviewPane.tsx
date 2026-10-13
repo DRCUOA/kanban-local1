@@ -4,11 +4,11 @@ import {
   TASK_PRIORITY,
   TASK_PRIORITY_LABEL,
   TASK_RECURRENCE,
-  TASK_STATUS,
-  TASK_STATUS_LABEL,
+  STAGE_KIND,
+  STAGE_KIND_LABEL,
   type TaskPriorityValue,
-  type TaskStatusValue,
 } from '@shared/constants';
+import { taskStageKind } from '@shared/stage-state';
 import { cleanLabel, formatDueDayLabel, isDueTodayOn, isTaskOverdueOn } from '@shared/briefing';
 import { format } from 'date-fns';
 import {
@@ -18,6 +18,7 @@ import {
   Circle,
   Clock,
   History,
+  PauseCircle,
   MousePointerClick,
   PanelRight,
   Repeat,
@@ -54,15 +55,16 @@ export interface TaskPreviewPaneProps {
 const HISTORY_LIMIT = 6;
 
 const historyIcons: Record<string, typeof Circle> = {
-  [TASK_STATUS.BACKLOG]: Circle,
-  [TASK_STATUS.IN_PROGRESS]: Clock,
-  [TASK_STATUS.DONE]: CheckCircle2,
-  [TASK_STATUS.ABANDONED]: XCircle,
+  [STAGE_KIND.BACKLOG]: Circle,
+  [STAGE_KIND.IN_PROGRESS]: Clock,
+  [STAGE_KIND.WAITING]: PauseCircle,
+  [STAGE_KIND.DONE]: CheckCircle2,
+  [STAGE_KIND.ABANDONED]: XCircle,
   archived: Archive,
 };
 
 const historyLabels: Record<string, string> = {
-  ...TASK_STATUS_LABEL,
+  ...STAGE_KIND_LABEL,
   archived: 'Archived',
 };
 
@@ -192,7 +194,9 @@ function PreviewBody({
   );
 
   const priority = (task.priority ?? TASK_PRIORITY.NORMAL) as TaskPriorityValue;
-  const status = (task.status ?? TASK_STATUS.BACKLOG) as TaskStatusValue;
+  // The state badge below reads the column the card sits in, which is the only
+  // state a task has since EPIC-03 story 2.
+  const stateLabel = STAGE_KIND_LABEL[taskStageKind(task, stages)];
   const recurrence = task.recurrence ?? TASK_RECURRENCE.NONE;
 
   const now = new Date();
@@ -235,8 +239,12 @@ function PreviewBody({
         </h3>
 
         <div className="flex flex-wrap items-center gap-1.5">
-          <Badge variant="secondary" className="h-6 min-h-0 px-2 py-0 text-xs font-normal">
-            {TASK_STATUS_LABEL[status]}
+          <Badge
+            variant="secondary"
+            className="h-6 min-h-0 px-2 py-0 text-xs font-normal"
+            data-testid="task-preview-state"
+          >
+            {stateLabel}
           </Badge>
           {priority !== TASK_PRIORITY.NORMAL && (
             <Badge

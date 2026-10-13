@@ -1,11 +1,11 @@
 import { useEffect, useCallback } from 'react';
-import { KEYBOARD_STATUS_MAP, type TaskStatusValue } from '@shared/constants';
+import { KEYBOARD_STAGE_KIND_MAP, type StageKindValue } from '@shared/constants';
 
 export interface KeyboardShortcuts {
   onNewTask?: () => void;
   onSave?: () => void;
   onCancel?: () => void;
-  onMoveToStatus?: (status: TaskStatusValue) => void;
+  onMoveToStatus?: (kind: StageKindValue) => void;
   onPriorityChange?: (direction: 'up' | 'down') => void;
 }
 
@@ -50,8 +50,8 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts) {
         return;
       }
 
-      // 1-4 = Move to status
-      const mappedStatus = KEYBOARD_STATUS_MAP[event.key];
+      // 1-4 = move to a kind of column
+      const mappedStatus = KEYBOARD_STAGE_KIND_MAP[event.key];
       if (mappedStatus && shortcuts.onMoveToStatus) {
         event.preventDefault();
         shortcuts.onMoveToStatus(mappedStatus);

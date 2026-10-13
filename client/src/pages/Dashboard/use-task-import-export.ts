@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-non-null-assertion, @typescript-eslint/require-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/prefer-nullish-coalescing -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { type Task, type InsertTask, type Stage } from '@shared/schema';
-import { TASK_STATUS, TASK_PRIORITY, TASK_RECURRENCE } from '@shared/constants';
+import { TASK_PRIORITY, TASK_RECURRENCE } from '@shared/constants';
+import { stageIdForLegacyStatus } from '@shared/stage-state';
 import { apiGet } from '@/lib/api';
 import { api } from '@shared/routes';
 import {
@@ -146,6 +147,13 @@ export function useTaskImportExport({ tasks, stages }: UseTaskImportExportOption
             return null;
           };
 
+          // A file written before EPIC-03 story 2 carries a `status` per task
+          // and no `kind` on its stages. Its status is still honoured, but as
+          // a way of choosing a column rather than a field to store: map it to
+          // a stage kind, then to a stage of that kind on this board. A file
+          // whose own `stageId` resolves here wins, since that is the stronger
+          // statement; the status is the fallback (EPIC-03 story 2, criterion
+          // 4). Nothing maps to `waiting` — the old enum could not say it.
           // Imported records are unvalidated JSON; each field is defaulted below.
           for (const taskData of imported as any[]) {
             try {
@@ -157,7 +165,6 @@ export function useTaskImportExport({ tasks, stages }: UseTaskImportExportOption
                 ),
                 stageId: taskData.stageId || stagesData[0]!.id,
                 projectId: resolveProjectId(taskData.projectId),
-                status: taskData.status || TASK_STATUS.BACKLOG,
                 priority: taskData.priority || TASK_PRIORITY.NORMAL,
                 effort: taskData.effort || undefined,
                 dueDate: taskData.dueDate ? new Date(taskData.dueDate) : undefined,
@@ -166,8 +173,11 @@ export function useTaskImportExport({ tasks, stages }: UseTaskImportExportOption
                 ownerId: resolveOwnerId(taskData),
               } as InsertTask;
 
+              // The file's stage does not exist here: fall back to a column
+              // matching its legacy status, then to the first column.
               if (!stagesData.find((s: any) => s.id === taskToCreate.stageId)) {
-                taskToCreate.stageId = stagesData[0]!.id;
+                taskToCreate.stageId =
+                  stageIdForLegacyStatus(stagesData, taskData.status) ?? stagesData[0]!.id;
               }
 
               await createTask.mutateAsync(taskToCreate);

@@ -11,7 +11,6 @@ const makeTask = (overrides: Partial<Task> = {}): Task => ({
   stageId: 1,
   archived: false,
   deletedAt: null,
-  status: 'backlog',
   priority: 'normal',
   effort: null,
   dueDate: null,
@@ -28,9 +27,24 @@ const makeTask = (overrides: Partial<Task> = {}): Task => ({
 });
 
 const stages: Stage[] = [
-  { id: 1, name: 'Backlog', order: 0, color: '#3B82F6', createdAt: new Date() },
-  { id: 2, name: 'In Progress', order: 1, color: '#10B981', createdAt: new Date() },
-  { id: 3, name: 'Done', order: 2, color: '#F59E0B', createdAt: new Date() },
+  { id: 1, name: 'Backlog', order: 0, kind: 'backlog', color: '#3B82F6', createdAt: new Date() },
+  {
+    id: 2,
+    name: 'In Progress',
+    order: 1,
+    kind: 'in_progress',
+    color: '#10B981',
+    createdAt: new Date(),
+  },
+  { id: 3, name: 'Done', order: 2, kind: 'done', color: '#F59E0B', createdAt: new Date() },
+  {
+    id: 4,
+    name: 'Cancelled',
+    order: 3,
+    kind: 'abandoned',
+    color: '#6B7280',
+    createdAt: new Date(),
+  },
 ];
 
 describe('useFilteredTasks', () => {
@@ -157,9 +171,7 @@ describe('useFilteredTasks', () => {
   });
 
   it('ID lookup ignores focus mode, stage and progress filters', () => {
-    const tasks = [
-      makeTask({ id: 161, title: 'Done low', stageId: 3, status: 'done', priority: 'low' }),
-    ];
+    const tasks = [makeTask({ id: 161, title: 'Done low', stageId: 3, priority: 'low' })];
     const { result } = renderHook(() =>
       useFilteredTasks({ tasks, searchQuery: '161', focusMode: true, viewMode: 'detail', stages }),
     );
@@ -185,16 +197,15 @@ describe('useFilteredTasks', () => {
 
   it('in focus mode with summary view, returns only in_progress tasks and the highest-priority backlog task', () => {
     const tasks = [
-      makeTask({ id: 1, title: 'Backlog low', stageId: 1, status: 'backlog', priority: 'low' }),
+      makeTask({ id: 1, title: 'Backlog low', stageId: 1, priority: 'low' }),
       makeTask({
         id: 2,
         title: 'Backlog critical',
         stageId: 1,
-        status: 'backlog',
         priority: 'critical',
       }),
-      makeTask({ id: 3, title: 'Active', stageId: 2, status: 'in_progress', priority: 'normal' }),
-      makeTask({ id: 4, title: 'Done', stageId: 3, status: 'done', priority: 'normal' }),
+      makeTask({ id: 3, title: 'Active', stageId: 2, priority: 'normal' }),
+      makeTask({ id: 4, title: 'Done', stageId: 3, priority: 'normal' }),
     ];
     const { result } = renderHook(() =>
       useFilteredTasks({ tasks, searchQuery: '', focusMode: true, viewMode: 'summary', stages }),
@@ -207,10 +218,10 @@ describe('useFilteredTasks', () => {
     expect(ids).not.toContain(4);
   });
 
-  it('in focus mode with summary view, infers status from stage name when task.status is missing', () => {
+  it("in focus mode with summary view, reads each task's state from its column", () => {
     const tasks = [
-      makeTask({ id: 1, title: 'Inferred backlog', stageId: 1, status: null as unknown as string }),
-      makeTask({ id: 2, title: 'Inferred active', stageId: 2, status: null as unknown as string }),
+      makeTask({ id: 1, title: 'In the backlog column', stageId: 1 }),
+      makeTask({ id: 2, title: 'In the in-progress column', stageId: 2 }),
     ];
     const { result } = renderHook(() =>
       useFilteredTasks({ tasks, searchQuery: '', focusMode: true, viewMode: 'summary', stages }),
@@ -223,29 +234,21 @@ describe('useFilteredTasks', () => {
 
   it('in focus mode with detail view, returns only high/critical tasks that are not done or abandoned', () => {
     const tasks = [
-      makeTask({ id: 1, title: 'Backlog high', stageId: 1, status: 'backlog', priority: 'high' }),
+      makeTask({ id: 1, title: 'Backlog high', stageId: 1, priority: 'high' }),
       makeTask({
         id: 2,
         title: 'Backlog normal',
         stageId: 1,
-        status: 'backlog',
         priority: 'normal',
       }),
       makeTask({
         id: 3,
         title: 'Active critical',
         stageId: 2,
-        status: 'in_progress',
         priority: 'critical',
       }),
-      makeTask({ id: 4, title: 'Done high', stageId: 3, status: 'done', priority: 'high' }),
-      makeTask({
-        id: 5,
-        title: 'Abandoned critical',
-        stageId: 1,
-        status: 'abandoned',
-        priority: 'critical',
-      }),
+      makeTask({ id: 4, title: 'Done high', stageId: 3, priority: 'high' }),
+      makeTask({ id: 5, title: 'Abandoned critical', stageId: 4, priority: 'critical' }),
     ];
     const { result } = renderHook(() =>
       useFilteredTasks({ tasks, searchQuery: '', focusMode: true, viewMode: 'detail', stages }),
@@ -255,15 +258,10 @@ describe('useFilteredTasks', () => {
     expect(ids).toEqual([1, 3]);
   });
 
-  it('in focus mode with detail view, excludes high-priority tasks on Done stage when status is inferred from stage name', () => {
+  it('in focus mode with detail view, excludes high-priority work sitting in a closed column', () => {
     const tasks = [
-      makeTask({
-        id: 1,
-        title: 'Looks done',
-        stageId: 3,
-        status: null as unknown as string,
-        priority: 'high',
-      }),
+      makeTask({ id: 1, title: 'Done but high', stageId: 3, priority: 'high' }),
+      makeTask({ id: 2, title: 'Cancelled but high', stageId: 4, priority: 'high' }),
     ];
     const { result } = renderHook(() =>
       useFilteredTasks({ tasks, searchQuery: '', focusMode: true, viewMode: 'detail', stages }),
@@ -274,7 +272,7 @@ describe('useFilteredTasks', () => {
 
 describe('useFilteredTasks and the header warning pills', () => {
   const overdue = makeTask({ id: 1, title: 'Overdue one', dueDate: new Date(2026, 0, 1) });
-  const inProgress = makeTask({ id: 2, title: 'Doing', stageId: 2, status: 'in_progress' });
+  const inProgress = makeTask({ id: 2, title: 'Doing', stageId: 2 });
   const waiting = makeTask({ id: 3, title: 'Urgent waiting', priority: 'high' });
 
   const filtered = (options: Parameters<typeof useFilteredTasks>[0]) =>

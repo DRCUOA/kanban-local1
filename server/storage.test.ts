@@ -13,18 +13,14 @@ import type {
   InsertProject,
   InsertOwner,
   TaskHistoryEntry,
-  TaskStatus,
+  StageKind,
   TaskAttachment,
   TaskAttachmentRow,
   InsertAttachment,
 } from '@shared/schema';
 import type { TaskProjectFilter } from '@shared/project-scope';
-import {
-  TASK_STATUS,
-  TASK_PRIORITY,
-  TASK_RECURRENCE,
-  getStatusFromStageName,
-} from '@shared/constants';
+import { STAGE_KIND, DEFAULT_STAGE_KIND, TASK_PRIORITY, TASK_RECURRENCE } from '@shared/constants';
+import { stageKind } from '@shared/stage-state';
 
 // ---------------------------------------------------------------------------
 // In-memory IStorage implementation for contract testing
@@ -72,18 +68,17 @@ class MemStorage implements IStorage {
     return this.taskStore.get(id);
   }
 
-  async createTask(insert: InsertTask): Promise<Task> {
-    let initialStatus: string = insert.status ?? TASK_STATUS.BACKLOG;
+  /** The kind of a stage, as the real storage layer reads it. */
+  private kindOfStage(stageId: number | null | undefined): StageKind {
+    if (stageId == null) return DEFAULT_STAGE_KIND;
+    return stageKind(this.stageStore.get(stageId));
+  }
 
-    if (!insert.status && insert.stageId) {
-      const stage = this.stageStore.get(insert.stageId);
-      if (stage) {
-        initialStatus = getStatusFromStageName(stage.name);
-      }
-    }
+  async createTask(insert: InsertTask): Promise<Task> {
+    const initialKind = this.kindOfStage(insert.stageId);
 
     const history: TaskHistoryEntry[] = [
-      { status: initialStatus as TaskStatus, timestamp: new Date().toISOString() },
+      { status: initialKind, timestamp: new Date().toISOString() },
     ];
 
     const now = new Date();
@@ -94,7 +89,6 @@ class MemStorage implements IStorage {
       stageId: insert.stageId,
       projectId: insert.projectId ?? null,
       archived: insert.archived ?? false,
-      status: initialStatus,
       priority: insert.priority ?? TASK_PRIORITY.NORMAL,
       effort: insert.effort ?? null,
       dueDate: insert.dueDate ?? null,
@@ -119,12 +113,13 @@ class MemStorage implements IStorage {
     const current = this.taskStore.get(id);
     if (!current) return undefined;
 
-    const statusChanged = updates.status && updates.status !== current.status;
+    // A move to another column is the state change, as in the real layer.
+    const movedStage = updates.stageId !== undefined && updates.stageId !== current.stageId;
     let history = current.history ?? [];
 
-    if (statusChanged) {
+    if (movedStage) {
       const entry: TaskHistoryEntry = {
-        status: updates.status!,
+        status: this.kindOfStage(updates.stageId),
         timestamp: new Date().toISOString(),
       };
       history = [...history, entry];
@@ -147,7 +142,7 @@ class MemStorage implements IStorage {
 
     const history = current.history ?? [];
     const entry: TaskHistoryEntry = {
-      status: (current.status ?? TASK_STATUS.BACKLOG) as TaskStatus,
+      status: this.kindOfStage(current.stageId),
       timestamp: new Date().toISOString(),
       note: 'Archived',
     };
@@ -296,6 +291,8 @@ class MemStorage implements IStorage {
       id: ++this.stageSeq,
       name: insert.name,
       order: insert.order,
+      // Defaulted in the database, never inferred from `name`.
+      kind: insert.kind ?? DEFAULT_STAGE_KIND,
       color: insert.color ?? null,
       createdAt: new Date(),
     };
@@ -533,7 +530,7 @@ class MemStorage implements IStorage {
 // ---------------------------------------------------------------------------
 
 function makeStageInput(overrides: Partial<InsertStage> = {}): InsertStage {
-  return { name: 'Backlog', order: 0, ...overrides };
+  return { name: 'Backlog', order: 0, kind: STAGE_KIND.BACKLOG, ...overrides };
 }
 
 function makeSubStageInput(
@@ -1007,29 +1004,35 @@ describe('IStorage contract', () => {
       expect(task.archived).toBe(false);
     });
 
-    it('initializes history with the initial status', async () => {
+    it('opens the history with the kind of the column it was created in', async () => {
       const task = await storage.createTask(makeTaskInput(stageId));
 
       expect(task.history).toHaveLength(1);
-      expect(task.history![0]!.status).toBe(TASK_STATUS.BACKLOG);
+      expect(task.history![0]!.status).toBe(STAGE_KIND.BACKLOG);
       expect(task.history![0]!.timestamp).toBeTruthy();
     });
 
-    it('infers status from stage name when not explicitly set', async () => {
-      const doneStage = await storage.createStage(makeStageInput({ name: 'Done', order: 2 }));
+    it("takes its state from the column, not from the column's name", async () => {
+      // The name says nothing a reader should trust: the kind decides. This
+      // stage is called "Parked" and is a done column.
+      const doneStage = await storage.createStage(
+        makeStageInput({ name: 'Parked', order: 2, kind: STAGE_KIND.DONE }),
+      );
       const task = await storage.createTask(makeTaskInput(doneStage.id));
 
-      expect(task.status).toBe(TASK_STATUS.DONE);
-      expect(task.history![0]!.status).toBe(TASK_STATUS.DONE);
+      expect(task.history![0]!.status).toBe(STAGE_KIND.DONE);
     });
 
-    it('uses explicit status over inferred stage status', async () => {
-      const doneStage = await storage.createStage(makeStageInput({ name: 'Done', order: 2 }));
-      const task = await storage.createTask(
-        makeTaskInput(doneStage.id, { status: TASK_STATUS.IN_PROGRESS }),
+    it('creates a task in a done column as done, with no status to override it', async () => {
+      // Pre-EPIC-03 this was the bug the other way round: a caller's status
+      // default won over the column it asked for.
+      const doneStage = await storage.createStage(
+        makeStageInput({ name: 'Done', order: 2, kind: STAGE_KIND.DONE }),
       );
+      const task = await storage.createTask(makeTaskInput(doneStage.id));
 
-      expect(task.status).toBe(TASK_STATUS.IN_PROGRESS);
+      expect(task.stageId).toBe(doneStage.id);
+      expect(task.history![0]!.status).toBe(STAGE_KIND.DONE);
     });
 
     it('returns non-archived tasks from getTasks()', async () => {
@@ -1129,22 +1132,23 @@ describe('IStorage contract', () => {
       expect(updated!.priority).toBe(TASK_PRIORITY.HIGH);
     });
 
-    it('records status change in history', async () => {
+    it('records a move to another column in history', async () => {
+      const inProgress = await storage.createStage(
+        makeStageInput({ name: 'In Progress', order: 2, kind: STAGE_KIND.IN_PROGRESS }),
+      );
       const task = await storage.createTask(makeTaskInput(stageId));
       expect(task.history).toHaveLength(1);
 
-      const updated = await storage.updateTask(task.id, { status: TASK_STATUS.IN_PROGRESS });
+      const updated = await storage.updateTask(task.id, { stageId: inProgress.id });
 
       expect(updated!.history).toHaveLength(2);
-      expect(updated!.history![1]!.status).toBe(TASK_STATUS.IN_PROGRESS);
+      expect(updated!.history![1]!.status).toBe(STAGE_KIND.IN_PROGRESS);
     });
 
-    it('does not append history when status is unchanged', async () => {
-      const task = await storage.createTask(
-        makeTaskInput(stageId, { status: TASK_STATUS.BACKLOG }),
-      );
+    it('does not append history when the task stays in its column', async () => {
+      const task = await storage.createTask(makeTaskInput(stageId));
 
-      const updated = await storage.updateTask(task.id, { status: TASK_STATUS.BACKLOG });
+      const updated = await storage.updateTask(task.id, { stageId, title: 'Renamed' });
 
       expect(updated!.history).toHaveLength(1);
     });
