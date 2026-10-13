@@ -9,9 +9,31 @@ import { StageHeaders } from './StageHeaders';
 vi.mock('@/hooks/use-stages', () => ({
   useStages: () => ({
     data: [
-      { id: 1, name: 'Backlog', order: 1, color: '#3B82F6', createdAt: new Date() },
-      { id: 2, name: 'In Progress', order: 2, color: '#10B981', createdAt: new Date() },
-      { id: 3, name: 'Done', order: 3, color: '#84CC16', createdAt: new Date() },
+      {
+        id: 1,
+        name: 'Backlog',
+        order: 1,
+        kind: 'backlog',
+        color: '#3B82F6',
+        createdAt: new Date(),
+      },
+      {
+        id: 2,
+        name: 'In Progress',
+        order: 2,
+        kind: 'in_progress',
+        color: '#10B981',
+        createdAt: new Date(),
+      },
+      { id: 3, name: 'Done', order: 3, kind: 'done', color: '#84CC16', createdAt: new Date() },
+      {
+        id: 4,
+        name: 'Cancelled',
+        order: 4,
+        kind: 'abandoned',
+        color: '#6B7280',
+        createdAt: new Date(),
+      },
     ],
   }),
   useSubStages: () => ({ data: [] }),
@@ -24,7 +46,6 @@ const makeTask = (overrides: Partial<Task> = {}): Task =>
     description: null,
     stageId: 1,
     archived: false,
-    status: 'backlog',
     priority: 'normal',
     effort: null,
     dueDate: null,
@@ -51,10 +72,10 @@ describe('TaskWarnings (compact pills)', () => {
       makeTask({ id: 1, priority: 'high' }),
       makeTask({ id: 2, priority: 'critical', dueDate: new Date(2000, 0, 1) }),
       makeTask({ id: 3, updatedAt: longAgo }),
-      makeTask({ id: 4, stageId: 2, status: 'in_progress' }),
-      makeTask({ id: 5, stageId: 2, status: 'in_progress' }),
-      makeTask({ id: 6, stageId: 2, status: 'in_progress' }),
-      makeTask({ id: 7, stageId: 2, status: 'in_progress' }),
+      makeTask({ id: 4, stageId: 2 }),
+      makeTask({ id: 5, stageId: 2 }),
+      makeTask({ id: 6, stageId: 2 }),
+      makeTask({ id: 7, stageId: 2 }),
       makeTask({ id: 8, archived: true, priority: 'critical' }), // archived: ignored
     ];
     render(<TaskWarnings tasks={tasks} />);
@@ -89,10 +110,8 @@ describe('TaskWarnings (compact pills)', () => {
     render(
       <TaskWarnings
         tasks={[
-          makeTask({ id: 1, status: 'done', dueDate: pastDue }),
-          makeTask({ id: 2, status: 'abandoned', dueDate: pastDue }),
-          // In the Done column but with a stale open status — still closed.
-          makeTask({ id: 3, stageId: 3, status: 'in_progress', dueDate: pastDue }),
+          makeTask({ id: 1, stageId: 3, dueDate: pastDue }),
+          makeTask({ id: 2, stageId: 4, dueDate: pastDue }),
         ]}
       />,
     );
@@ -102,10 +121,10 @@ describe('TaskWarnings (compact pills)', () => {
 
   describe('as a filter', () => {
     const manyInProgress = [
-      makeTask({ id: 4, stageId: 2, status: 'in_progress' }),
-      makeTask({ id: 5, stageId: 2, status: 'in_progress' }),
-      makeTask({ id: 6, stageId: 2, status: 'in_progress' }),
-      makeTask({ id: 7, stageId: 2, status: 'in_progress' }),
+      makeTask({ id: 4, stageId: 2 }),
+      makeTask({ id: 5, stageId: 2 }),
+      makeTask({ id: 6, stageId: 2 }),
+      makeTask({ id: 7, stageId: 2 }),
     ];
 
     it('reports the pill pressed', () => {

@@ -1,5 +1,6 @@
 import type { Stage } from '@shared/schema';
-import { isDoneStageName, ROUTES } from '@shared/constants';
+import { ROUTES } from '@shared/constants';
+import { closedStages } from '@shared/stage-state';
 
 /** Droppable id of the Filing button itself — the "no action chosen yet" target. */
 export const FILING_DROPPABLE_ID = 'filing';
@@ -26,17 +27,14 @@ export function isFilingId(id: string | null | undefined): boolean {
 }
 
 /**
- * The rows of the Filing submenu: one per done stage, then Archive. These are
- * both the drop targets a drag can land on and the links a tap can follow, so
- * the menu reads the same whichever way it was opened.
+ * The rows of the Filing submenu: one per closed stage — done and abandoned —
+ * then Archive. These are both the drop targets a drag can land on and the
+ * links a tap can follow, so the menu reads the same whichever way it was
+ * opened.
  */
 export function filingTargets(stages: Stage[]): FilingTarget[] {
-  const doneStages = [...stages]
-    .sort((a, b) => a.order - b.order)
-    .filter((stage) => isDoneStageName(stage.name));
-
   return [
-    ...doneStages.map((stage) => ({
+    ...closedStages(stages).map((stage) => ({
       id: `${FILING_TARGET_PREFIX}stage-${stage.id}`,
       label: stage.name.trim(),
       action: 'stage' as const,

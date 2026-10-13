@@ -13,8 +13,15 @@ vi.mock('@/hooks/use-stages', () => ({
 }));
 
 const stages: Stage[] = [
-  { id: 1, name: 'Backlog', order: 0, color: '#3B82F6', createdAt: new Date() },
-  { id: 2, name: 'In Progress', order: 1, color: '#10B981', createdAt: new Date() },
+  { id: 1, name: 'Backlog', order: 0, kind: 'backlog', color: '#3B82F6', createdAt: new Date() },
+  {
+    id: 2,
+    name: 'In Progress',
+    order: 1,
+    kind: 'in_progress',
+    color: '#10B981',
+    createdAt: new Date(),
+  },
 ];
 
 function Harness({ stagesOverride }: { stagesOverride?: Stage[] }) {
@@ -23,7 +30,6 @@ function Harness({ stagesOverride }: { stagesOverride?: Stage[] }) {
       title: 'Test title',
       description: 'Test desc',
       stageId: 1,
-      status: 'backlog',
       priority: 'normal',
       effort: 3,
     },
@@ -117,7 +123,8 @@ describe('EditTaskFormFields', () => {
     expect(screen.getByText('Title')).toBeDefined();
     expect(screen.getByText('Stage')).toBeDefined();
     expect(screen.getByText('Description')).toBeDefined();
-    expect(screen.getByText('Status')).toBeDefined();
+    // No Status field: the Stage picker above is the task's state (EPIC-03).
+    expect(screen.queryByText('Status')).toBeNull();
     expect(screen.getByText('Priority')).toBeDefined();
     expect(screen.getByText(/Effort/)).toBeDefined();
     expect(screen.getByText('Due Date')).toBeDefined();

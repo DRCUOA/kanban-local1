@@ -1,28 +1,22 @@
 import { differenceInDays } from 'date-fns';
 import { isTaskOverdueOn } from './briefing';
-import { TASK_STATUS, TASK_PRIORITY, getStatusFromStageName } from './constants';
+import { STAGE_KIND, TASK_PRIORITY } from './constants';
+import { isClosedTaskByStage, taskStageKind } from './stage-state';
 import { STALE_AFTER_DAYS } from './board-warnings';
 import type { Task, Stage } from './schema';
 
 export type TaskWarningHighlightKind = 'overdue' | 'high_priority_backlog' | 'stale';
 
-/** Same status resolution as dashboard warning banners (TaskWarnings). */
-export function resolveTaskStatusForWarnings(task: Task, stages: Stage[]): string {
-  if (task.status) return task.status;
-  const stage = stages.find((s) => s.id === task.stageId);
-  if (stage) return getStatusFromStageName(stage.name);
-  return TASK_STATUS.BACKLOG;
-}
-
 /**
- * Per-task highlight matching TaskWarnings toasts. Archived tasks never match.
+ * Per-task highlight matching TaskWarnings toasts. A task the main board does
+ * not show never matches — archived or binned — and nor does a closed one.
  * Precedence: overdue (destructive toast) → high-priority backlog (warning) → stale (info).
  */
 export function getTaskWarningHighlight(
   task: Task,
   stages: Stage[],
 ): TaskWarningHighlightKind | null {
-  if (task.archived) return null;
+  if (task.archived || task.deletedAt) return null;
 
   // Same helper the export uses, so the board's highlight and the briefing's
   // `overdue` list cannot disagree — the export's stated contract. Cutting the
@@ -30,15 +24,16 @@ export function getTaskWarningHighlight(
   // highlight stable when the board is opened from another timezone.
   if (isTaskOverdueOn(task, stages, new Date())) return 'overdue';
 
-  const status = resolveTaskStatusForWarnings(task, stages);
   if (
-    status === TASK_STATUS.BACKLOG &&
+    taskStageKind(task, stages) === STAGE_KIND.BACKLOG &&
     (task.priority === TASK_PRIORITY.HIGH || task.priority === TASK_PRIORITY.CRITICAL)
   ) {
     return 'high_priority_backlog';
   }
 
-  if (task.updatedAt) {
+  // Same gate `matchesBoardWarning` applies to the stale pill: a finished card
+  // sitting untouched in Done has nothing left to go stale.
+  if (task.updatedAt && !isClosedTaskByStage(task, stages)) {
     const updated = new Date(task.updatedAt);
     if (differenceInDays(new Date(), updated) >= STALE_AFTER_DAYS) return 'stale';
   }

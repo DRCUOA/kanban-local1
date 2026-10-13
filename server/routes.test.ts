@@ -75,7 +75,6 @@ function fakeTask(overrides: Partial<Task> = {}): Task {
     stageId: 1,
     archived: false,
     deletedAt: null,
-    status: 'backlog',
     priority: 'normal',
     effort: null,
     dueDate: null,
@@ -123,6 +122,7 @@ function fakeStage(overrides: Partial<Stage> = {}): Stage {
     id: 1,
     name: 'Backlog',
     order: 0,
+    kind: 'backlog',
     color: null,
     createdAt: NOW,
     ...overrides,
@@ -1091,7 +1091,7 @@ describe('Stage routes', () => {
 
   describe('GET /api/stages', () => {
     it('returns 200 with a list of stages', async () => {
-      const stages = [fakeStage(), fakeStage({ id: 2, name: 'Done', order: 1 })];
+      const stages = [fakeStage(), fakeStage({ id: 2, name: 'Done', order: 1, kind: 'done' })];
       mockStorage.getStages.mockResolvedValue(stages);
 
       const res = await request(app).get('/api/stages');

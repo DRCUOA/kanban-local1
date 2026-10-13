@@ -7,15 +7,14 @@ import type { Stage } from '@shared/schema';
 import { useSubStages } from '@/hooks/use-stages';
 import { useProjectScope } from '@/hooks/use-project-scope';
 import {
-  TASK_STATUS,
-  TASK_STATUS_LABEL,
   TASK_PRIORITY,
   TASK_PRIORITY_LABEL,
+  STAGE_KIND_LABEL,
   EFFORT_MIN,
   EFFORT_MAX,
-  type TaskStatusValue,
   type TaskPriorityValue,
 } from '@shared/constants';
+import { stageKind } from '@shared/stage-state';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { VoiceInput } from '@/components/VoiceInput';
 import { appendTranscript } from '@/lib/dictation';
@@ -100,11 +99,22 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {stages.map((s: any) => (
-                  <SelectItem key={s.id} value={s.id.toString()} className="py-3">
-                    {s.name}
-                  </SelectItem>
-                ))}
+                {stages.map((s: any) => {
+                  // This picker sets the task's state now that Status is gone,
+                  // so each row names the state it means. The kind is shown
+                  // only where it adds something the column name does not
+                  // already say.
+                  const kindLabel = STAGE_KIND_LABEL[stageKind(s)];
+                  const nameSaysIt = s.name.toLowerCase().includes(kindLabel.toLowerCase());
+                  return (
+                    <SelectItem key={s.id} value={s.id.toString()} className="py-3">
+                      {s.name}
+                      {!nameSaysIt && (
+                        <span className="ml-2 text-[11px] text-muted-foreground">{kindLabel}</span>
+                      )}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
             <FormMessage />
@@ -233,32 +243,11 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
         )}
       />
 
+      {/* No Status field. It was a second state machine a user could set
+          independently of the column the card sat in, which is how tasks came
+          to read "Done" in Backlog (EPIC-03 finding #1). Move the card — or
+          change its Stage above — and the state follows. */}
       <div className="grid grid-cols-2 gap-3">
-        <FormField
-          control={control}
-          name="status"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs">Status</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value || TASK_STATUS.BACKLOG}>
-                <FormControl>
-                  <SelectTrigger className="h-12 rounded-md">
-                    <SelectValue />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {(Object.values(TASK_STATUS) as TaskStatusValue[]).map((status) => (
-                    <SelectItem key={status} value={status} className="py-3">
-                      {TASK_STATUS_LABEL[status]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
         <FormField
           control={control}
           name="priority"

@@ -2,7 +2,15 @@ import { describe, it, expect } from 'vitest';
 import {
   TASK_STATUS,
   TASK_STATUS_VALUES,
-  TASK_STATUS_LABEL,
+  STAGE_KIND,
+  STAGE_KIND_VALUES,
+  STAGE_KIND_LABEL,
+  STAGE_KIND_DESCRIPTION,
+  DEFAULT_STAGE_KIND,
+  KEYBOARD_STAGE_KIND_MAP,
+  isStageKind,
+  isClosedStageKind,
+  legacyStatusToStageKind,
   TASK_PRIORITY,
   TASK_PRIORITY_VALUES,
   TASK_PRIORITY_LABEL,
@@ -13,11 +21,7 @@ import {
   EFFORT_MAX,
   ROUTES,
   DEFAULT_STAGE_COLORS,
-  KEYBOARD_STATUS_MAP,
   SEED_STAGE_NAMES,
-  getStatusFromStageName,
-  isInProgressStageName,
-  isDoneStageName,
 } from './constants';
 
 describe('constants', () => {
@@ -35,10 +39,11 @@ describe('constants', () => {
       expect(TASK_STATUS_VALUES).toHaveLength(valuesFromObject.length);
     });
 
-    it('TASK_STATUS_LABEL has a label for every status', () => {
+    it('every legacy status maps to a stage kind', () => {
+      // The values survive only to read files written before EPIC-03 story 2,
+      // so the one thing they must still do is translate.
       for (const value of TASK_STATUS_VALUES) {
-        expect(typeof TASK_STATUS_LABEL[value]).toBe('string');
-        expect(TASK_STATUS_LABEL[value].length).toBeGreaterThan(0);
+        expect(legacyStatusToStageKind(value)).not.toBe(null);
       }
     });
   });
@@ -117,12 +122,12 @@ describe('constants', () => {
     });
   });
 
-  describe('KEYBOARD_STATUS_MAP', () => {
-    it('maps keyboard keys 1-4 to task statuses', () => {
-      expect(KEYBOARD_STATUS_MAP['1']).toBe(TASK_STATUS.BACKLOG);
-      expect(KEYBOARD_STATUS_MAP['2']).toBe(TASK_STATUS.IN_PROGRESS);
-      expect(KEYBOARD_STATUS_MAP['3']).toBe(TASK_STATUS.DONE);
-      expect(KEYBOARD_STATUS_MAP['4']).toBe(TASK_STATUS.ABANDONED);
+  describe('KEYBOARD_STAGE_KIND_MAP', () => {
+    it('maps keyboard keys 1-4 to stage kinds', () => {
+      expect(KEYBOARD_STAGE_KIND_MAP['1']).toBe(STAGE_KIND.BACKLOG);
+      expect(KEYBOARD_STAGE_KIND_MAP['2']).toBe(STAGE_KIND.IN_PROGRESS);
+      expect(KEYBOARD_STAGE_KIND_MAP['3']).toBe(STAGE_KIND.DONE);
+      expect(KEYBOARD_STAGE_KIND_MAP['4']).toBe(STAGE_KIND.ABANDONED);
     });
   });
 
@@ -134,71 +139,57 @@ describe('constants', () => {
     });
   });
 
-  describe('getStatusFromStageName', () => {
-    it('returns IN_PROGRESS for names containing progress/doing/active', () => {
-      expect(getStatusFromStageName('In Progress')).toBe(TASK_STATUS.IN_PROGRESS);
-      expect(getStatusFromStageName('Doing')).toBe(TASK_STATUS.IN_PROGRESS);
-      expect(getStatusFromStageName('Active Tasks')).toBe(TASK_STATUS.IN_PROGRESS);
+  describe('stage kinds', () => {
+    it('labels and describes every kind', () => {
+      for (const kind of STAGE_KIND_VALUES) {
+        expect(STAGE_KIND_LABEL[kind].length).toBeGreaterThan(0);
+        expect(STAGE_KIND_DESCRIPTION[kind].length).toBeGreaterThan(0);
+      }
     });
 
-    it('returns DONE for names containing done/complete/finished', () => {
-      expect(getStatusFromStageName('Done')).toBe(TASK_STATUS.DONE);
-      expect(getStatusFromStageName('Completed')).toBe(TASK_STATUS.DONE);
-      expect(getStatusFromStageName('Finished')).toBe(TASK_STATUS.DONE);
+    it('recognises its own values and nothing else', () => {
+      for (const kind of STAGE_KIND_VALUES) expect(isStageKind(kind)).toBe(true);
+      // What a stage row read from an older export, or hand-edited, might hold.
+      expect(isStageKind('Done')).toBe(false);
+      expect(isStageKind('')).toBe(false);
+      expect(isStageKind(undefined)).toBe(false);
+      expect(isStageKind(null)).toBe(false);
     });
 
-    it('returns ABANDONED for names containing abandon/cancel', () => {
-      expect(getStatusFromStageName('Abandon Pile')).toBe(TASK_STATUS.ABANDONED);
-      expect(getStatusFromStageName('Cancelled')).toBe(TASK_STATUS.ABANDONED);
+    it('counts done and abandoned as closed, and nothing else', () => {
+      expect(isClosedStageKind(STAGE_KIND.DONE)).toBe(true);
+      expect(isClosedStageKind(STAGE_KIND.ABANDONED)).toBe(true);
+      expect(isClosedStageKind(STAGE_KIND.BACKLOG)).toBe(false);
+      expect(isClosedStageKind(STAGE_KIND.IN_PROGRESS)).toBe(false);
+      // Parked is not finished: a waiting card is still live work.
+      expect(isClosedStageKind(STAGE_KIND.WAITING)).toBe(false);
     });
 
-    it('matches "done" substring before "abandon" (Abandoned contains "done")', () => {
-      expect(getStatusFromStageName('Abandoned')).toBe(TASK_STATUS.DONE);
-    });
-
-    it('defaults to BACKLOG for unrecognised names', () => {
-      expect(getStatusFromStageName('Random')).toBe(TASK_STATUS.BACKLOG);
-      expect(getStatusFromStageName('Backlog')).toBe(TASK_STATUS.BACKLOG);
-      expect(getStatusFromStageName('To Do')).toBe(TASK_STATUS.BACKLOG);
-    });
-  });
-
-  describe('isInProgressStageName', () => {
-    it('returns true for in-progress stage names', () => {
-      expect(isInProgressStageName('In Progress')).toBe(true);
-      expect(isInProgressStageName('Doing')).toBe(true);
-      expect(isInProgressStageName('Active')).toBe(true);
-    });
-
-    it('returns false for non-in-progress stage names', () => {
-      expect(isInProgressStageName('Done')).toBe(false);
-      expect(isInProgressStageName('Backlog')).toBe(false);
-      expect(isInProgressStageName('Abandoned')).toBe(false);
+    it('defaults to a kind that is itself valid', () => {
+      expect(isStageKind(DEFAULT_STAGE_KIND)).toBe(true);
     });
   });
 
-  describe('isDoneStageName', () => {
-    it('returns true for names the board infers as done, decoration included', () => {
-      expect(isDoneStageName('Done')).toBe(true);
-      expect(isDoneStageName('Done  ✔')).toBe(true);
-      expect(isDoneStageName('Completed')).toBe(true);
-      expect(isDoneStageName('Finished')).toBe(true);
+  describe('legacyStatusToStageKind', () => {
+    it('maps every value the dropped status column could hold', () => {
+      expect(legacyStatusToStageKind('backlog')).toBe(STAGE_KIND.BACKLOG);
+      expect(legacyStatusToStageKind('in_progress')).toBe(STAGE_KIND.IN_PROGRESS);
+      expect(legacyStatusToStageKind('done')).toBe(STAGE_KIND.DONE);
+      // Not `done`. The old name inference read "Abandoned" as done, because
+      // the string contains "done"; the mapping does not repeat that.
+      expect(legacyStatusToStageKind('abandoned')).toBe(STAGE_KIND.ABANDONED);
     });
 
-    it('returns false for the working columns', () => {
-      expect(isDoneStageName('Backlog')).toBe(false);
-      expect(isDoneStageName('In Progress')).toBe(false);
-      expect(isDoneStageName('Waiting ✋️ ')).toBe(false);
-      expect(isDoneStageName('Cancelled')).toBe(false);
+    it('cannot produce waiting, which the old enum could not express', () => {
+      for (const status of TASK_STATUS_VALUES) {
+        expect(legacyStatusToStageKind(status)).not.toBe(STAGE_KIND.WAITING);
+      }
     });
 
-    it('agrees with getStatusFromStageName, quirks included', () => {
-      // "Abandoned" contains "done" and is inferred DONE there too.
-      expect(isDoneStageName('Abandoned')).toBe(
-        getStatusFromStageName('Abandoned') === TASK_STATUS.DONE,
-      );
-      // "Done doing" is inferred in-progress there, so it stays a column here.
-      expect(isDoneStageName('Done doing')).toBe(false);
+    it('returns null for anything it does not recognise', () => {
+      expect(legacyStatusToStageKind('waiting')).toBe(null);
+      expect(legacyStatusToStageKind('')).toBe(null);
+      expect(legacyStatusToStageKind(undefined)).toBe(null);
     });
   });
 });

@@ -13,7 +13,8 @@ import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
 import { relations } from 'drizzle-orm';
 import {
-  TASK_STATUS,
+  STAGE_KIND_VALUES,
+  DEFAULT_STAGE_KIND,
   TASK_PRIORITY,
   TASK_RECURRENCE,
   EFFORT_MIN,
@@ -28,6 +29,11 @@ export const stages = pgTable('stages', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
   order: integer('order').notNull(),
+  // What the column means, independent of what it is called (EPIC-03 story 1).
+  // This is the task state: a task is in progress because it sits in an
+  // in-progress column, not because a second field on the task says so. The
+  // display name is decoration and can be renamed freely.
+  kind: text('kind').notNull().default(DEFAULT_STAGE_KIND),
   color: text('color'),
   createdAt: timestamp('created_at').defaultNow(),
 });
@@ -88,14 +94,9 @@ export const subStages = pgTable('sub_stages', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-// Task status enum — values sourced from shared/constants.ts
-export const taskStatusEnum = z.enum([
-  TASK_STATUS.BACKLOG,
-  TASK_STATUS.IN_PROGRESS,
-  TASK_STATUS.DONE,
-  TASK_STATUS.ABANDONED,
-]);
-export type TaskStatus = z.infer<typeof taskStatusEnum>;
+// Stage kind enum — values sourced from shared/constants.ts
+export const stageKindEnum = z.enum(STAGE_KIND_VALUES);
+export type StageKind = z.infer<typeof stageKindEnum>;
 
 // Task priority enum — values sourced from shared/constants.ts
 export const taskPriorityEnum = z.enum([
@@ -115,9 +116,16 @@ export const taskRecurrenceEnum = z.enum([
 ]);
 export type TaskRecurrence = z.infer<typeof taskRecurrenceEnum>;
 
-// History log entry type
+/**
+ * One line of a task's history.
+ *
+ * `status` is the key name rows written before EPIC-03 already use, so it
+ * stays; its value is now a stage kind, which is a superset of the old status
+ * enum (it adds `waiting`). Entries are appended when a task changes column,
+ * is archived, or moves to and from the Bin.
+ */
 export interface TaskHistoryEntry {
-  status: TaskStatus;
+  status: StageKind;
   timestamp: string;
   note?: string;
 }
@@ -134,7 +142,11 @@ export const tasks = pgTable('tasks', {
   projectId: integer('project_id').references(() => projects.id, { onDelete: 'set null' }),
   archived: boolean('archived').notNull().default(false),
   // Enhanced fields
-  status: text('status').default(TASK_STATUS.BACKLOG),
+  //
+  // There is no `status` here. It was a second state machine that could, and
+  // did, contradict `stageId` — the board rendered one answer while an agent
+  // filtering on the other got a different set. Dropped in EPIC-03 story 2;
+  // a task's state is the `kind` of the stage it sits in.
   priority: text('priority').default(TASK_PRIORITY.NORMAL),
   effort: integer('effort'), // EFFORT_MIN–EFFORT_MAX
   dueDate: timestamp('due_date'), // Optional due date
@@ -143,7 +155,7 @@ export const tasks = pgTable('tasks', {
   tags: jsonb('tags').$type<string[]>(),
   parentTaskId: integer('parent_task_id'), // FK to tasks(id) enforced at DB level, not via Drizzle .references() to avoid circular type inference
   recurrence: text('recurrence').default(TASK_RECURRENCE.NONE),
-  history: jsonb('history').$type<TaskHistoryEntry[]>(), // Status change history
+  history: jsonb('history').$type<TaskHistoryEntry[]>(), // Stage-change history
   // Null = Unassigned. Deleting an owner releases their tasks rather than
   // taking them with it (EPIC-06).
   ownerId: integer('owner_id').references(() => owners.id, { onDelete: 'set null' }),
@@ -296,6 +308,10 @@ export const insertStageSchema = createInsertSchema(stages)
       .regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/)
       .optional()
       .nullable(),
+    // Optional on the wire, defaulted in the database: a caller that does not
+    // care gets a backlog column. It is never inferred from `name` — that was
+    // the defect EPIC-03 story 1 removed.
+    kind: stageKindEnum.optional(),
   });
 
 const hexColorSchema = z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/);
@@ -386,7 +402,6 @@ export const insertTaskSchema = createInsertSchema(tasks)
     stageId: z.number(),
     projectId: z.number().int().positive().optional().nullable(),
     archived: z.boolean().optional(),
-    status: taskStatusEnum.optional(),
     priority: taskPriorityEnum.optional(),
     effort: z.number().min(EFFORT_MIN).max(EFFORT_MAX).optional().nullable(),
     dueDate: z.coerce.date().optional().nullable(),
@@ -396,7 +411,7 @@ export const insertTaskSchema = createInsertSchema(tasks)
     history: z
       .array(
         z.object({
-          status: taskStatusEnum,
+          status: stageKindEnum,
           timestamp: z.string(),
           note: z.string().optional(),
         }),

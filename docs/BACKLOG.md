@@ -3,6 +3,7 @@
 **Status:** Live — supersedes the loose board chatter as the ordered dev list
 **Last consolidated:** 14 Aug 2026, from board tasks #151–#162 + EPIC-01/03/04
 **Amended:** 12 Oct 2026 — **B-11** added (EPIC-06, owner as an entity); B-01 Q3, B-04, B-05 and B-10 updated where it changes them
+**Amended:** 13 Oct 2026 — **B-05** part-done: EPIC-03 stories 1 and 2 landed (state collapse), ahead of B-01's audit
 **Convention:** items carry a stable `B-xx` id for tracking; board task ids and epic
 docs are cross-referenced so nothing exists in two places with two meanings.
 
@@ -68,6 +69,14 @@ _12 Oct 2026: story 5 (the owner/swimlane overlap, 5 pts) left this epic for **B
 / EPIC-06 v3.2, taking the target from ~34 to ~29 pts. The owner sort went with it.
 Story 3 (sub-stage FK) still owns the lanes that name a **status**; EPIC-06 takes the
 lanes that name a **person**._
+
+_13 Oct 2026: **stories 1 and 2 landed** (10 pts) — `stages.kind` plus the drop of
+`tasks.status`, pulled early as the sequencing note above asks, since the state
+collapse unblocks EPIC-04. Taken out of order relative to B-01: the two findings
+they close (#1 and #5) were unambiguous on current production data, and the
+backfill reports (`stage_kind_backfill_report`, `task_status_backfill_report`) give
+the audit better evidence than it would have had. ~19 pts remain in the epic.
+**B-01 should now re-validate findings 2, 3, 4, 6 only.**_
 
 **B-06 — Attachment UX: drag-drop + screenshot paste** · board #161 · effort 1–2
 _Unblocked 28 Sep 2026:_ EPIC-03 story 7 (attachment extraction) landed on its own —

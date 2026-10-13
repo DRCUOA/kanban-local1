@@ -43,8 +43,15 @@ function wrapper({ children }: { children: React.ReactNode }) {
 }
 
 const mockStages: Stage[] = [
-  { id: 1, name: 'Backlog', order: 0, color: '#3B82F6', createdAt: new Date() },
-  { id: 2, name: 'In Progress', order: 1, color: '#10B981', createdAt: new Date() },
+  { id: 1, name: 'Backlog', order: 0, kind: 'backlog', color: '#3B82F6', createdAt: new Date() },
+  {
+    id: 2,
+    name: 'In Progress',
+    order: 1,
+    kind: 'in_progress',
+    color: '#10B981',
+    createdAt: new Date(),
+  },
 ];
 
 beforeEach(() => {
@@ -62,13 +69,15 @@ describe('StageSection', () => {
     expect(screen.getByText('No stages found. Create one to get started.')).toBeDefined();
   });
 
-  it('renders each stage with name, order, and color swatch', () => {
+  it('renders each stage with name, kind, order, and color swatch', () => {
     render(<StageSection stages={mockStages} isLoading={false} />, { wrapper });
 
     expect(screen.getByText('Backlog')).toBeDefined();
     expect(screen.getByText('In Progress')).toBeDefined();
-    expect(screen.getByText('Order: 0')).toBeDefined();
-    expect(screen.getByText('Order: 1')).toBeDefined();
+    // The kind rides with the order, so a column whose meaning is wrong is
+    // visible without opening the dialog (EPIC-03 story 1).
+    expect(screen.getByText('Backlog · Order: 0')).toBeDefined();
+    expect(screen.getByText('In Progress · Order: 1')).toBeDefined();
   });
 
   it('shows the "Add Stage" button', () => {

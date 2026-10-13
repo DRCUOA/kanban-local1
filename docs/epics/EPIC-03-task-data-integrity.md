@@ -1,10 +1,12 @@
 # EPIC-03: One authoritative state per task
 
-**Version:** 3.2
+**Version:** 3.3
 **Epic type:** Enabler
-**Status:** Ready for refinement
+**Status:** In progress — stories 1, 2 and 7 landed
 **Owner:** Platform
 **Target:** 2–3 sprints (≈29 pts)
+
+**v3.3 (13 Oct 2026) — stories 1 and 2 landed.** `stages.kind` replaces the stage-name inference (migration `0014_stage_kind.sql`) and `tasks.status` is dropped (`0015_drop_task_status.sql`). `getStatusFromStageName`, `isDoneStageName`, `isWaitingStageName` and `isInProgressStageName` are deleted, not merely unused; `shared/stage-state.ts` is the single resolver that replaced them. On the dev board the backfill assigned all five columns a kind and reconciled one task — #13, `status: backlog` sitting in Waiting, now `waiting`, a state the old enum could not express — recording the change in its `history`. Export `formatVersion` is now **2**: `tasks[].status` is gone, while `briefing.*[].storedStatus` and `.statusConflict` stay at null/false for payload stability. Remaining: stories 3, 4, 6, 8, 9, 10, 11 (≈19 pts).
 
 **v3.2 (12 Oct 2026) — story 5 delegated.** The owner/swimlane overlap is now specified in full as [EPIC-06: Owner as an entity](EPIC-06-owner-as-entity.md), which makes `owner` a first-class row rather than normalising a label. Story 5 (5 pts) leaves this epic, taking the target from ≈34 to ≈29 pts; the out-of-scope note on identity and the sub-stage FK finding are amended below. The cost estimate in the final section predates this change and has not been recut.
 
@@ -91,8 +93,8 @@ Each change ships expand → backfill → contract so no deploy has a broken win
 
 | #   | Story                                                                                        | Pts |
 | --- | -------------------------------------------------------------------------------------------- | --- |
-| 1   | Add `stages.kind` + backfill from current names; replace name-substring inference (enabler)  | 5   |
-| 2   | Collapse `tasks.status` into stage-derived state; reconcile the 3 conflicting rows (enabler) | 5   |
+| ~~1~~ | ~~Add `stages.kind` + backfill from current names; replace name-substring inference~~ **Landed 13 Oct 2026** | 5 |
+| ~~2~~ | ~~Collapse `tasks.status` into stage-derived state; reconcile the conflicting rows~~ **Landed 13 Oct 2026** | 5 |
 | 3   | Add `tasks.sub_stage_id` FK; backfill from tag matching; writers set it (enabler)            | 5   |
 | 4   | Make `tags` `NOT NULL DEFAULT '[]'` and strip null elements (enabler)                        | 2   |
 | ~~5~~ | ~~Resolve the owner/swimlane overlap into one assignment field~~ → **EPIC-06** (v3.2)       | —   |
@@ -104,6 +106,11 @@ Each change ships expand → backfill → contract so no deploy has a broken win
 | 11  | Extend `history` to record field-level changes and time-in-stage                             | 3   |
 
 ### Story 2 (the one that carries the epic) — acceptance criteria
+
+> **Landed 13 Oct 2026** with story 1, which it depends on. All five criteria met; see v3.3 above. Two decisions worth recording:
+>
+> - **The closed strip takes both closed kinds.** The board's done strip and the Filing menu now read `done` *and* `abandoned`, where before they read only "done" by name. This preserves what the old code did by accident — `'abandoned'` contains the substring `'done'`, so an Abandoned column already landed in the strip — and makes it deliberate: the strip is for work that has stopped, either way it stopped.
+> - **The two dead briefing fields are kept, not removed.** `storedStatus` and `statusConflict` stay in `BriefingEntry` at null and false, on the EPIC-06 `ownerConflict` precedent, because the epic puts the digest's shape out of scope. They should be removed together with `ownerConflict` by OWN-10.
 
 - **Given** a task whose stored `status` disagreed with its stage, **when** the migration runs, **then** its state matches the column the board renders it in, and the pre-migration value is recorded in `history`.
 - **Given** any task, **when** the export is built, **then** `briefing.*[].statusConflict` is `false` for every entry.

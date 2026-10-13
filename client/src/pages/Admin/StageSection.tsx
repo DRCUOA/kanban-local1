@@ -16,6 +16,20 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@shared/routes';
 import { insertStageSchema, type InsertStage, type Stage } from '@shared/schema';
+import {
+  STAGE_KIND_VALUES,
+  STAGE_KIND_LABEL,
+  STAGE_KIND_DESCRIPTION,
+  DEFAULT_STAGE_KIND,
+} from '@shared/constants';
+import { stageKind } from '@shared/stage-state';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { queryClient } from '@/lib/queryClient';
 import { apiPost, apiPatch, apiDelete } from '@/lib/api';
 import { Trash2, Edit } from 'lucide-react';
@@ -34,7 +48,7 @@ export function StageSection({ stages, isLoading }: StageSectionProps) {
 
   const form = useForm<InsertStage>({
     resolver: zodResolver(insertStageSchema),
-    defaultValues: { name: '', order: 1, color: '#3B82F6' },
+    defaultValues: { name: '', order: 1, color: '#3B82F6', kind: DEFAULT_STAGE_KIND },
   });
 
   const createMutation = useMutation({
@@ -44,7 +58,7 @@ export function StageSection({ stages, isLoading }: StageSectionProps) {
       queryClient.refetchQueries({ queryKey: [api.stages.list.path] });
       toast({ description: 'Stage created' });
       setDialogOpen(false);
-      form.reset({ name: '', order: 1, color: '#3B82F6' });
+      form.reset({ name: '', order: 1, color: '#3B82F6', kind: DEFAULT_STAGE_KIND });
     },
   });
 
@@ -59,7 +73,7 @@ export function StageSection({ stages, isLoading }: StageSectionProps) {
       toast({ description: 'Stage updated' });
       setEditingId(null);
       setDialogOpen(false);
-      form.reset({ name: '', order: 1, color: '#3B82F6' });
+      form.reset({ name: '', order: 1, color: '#3B82F6', kind: DEFAULT_STAGE_KIND });
     },
     onError: (error) => {
       toast({
@@ -105,14 +119,19 @@ export function StageSection({ stages, isLoading }: StageSectionProps) {
 
   const openEditDialog = (stage: any) => {
     setEditingId(stage.id);
-    form.reset({ name: stage.name, order: stage.order, color: stage.color || '#3B82F6' });
+    form.reset({
+      name: stage.name,
+      order: stage.order,
+      color: stage.color || '#3B82F6',
+      kind: stageKind(stage),
+    });
     setDialogOpen(true);
   };
 
   const closeDialog = () => {
     setDialogOpen(false);
     setEditingId(null);
-    form.reset({ name: '', order: 1, color: '#3B82F6' });
+    form.reset({ name: '', order: 1, color: '#3B82F6', kind: DEFAULT_STAGE_KIND });
   };
 
   return (
@@ -126,7 +145,7 @@ export function StageSection({ stages, isLoading }: StageSectionProps) {
               className="rounded-md h-10 active:scale-95 transition-transform"
               onClick={() => {
                 setEditingId(null);
-                form.reset({ name: '', order: 1, color: '#3B82F6' });
+                form.reset({ name: '', order: 1, color: '#3B82F6', kind: DEFAULT_STAGE_KIND });
               }}
               data-testid="button-add-stage"
             >
@@ -158,6 +177,44 @@ export function StageSection({ stages, isLoading }: StageSectionProps) {
                           data-testid="input-stage-name"
                         />
                       </FormControl>
+                    </FormItem>
+                  )}
+                />
+                {/* The column's meaning, and so the state of every task in
+                    it. Explicit since EPIC-03 story 1: it used to be guessed
+                    from the name above, which made renaming a column restate
+                    its tasks. */}
+                <FormField
+                  control={form.control}
+                  name="kind"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">
+                        Kind — what tasks in this column mean
+                      </FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value || DEFAULT_STAGE_KIND}
+                      >
+                        <FormControl>
+                          <SelectTrigger
+                            className="h-12 rounded-md"
+                            data-testid="select-stage-kind"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {STAGE_KIND_VALUES.map((kind) => (
+                            <SelectItem key={kind} value={kind} className="py-3">
+                              <span>{STAGE_KIND_LABEL[kind]}</span>
+                              <span className="ml-2 text-[11px] text-muted-foreground">
+                                {STAGE_KIND_DESCRIPTION[kind]}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </FormItem>
                   )}
                 />
@@ -247,7 +304,9 @@ export function StageSection({ stages, isLoading }: StageSectionProps) {
                 )}
                 <div>
                   <p className="font-medium text-sm">{stage.name}</p>
-                  <p className="text-[10px] text-muted-foreground">Order: {stage.order}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {STAGE_KIND_LABEL[stageKind(stage)]} · Order: {stage.order}
+                  </p>
                 </div>
               </div>
               <div className="flex gap-2">

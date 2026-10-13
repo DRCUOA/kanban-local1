@@ -19,7 +19,8 @@ import { NavDropTargets } from './NavDropTargets';
 import { ShareDialog } from './ShareDialog';
 import { TaskPreviewPane } from './TaskPreviewPane';
 import { TaskSelectionContext } from './task-selection-context';
-import { DEFAULT_STAGE_COLORS, isDoneStageName } from '@shared/constants';
+import { DEFAULT_STAGE_COLORS, isClosedStageKind } from '@shared/constants';
+import { stageKind } from '@shared/stage-state';
 import { filingTargets } from '@/lib/filing-targets';
 import { sortTasksByDueDate, sortTasksByOwner } from '@shared/task-sort';
 import { cn } from '@/lib/utils';
@@ -83,11 +84,13 @@ export function KanbanBoard({
 
   const sortedStages = useMemo(() => [...stages].sort((a, b) => a.order - b.order), [stages]);
 
-  // Done stages are off the board entirely: they live behind the nav's Filing
-  // button, as both its submenu rows and the /filing page. The band they and
-  // the archive strip used to occupy goes back to the columns.
+  // Closed stages — done and abandoned — are off the board entirely: they live
+  // behind the nav's Filing button, as both its submenu rows and the /filing
+  // page. The band they and the archive strip used to occupy goes back to the
+  // columns. Read from `stage.kind` since EPIC-03 story 1, so renaming a
+  // column no longer moves it on or off the board.
   const columnStages = useMemo(
-    () => sortedStages.filter((stage) => !isDoneStageName(stage.name)),
+    () => sortedStages.filter((stage) => !isClosedStageKind(stageKind(stage))),
     [sortedStages],
   );
   const filingMenuTargets = useMemo(() => filingTargets(sortedStages), [sortedStages]);

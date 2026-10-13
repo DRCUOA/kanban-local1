@@ -5,12 +5,13 @@ import { matchesBoardWarning, type BoardWarningKind } from '@shared/board-warnin
 import { OWNER_FILTER_ALL, ownerFilterMatches, type OwnerFilter } from './owner-view';
 import { richTextToPlainText } from '@/lib/rich-text';
 import {
-  TASK_STATUS,
+  STAGE_KIND,
   TASK_PRIORITY,
   PRIORITY_SORT_ORDER,
-  getStatusFromStageName,
+  isClosedStageKind,
   type TaskPriorityValue,
 } from '@shared/constants';
+import { taskStageKind } from '@shared/stage-state';
 
 export interface UseFilteredTasksOptions {
   tasks: Task[] | undefined;
@@ -36,13 +37,6 @@ function parseTaskIdQuery(searchQuery: string): number | null {
   if (!match?.[1]) return null;
   const id = Number(match[1]);
   return Number.isSafeInteger(id) ? id : null;
-}
-
-function getTaskStatusFromStages(t: Task, stages: Stage[]): string {
-  if (t.status) return t.status;
-  const stage = stages.find((s: any) => s.id === t.stageId);
-  if (stage) return getStatusFromStageName(stage.name);
-  return TASK_STATUS.BACKLOG;
 }
 
 export function useFilteredTasks({
@@ -81,18 +75,18 @@ export function useFilteredTasks({
       ) || [];
 
     if (focusMode) {
-      const getTaskStatus = (t: Task) => getTaskStatusFromStages(t, stages);
+      // The column a card sits in is its state (EPIC-03 story 2).
+      const kindOf = (t: Task) => taskStageKind(t, stages);
 
       if (viewMode === 'detail') {
         filtered = filtered.filter((t) => {
           const p = (t.priority as TaskPriorityValue) || TASK_PRIORITY.NORMAL;
           if (p !== TASK_PRIORITY.HIGH && p !== TASK_PRIORITY.CRITICAL) return false;
-          const status = getTaskStatus(t);
-          return status !== TASK_STATUS.DONE && status !== TASK_STATUS.ABANDONED;
+          return !isClosedStageKind(kindOf(t));
         });
       } else {
-        const inProgress = filtered.filter((t) => getTaskStatus(t) === TASK_STATUS.IN_PROGRESS);
-        const backlog = filtered.filter((t) => getTaskStatus(t) === TASK_STATUS.BACKLOG);
+        const inProgress = filtered.filter((t) => kindOf(t) === STAGE_KIND.IN_PROGRESS);
+        const backlog = filtered.filter((t) => kindOf(t) === STAGE_KIND.BACKLOG);
         const nextTask = backlog.sort((a, b) => {
           const aPriority =
             PRIORITY_SORT_ORDER[(a.priority as TaskPriorityValue) || TASK_PRIORITY.NORMAL];

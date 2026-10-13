@@ -1,7 +1,7 @@
 import { differenceInDays } from 'date-fns';
 import { isTaskOverdueOn } from './briefing';
-import { TASK_STATUS, TASK_PRIORITY } from './constants';
-import { resolveTaskStatusForWarnings } from './task-warning-highlight';
+import { STAGE_KIND, TASK_PRIORITY } from './constants';
+import { isClosedTaskByStage, taskStageKind } from './stage-state';
 import type { Task, Stage } from './schema';
 
 /**
@@ -24,28 +24,38 @@ export const STALE_AFTER_DAYS = 14;
  */
 export const MANY_IN_PROGRESS_THRESHOLD = 3;
 
-/** Whether one task is behind `kind`. Archived tasks are behind nothing. */
+/**
+ * Whether one task is behind `kind`. Only a task the main board shows can be
+ * behind anything: archived and binned tasks are off the board, and a closed
+ * one (done or abandoned) has stopped accruing warnings — its clock stopped
+ * when it closed, so an untouched Done card is finished, not stale.
+ */
 export function matchesBoardWarning(
   task: Task,
   kind: BoardWarningKind,
   stages: Stage[],
   now: Date,
 ): boolean {
-  if (task.archived) return false;
+  if (task.archived || task.deletedAt) return false;
 
   switch (kind) {
     case 'in-progress':
-      return resolveTaskStatusForWarnings(task, stages) === TASK_STATUS.IN_PROGRESS;
+      return taskStageKind(task, stages) === STAGE_KIND.IN_PROGRESS;
+    // A waiting column is its own kind now, so parked high-priority work no
+    // longer counts here: it is blocked, not neglected in the backlog.
     case 'high-priority':
       return (
-        resolveTaskStatusForWarnings(task, stages) === TASK_STATUS.BACKLOG &&
+        taskStageKind(task, stages) === STAGE_KIND.BACKLOG &&
         (task.priority === TASK_PRIORITY.HIGH || task.priority === TASK_PRIORITY.CRITICAL)
       );
     // The same helper the card highlight and the export's `overdue` list use,
     // so the three cannot disagree about what overdue means.
     case 'overdue':
       return isTaskOverdueOn(task, stages, now);
+    // The same gate `overdue` applies through `isTaskOverdueOn`, so neither
+    // pill counts work that is already finished.
     case 'stale':
+      if (isClosedTaskByStage(task, stages)) return false;
       return task.updatedAt
         ? differenceInDays(now, new Date(task.updatedAt)) >= STALE_AFTER_DAYS
         : false;

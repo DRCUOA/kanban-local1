@@ -38,8 +38,16 @@ vi.mock('@/hooks/use-owners', () => ({
 }));
 
 const stages: Stage[] = [
-  { id: 1, name: 'Backlog', order: 1, color: '#3B82F6', createdAt: new Date() },
-  { id: 2, name: 'Waiting ✋️ ', order: 2, color: '#F59E0B', createdAt: new Date() },
+  { id: 1, name: 'Backlog', order: 1, kind: 'backlog', color: '#3B82F6', createdAt: new Date() },
+  {
+    id: 2,
+    name: 'Waiting ✋️ ',
+    order: 2,
+    kind: 'waiting',
+    color: '#F59E0B',
+    createdAt: new Date(),
+  },
+  { id: 3, name: 'Done', order: 3, kind: 'done', color: '#84CC16', createdAt: new Date() },
 ];
 
 const subStages: SubStage[] = [
@@ -74,7 +82,6 @@ const makeTask = (overrides: Partial<Task> = {}): Task =>
     description: '<p>Quote for the <strong>north roof</strong></p>',
     stageId: 2,
     archived: false,
-    status: 'backlog',
     priority: 'high',
     effort: 3,
     dueDate: new Date(2030, 0, 15),
@@ -119,7 +126,10 @@ describe('TaskPreviewPane', () => {
     expect(screen.getByTestId('task-preview-substage').textContent).toBe('Scheduled action');
     expect(screen.getByTestId('task-preview-title').textContent).toBe('Call back Solar Guy');
 
-    expect(screen.getByText('Backlog')).toBeDefined(); // status label
+    // The state badge reads the column. This fixture sits in the Waiting
+    // column and used to show "Backlog" here, off its own `status` field —
+    // the pane contradicting the stage name three lines above it.
+    expect(screen.getByTestId('task-preview-state').textContent).toBe('Waiting');
     expect(screen.getByTestId('task-preview-priority').textContent).toBe('High');
     expect(screen.getByText('Effort 3/5')).toBeDefined();
     expect(screen.getByTestId('task-preview-owner').textContent).toContain('Rich');
@@ -196,7 +206,7 @@ describe('TaskPreviewPane', () => {
   it('does not flag a done task as overdue, without the due date being cleared', () => {
     render(
       <TaskPreviewPane
-        task={makeTask({ status: 'done', dueDate: new Date(2000, 0, 1) })}
+        task={makeTask({ stageId: 3, dueDate: new Date(2000, 0, 1) })}
         stages={stages}
         subStages={subStages}
         onOpen={vi.fn()}

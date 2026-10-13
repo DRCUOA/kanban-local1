@@ -21,15 +21,11 @@ import {
   type InsertProject,
   type InsertOwner,
   type TaskHistoryEntry,
-  type TaskStatus,
+  type StageKind,
 } from '@shared/schema';
 import type { TaskProjectFilter } from '@shared/project-scope';
-import {
-  TASK_STATUS,
-  TASK_PRIORITY,
-  TASK_RECURRENCE,
-  getStatusFromStageName,
-} from '@shared/constants';
+import { TASK_PRIORITY, TASK_RECURRENCE, DEFAULT_STAGE_KIND } from '@shared/constants';
+import { stageKind } from '@shared/stage-state';
 import { db } from './db';
 import {
   eq,
@@ -62,25 +58,24 @@ async function insertTaskWithExecutor(
   executor: TaskInsertExecutor,
   insertTask: InsertTask,
 ): Promise<Task> {
-  let initialStatus = insertTask.status || TASK_STATUS.BACKLOG;
-
-  if (!insertTask.status && insertTask.stageId) {
+  // The task's state is the kind of the column it is created in — there is no
+  // `status` to set alongside it, and no chance of the two disagreeing. Read
+  // here only to open the history with the right first line.
+  let initialKind: StageKind = DEFAULT_STAGE_KIND;
+  if (insertTask.stageId) {
     const [stage] = await executor.select().from(stages).where(eq(stages.id, insertTask.stageId));
-    if (stage) {
-      initialStatus = getStatusFromStageName(stage.name);
-    }
+    initialKind = stageKind(stage);
   }
 
   const history: TaskHistoryEntry[] = [
     {
-      status: initialStatus,
+      status: initialKind,
       timestamp: new Date().toISOString(),
     },
   ];
 
   const taskData = {
     ...insertTask,
-    status: initialStatus,
     priority: insertTask.priority || TASK_PRIORITY.NORMAL,
     recurrence: insertTask.recurrence || TASK_RECURRENCE.NONE,
     history,
@@ -89,6 +84,15 @@ async function insertTaskWithExecutor(
 
   const [task] = await executor.insert(tasks).values(taskData).returning();
   return task!;
+}
+
+/**
+ * The kind of the column a task sits in — the task's state. Used to stamp a
+ * history line with where the task actually was at the time.
+ */
+async function kindOfStage(stageId: number): Promise<StageKind> {
+  const [stage] = await db.select().from(stages).where(eq(stages.id, stageId));
+  return stageKind(stage);
 }
 
 /**
@@ -208,7 +212,7 @@ export class DatabaseStorage implements IStorage {
     // Add archive entry to history
     const history = currentTask.history || [];
     const historyEntry: TaskHistoryEntry = {
-      status: (currentTask.status as TaskStatus) || TASK_STATUS.BACKLOG,
+      status: await kindOfStage(currentTask.stageId),
       timestamp: new Date().toISOString(),
       note: 'Archived',
     };
@@ -252,7 +256,7 @@ export class DatabaseStorage implements IStorage {
 
     const history = currentTask.history || [];
     const historyEntry: TaskHistoryEntry = {
-      status: (currentTask.status as TaskStatus) || TASK_STATUS.BACKLOG,
+      status: await kindOfStage(currentTask.stageId),
       timestamp: new Date().toISOString(),
       note: 'Moved to Bin',
     };
@@ -275,7 +279,7 @@ export class DatabaseStorage implements IStorage {
 
     const history = currentTask.history || [];
     const historyEntry: TaskHistoryEntry = {
-      status: (currentTask.status as TaskStatus) || TASK_STATUS.BACKLOG,
+      status: await kindOfStage(currentTask.stageId),
       timestamp: new Date().toISOString(),
       note: 'Restored from Bin',
     };
@@ -297,17 +301,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateTask(id: number, updates: Partial<InsertTask>): Promise<Task | undefined> {
-    // Get current task to check for status changes
     const [currentTask] = await db.select().from(tasks).where(eq(tasks.id, id));
     if (!currentTask) return undefined;
 
-    // Track status changes in history
-    const statusChanged = updates.status && updates.status !== currentTask.status;
+    // A move to another column is the state change worth recording. This used
+    // to watch `updates.status`, which meant a drag that changed the column
+    // logged a line only because the client remembered to send a status with
+    // it — and logged nothing when it did not.
+    const movedStage = updates.stageId !== undefined && updates.stageId !== currentTask.stageId;
     let history = currentTask.history || [];
 
-    if (statusChanged && updates.status) {
+    if (movedStage && updates.stageId !== undefined) {
       const historyEntry: TaskHistoryEntry = {
-        status: updates.status,
+        status: await kindOfStage(updates.stageId),
         timestamp: new Date().toISOString(),
       };
       history = [...history, historyEntry];

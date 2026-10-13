@@ -6,11 +6,10 @@ import {
   insertTaskSchema,
   type InsertTask,
   type Task,
-  type TaskStatus,
   type TaskPriority,
   type TaskRecurrence,
 } from '@shared/schema';
-import { TASK_STATUS, TASK_PRIORITY, TASK_RECURRENCE } from '@shared/constants';
+import { TASK_PRIORITY, TASK_RECURRENCE } from '@shared/constants';
 import { useUpdateTask, useDeleteTask } from '@/hooks/use-tasks';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@shared/logger';
@@ -51,7 +50,6 @@ export function useEditTaskForm({ task, open, onOpenChange }: UseEditTaskFormOpt
           title: task.title,
           description: task.description || '',
           stageId: task.stageId,
-          status: (task.status as TaskStatus) || TASK_STATUS.BACKLOG,
           priority: (task.priority as TaskPriority) || TASK_PRIORITY.NORMAL,
           effort: task.effort || undefined,
           dueDate: parsedDueDate,
@@ -66,7 +64,6 @@ export function useEditTaskForm({ task, open, onOpenChange }: UseEditTaskFormOpt
           title: task.title || '',
           description: task.description || '',
           stageId: task.stageId || 1,
-          status: (task.status as TaskStatus) || TASK_STATUS.BACKLOG,
           priority: (task.priority as TaskPriority) || TASK_PRIORITY.NORMAL,
           effort: task.effort || undefined,
           dueDate: undefined,
