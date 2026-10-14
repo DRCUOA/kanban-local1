@@ -5,6 +5,8 @@ import { getTaskWarningHighlight } from '@shared/task-warning-highlight';
 import { TASK_WARNING_BORDER_COLOR } from '@/lib/task-warning-border';
 import { useStages } from '@/hooks/use-stages';
 import { useProjectScope } from '@/hooks/use-project-scope';
+import { useState } from 'react';
+import { useDndContext } from '@dnd-kit/core';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
@@ -43,6 +45,12 @@ export function TaskCardSummary({ task, onClick, stageColor }: TaskCardSummaryPr
       task,
     },
   });
+
+  // Controlled so the preview never opens or lingers during a drag or press —
+  // otherwise it floats over the nav drop targets and other cards.
+  const { active: activeDrag } = useDndContext();
+  const [hoverOpen, setHoverOpen] = useState(false);
+  const previewOpen = hoverOpen && !activeDrag && !isDragging;
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -143,6 +151,7 @@ export function TaskCardSummary({ task, onClick, stageColor }: TaskCardSummaryPr
         if (e.shiftKey) return;
         handleClick();
       }}
+      onPointerDownCapture={() => setHoverOpen(false)}
       onTouchStart={triggerHapticFeedback}
       onContextMenu={(e) => onTaskContextMenu(task, e)}
       className={cn(
@@ -153,7 +162,7 @@ export function TaskCardSummary({ task, onClick, stageColor }: TaskCardSummaryPr
         // would swallow a ring-based highlight.
         isSelected && 'outline outline-2 outline-offset-2 outline-primary',
       )}
-      title={`${task.title} (effort: ${effort}/${EFFORT_MAX})`}
+      aria-label={`${task.title} (effort: ${effort}/${EFFORT_MAX})`}
     >
       <span
         className={cn(circleFontSize, 'font-semibold text-foreground text-center relative z-10')}
@@ -164,9 +173,9 @@ export function TaskCardSummary({ task, onClick, stageColor }: TaskCardSummaryPr
   );
 
   return (
-    <HoverCard openDelay={300}>
+    <HoverCard openDelay={500} closeDelay={0} open={previewOpen} onOpenChange={setHoverOpen}>
       <HoverCardTrigger asChild>{triggerContent}</HoverCardTrigger>
-      <HoverCardContent>
+      <HoverCardContent className="pointer-events-none" side="top" collisionPadding={8}>
         <div className="space-y-2">
           <p className="text-base font-semibold leading-tight text-foreground">{task.title}</p>
           {project && (
