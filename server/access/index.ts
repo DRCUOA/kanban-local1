@@ -60,14 +60,33 @@ export interface AccessConfig {
  * DEVELOPER_SECRET the server refuses to start rather than run open (or run
  * with no way to issue a code). Elsewhere, no CODE_HASH_KEY means no gate.
  */
+/**
+ * What is wrong with one required setting, in words that say which case it
+ * is (never the value): missing, empty after trimming, or set but too short.
+ * Null when it is fine.
+ */
+export function describeSetting(name: string, raw: string | undefined, min: number): string | null {
+  if (raw === undefined) return `${name} is not set`;
+  const length = raw.trim().length;
+  if (length === 0) return `${name} is set but empty (${raw.length} characters, all spaces)`;
+  if (length < min) {
+    return `${name} is set but ${length} characters long after trimming spaces; it needs ${min} or more`;
+  }
+  return null;
+}
+
 export function accessConfigFromEnv(env: NodeJS.ProcessEnv = process.env): AccessConfig | null {
   const production = env.NODE_ENV === 'production';
   const hashKey = env.CODE_HASH_KEY?.trim() ?? '';
   const developerSecret = env.DEVELOPER_SECRET?.trim() ?? '';
-  if (production && (hashKey.length < 32 || developerSecret.length < 16)) {
-    throw new Error(
-      'Access control: set CODE_HASH_KEY (32+ characters) and DEVELOPER_SECRET (16+ characters). The server will not start open in production.',
-    );
+  if (production) {
+    const problems = [
+      describeSetting('CODE_HASH_KEY', env.CODE_HASH_KEY, 32),
+      describeSetting('DEVELOPER_SECRET', env.DEVELOPER_SECRET, 16),
+    ].filter((p): p is string => p !== null);
+    if (problems.length > 0) {
+      throw new Error(`Access control will not start open in production: ${problems.join('; ')}.`);
+    }
   }
   if (hashKey === '') return null;
   return {

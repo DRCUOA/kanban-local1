@@ -261,7 +261,35 @@ describe('keys and config', () => {
     expect(secretMatches('abc', undefined)).toBe(false);
   });
   it('refuses to start production without the two settings, and is off locally without them', () => {
-    expect(() => accessConfigFromEnv({ NODE_ENV: 'production' })).toThrow(/CODE_HASH_KEY/);
+    expect(() => accessConfigFromEnv({ NODE_ENV: 'production' })).toThrow(
+      'CODE_HASH_KEY is not set; DEVELOPER_SECRET is not set',
+    );
+    expect(() =>
+      accessConfigFromEnv({
+        NODE_ENV: 'production',
+        CODE_HASH_KEY: 'k'.repeat(20),
+        DEVELOPER_SECRET: 's'.repeat(16),
+      }),
+    ).toThrow(
+      'CODE_HASH_KEY is set but 20 characters long after trimming spaces; it needs 32 or more.',
+    );
+    expect(() =>
+      accessConfigFromEnv({
+        NODE_ENV: 'production',
+        CODE_HASH_KEY: 'k'.repeat(32),
+        DEVELOPER_SECRET: '   ',
+      }),
+    ).toThrow('DEVELOPER_SECRET is set but empty');
+    // The message never carries the value.
+    try {
+      accessConfigFromEnv({
+        NODE_ENV: 'production',
+        CODE_HASH_KEY: 'shortsecretvalue',
+        DEVELOPER_SECRET: 'x',
+      });
+    } catch (e) {
+      expect((e as Error).message).not.toContain('shortsecretvalue');
+    }
     expect(accessConfigFromEnv({ NODE_ENV: 'development' })).toBeNull();
     expect(
       accessConfigFromEnv({
