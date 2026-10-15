@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { format, startOfToday } from 'date-fns';
 import { BarChart3, Route, Target } from 'lucide-react';
-import { ROUTES, projectViewPath } from '@shared/constants';
-import { blocksOfGoal, goalProgress, planGoal } from '@shared/goal-view';
+import { ROUTES, goalViewPath, projectViewPath } from '@shared/constants';
+import { blocksOfGoal, goalProgress, outsideWaits, planGoal } from '@shared/goal-view';
 import type { Task } from '@shared/schema';
 import { EditTaskDialog } from '@/components/EditTaskDialog';
 import { PageHeader } from '@/components/PageHeader';
@@ -12,7 +12,8 @@ import { Button } from '@/components/ui/button';
 import { useProjectScope } from '@/hooks/use-project-scope';
 import { useStages } from '@/hooks/use-stages';
 import { useTasks, useTaskDependencies } from '@/hooks/use-tasks';
-import { CriticalPathView } from './CriticalPathView';
+import { CriticalPathDiagram } from './CriticalPathDiagram';
+import { PlanWriteUp } from './PlanWriteUp';
 import { GanttChart } from './GanttChart';
 import { PageLoading, PageMessage } from './PageState';
 
@@ -40,6 +41,10 @@ export default function GoalView() {
   const goal = tasks.find((t) => t.id === goalId && t.type === 'goal');
   const blocks = useMemo(() => blocksOfGoal(tasks, goalId), [tasks, goalId]);
   const plan = useMemo(() => planGoal(blocks, edges, stages), [blocks, edges, stages]);
+  const waits = useMemo(
+    () => outsideWaits(blocks, edges, tasks, stages),
+    [blocks, edges, tasks, stages],
+  );
 
   const back = () => {
     if (goal) navigate(projectViewPath(goal.projectId ?? 'none'));
@@ -170,26 +175,81 @@ export default function GoalView() {
                           )}
                         </span>
                       </button>
+                      {(waits.get(t.id) ?? []).length > 0 && (
+                        <span
+                          className="flex flex-wrap items-center gap-1 px-3 pb-2 pl-12 text-xs"
+                          data-testid={`starts-after-${t.id}`}
+                        >
+                          Starts after (outside this goal):
+                          {(waits.get(t.id) ?? []).map((w) => (
+                            <button
+                              type="button"
+                              key={w.task.id}
+                              title={w.goal ? `Open the goal “${w.goal.title}”` : 'Open this task'}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (w.goal) navigate(goalViewPath(w.goal.id));
+                                else setEditing(w.task);
+                              }}
+                              className={`rounded-full border px-2 py-0.5 underline-offset-2 hover:underline ${
+                                w.done ? 'text-muted-foreground' : 'border-warning/60 text-warning'
+                              }`}
+                            >
+                              {w.done ? '✓ ' : ''}#{w.task.id} {w.task.title}
+                              {w.goal ? ` · ${w.goal.title}` : ''}
+                            </button>
+                          ))}
+                        </span>
+                      )}
                     </li>
                   );
                 })}
               </ol>
             )}
             {panel === 'critical' && (
-              <CriticalPathView
-                schedule={plan}
-                tasks={blocks}
-                anchor={anchor}
-                onTaskClick={setEditing}
-              />
+              <div className="space-y-6">
+                <CriticalPathDiagram
+                  schedule={plan}
+                  tasks={blocks}
+                  anchor={anchor}
+                  onTaskClick={setEditing}
+                  waits={waits}
+                />
+                <PlanWriteUp
+                  schedule={plan}
+                  tasks={blocks}
+                  anchor={anchor}
+                  waits={waits}
+                  order="critical"
+                  onTaskClick={setEditing}
+                />
+              </div>
             )}
             {panel === 'gantt' && (
-              <GanttChart schedule={plan} tasks={blocks} anchor={anchor} onTaskClick={setEditing} />
+              <div className="space-y-6">
+                <GanttChart
+                  schedule={plan}
+                  tasks={blocks}
+                  anchor={anchor}
+                  onTaskClick={setEditing}
+                  waits={waits}
+                />
+                <PlanWriteUp
+                  schedule={plan}
+                  tasks={blocks}
+                  anchor={anchor}
+                  waits={waits}
+                  order="gantt"
+                  onTaskClick={setEditing}
+                />
+              </div>
             )}
             {panel !== 'tasks' && (
               <p className="mt-4 text-xs text-muted-foreground">
                 Effort counts as days (a task with no effort counts as 1 day, finished tasks as 0),
-                and the plan starts today. Only dependencies between this goal's tasks are used.
+                and the plan starts today. Only dependencies between this goal's tasks set the
+                dates; work outside the goal that a task starts after is marked (amber while still
+                open) but does not move them.
               </p>
             )}
           </>
