@@ -213,6 +213,8 @@ export const ROUTES = {
   PROJECT_VIEW: '/projects/:projectId',
   /** `/goals/:goalId`. */
   GOAL_VIEW: '/goals/:goalId',
+  /** The developer console: issue and revoke access codes. Answers only with the developer secret. */
+  CONSOLE: '/console',
 } as const;
 
 export const projectViewPath = (projectId: number | 'none'): string =>

@@ -13,6 +13,8 @@ import Filing from '@/pages/Filing';
 import Bin from '@/pages/Bin';
 import ProjectView from '@/pages/Goals/ProjectView';
 import GoalView from '@/pages/Goals/GoalView';
+import DeveloperConsole from '@/pages/Console';
+import { AccessGate } from '@/components/AccessGate';
 import NotFound from '@/pages/not-found';
 
 function Router() {
@@ -25,6 +27,7 @@ function Router() {
       <Route path={ROUTES.BIN} component={Bin} />
       <Route path={ROUTES.PROJECT_VIEW} component={ProjectView} />
       <Route path={ROUTES.GOAL_VIEW} component={GoalView} />
+      <Route path={ROUTES.CONSOLE} component={DeveloperConsole} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -38,9 +41,12 @@ function App() {
           <Toaster />
           {/* Every page reads the project scope: the board and Filing/Archive
               honour it, Admin manages the projects it points at. */}
-          <ProjectScopeProvider>
-            <Router />
-          </ProjectScopeProvider>
+          {/* Nothing below is fetched until this browser is admitted. */}
+          <AccessGate>
+            <ProjectScopeProvider>
+              <Router />
+            </ProjectScopeProvider>
+          </AccessGate>
         </TooltipProvider>
       </ErrorBoundary>
     </QueryClientProvider>

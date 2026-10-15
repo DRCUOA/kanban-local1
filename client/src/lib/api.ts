@@ -1,4 +1,8 @@
 import type { ApiErrorResponse } from '@shared/api-types';
+import { ACCESS_REQUIRED } from '@shared/access';
+
+/** Fired on window when the server says this browser needs an access code. */
+export const ACCESS_REQUIRED_EVENT = 'kb-access-required';
 
 /** Consistent error type thrown by apiRequest on non-OK responses */
 export class ApiError extends Error {
@@ -63,6 +67,11 @@ export async function apiRequest<T = void>(
       errorBody = json.error || JSON.stringify(json);
     } catch {
       errorBody = (await res.text()) || res.statusText;
+    }
+    // This browser is not (or no longer) admitted: the access gate in App
+    // shows the access-code screen.
+    if (res.status === 401 && errorBody === ACCESS_REQUIRED) {
+      window.dispatchEvent(new Event(ACCESS_REQUIRED_EVENT));
     }
     throw new ApiError(res.status, res.statusText, errorBody);
   }

@@ -353,7 +353,21 @@ The task form's **Make this a goal** button sends a saved `goal` task (title, de
 - Prompt: `shared/goal-plan.ts` (`GOAL_PLAN_SYSTEM_PROMPT` + `buildGoalPlanUserPrompt`). The output is pinned by OpenAI structured output to `{ goal: {title, description}, subtasks: [{key, title, description, effort 1–5, dependsOn}] }`; `normaliseGoalPlan` keeps only dependencies on earlier suggestions or existing blocks, so a plan is acyclic as suggested.
 - `POST /api/tasks/:id/goal-plan` asks (nothing saved). `POST /api/tasks/:id/goal-plan/apply` saves in one transaction: optional goal wording, new building-blocks (goal's project and owner, first backlog column) and their dependencies; the database triggers still enforce the goal, project and acyclic rules.
 - Model: GPT-5 or later only (`isPlanningModel`), chosen from a dropdown on Admin → AI assistant. With a key set the list is the account's own (`GET /v1/models`, filtered); otherwise the curated list from OpenAI's docs. Default `gpt-6.1-sol`. Calls go to the **Responses API** with a strict JSON-schema format: some GPT-6 models have no tool calling on Chat Completions.
-- Key: set on the same page, checked against OpenAI before it is saved, stored in `app_settings` (migration `0021`) AES-256-GCM encrypted with `SETTINGS_SECRET`, or, if that is unset, a key derived from `DATABASE_URL`. It is never returned to the browser (last four characters only). `OPENAI_API_KEY` is the fallback. The page has no login, so anyone who can open Admin can replace (not read) the key.
+- Key: set on the same page, checked against OpenAI before it is saved, stored in `app_settings` (migration `0021`) AES-256-GCM encrypted with `SETTINGS_SECRET`, or, if that is unset, a key derived from `DATABASE_URL`. It is never returned to the browser (last four characters only). `OPENAI_API_KEY` is the fallback. Admin is behind the access gate (see `access_devices`), so only an admitted browser can replace the key; no one can read it.
+
+### access_devices
+
+Access control (migration `0022`, `server/access`), after stageboard-pilot's access codes and developer console, without its parties and idle sign-out. Every browser gets an HttpOnly, SameSite=Lax key cookie (Secure in production). A person types an **access code** once per browser; it binds to the first browser that uses it, and that browser is trusted for **90 days** from admission (typing it again renews). Every `/api` request needs an admitted, unrevoked, in-date browser except `/api/health`, `/api/access/*`, the Gmail webhook (Google's signed token) and `GET /api/export` with a live read-only **export token** (`Authorization: Bearer`, for the briefing agent). Cross-site changes are refused. The **developer console** (`/console`, API at `/console/api`) issues codes and tokens (shown once) and revokes them; it answers only with `DEVELOPER_SECRET` in `x-developer-secret`, compared in constant time, and otherwise answers exactly like an address that does not exist. Codes, tokens and browser keys are stored only as HMAC-SHA-256 digests under `CODE_HASH_KEY` and found by constant-time comparison against every row. Admission is rate-limited (10 per 15 minutes per address), as is the console (60). Production refuses to start without `CODE_HASH_KEY` and `DEVELOPER_SECRET`.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | serial PK | |
+| kind | text | `device` or `export-token` |
+| label | text | 1–60 characters |
+| code_hash | text unique | HMAC digest of the code or token |
+| issued_at / admitted_at / first_seen_at / last_seen_at | timestamp | Trust runs 90 days from `admitted_at` |
+| browser_key_hash | text | The browser a code is bound to (digest of its key); indexed |
+| revoked_at | timestamp | Set by the console; never cleared |
 
 ### task_attachments
 

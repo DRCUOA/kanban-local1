@@ -141,6 +141,13 @@
       "when": 1792886400000,
       "tag": "0021_app_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1792972800000,
+      "tag": "0022_access_devices",
+      "breakpoints": true
     }
   ]
 }
