@@ -74,6 +74,14 @@ class MemStorage implements IStorage {
     return stageKind(this.stageStore.get(stageId));
   }
 
+  async getTaskDependencies(): Promise<never[]> {
+    return [];
+  }
+
+  async setTaskDependencies(): Promise<void> {
+    await Promise.resolve();
+  }
+
   async createTask(insert: InsertTask): Promise<Task> {
     const initialKind = this.kindOfStage(insert.stageId);
 
@@ -91,6 +99,7 @@ class MemStorage implements IStorage {
       archived: insert.archived ?? false,
       priority: insert.priority ?? TASK_PRIORITY.NORMAL,
       type: insert.type ?? null,
+      goalTaskId: insert.goalTaskId ?? null,
       effort: insert.effort ?? null,
       dueDate: insert.dueDate ?? null,
       tags: insert.tags ?? null,

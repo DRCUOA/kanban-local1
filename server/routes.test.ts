@@ -16,6 +16,8 @@ const mockStorage = vi.hoisted(() => ({
   getTaskById: vi.fn(),
   getTasksByStage: vi.fn(),
   createTask: vi.fn(),
+  getTaskDependencies: vi.fn(),
+  setTaskDependencies: vi.fn(),
   updateTask: vi.fn(),
   archiveTask: vi.fn(),
   unarchiveTask: vi.fn(),
@@ -54,7 +56,10 @@ const mockStorage = vi.hoisted(() => ({
   setTaskDescription: vi.fn(),
 }));
 
-vi.mock('./storage', () => ({ storage: mockStorage }));
+vi.mock('./storage', () => ({
+  storage: mockStorage,
+  DependencyRuleError: class DependencyRuleError extends Error {},
+}));
 
 import { createApp } from './app';
 import { api } from '@shared/routes';
@@ -77,6 +82,7 @@ function fakeTask(overrides: Partial<Task> = {}): Task {
     deletedAt: null,
     priority: 'normal',
     type: null,
+    goalTaskId: null,
     effort: null,
     dueDate: null,
     updatedAt: NOW,
@@ -156,6 +162,7 @@ beforeEach(async () => {
   vi.resetAllMocks();
   // Every export lists attachments; most tests have none.
   mockStorage.getAttachmentsByTasks.mockResolvedValue([]);
+  mockStorage.getTaskDependencies.mockResolvedValue([]);
   const result = await createApp();
   app = result.app;
 });

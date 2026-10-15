@@ -36,7 +36,7 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
             onSubmit={form.handleSubmit(onSubmit)}
             className="flex-1 flex flex-col gap-4 overflow-y-auto scroll-container"
           >
-            <EditTaskFormFields control={form.control} stages={stages} />
+            <EditTaskFormFields control={form.control} stages={stages} taskId={task?.id} />
 
             <div className="flex-1" />
 

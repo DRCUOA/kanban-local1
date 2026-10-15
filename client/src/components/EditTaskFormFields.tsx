@@ -17,6 +17,7 @@ import {
 import { stageKind } from '@shared/stage-state';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { TaskTypeField } from '@/components/TaskTypeField';
+import { TaskDependenciesField } from '@/components/TaskDependenciesField';
 import { VoiceInput } from '@/components/VoiceInput';
 import { appendTranscript } from '@/lib/dictation';
 import { RichTextEditor } from '@/components/RichTextEditor';
@@ -41,11 +42,13 @@ import { ProjectSelect } from './ProjectSelect';
 export interface EditTaskFormFieldsProps {
   control: Control<InsertTask>;
   stages: Stage[];
+  /** The task being edited; absent when the fields are used to create one. */
+  taskId?: number;
 }
 
 const NO_SUB_STAGE = '__none__';
 
-export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps) {
+export function EditTaskFormFields({ control, stages, taskId }: EditTaskFormFieldsProps) {
   const [dueDateOpen, setDueDateOpen] = useState(false);
   const [editingDescription, setEditingDescription] = useState(false);
   const { data: allSubStages = [] } = useSubStages();
@@ -275,6 +278,8 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
         />
         <TaskTypeField control={control} />
       </div>
+
+      <TaskDependenciesField control={control} taskId={taskId} />
 
       <FormField
         control={control}

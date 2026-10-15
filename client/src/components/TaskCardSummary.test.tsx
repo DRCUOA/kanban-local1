@@ -44,6 +44,7 @@ const makeTask = (overrides: Partial<Task> = {}): Task => ({
   deletedAt: null,
   priority: 'normal',
   type: null,
+  goalTaskId: null,
   effort: 3,
   dueDate: null,
   updatedAt: new Date(),

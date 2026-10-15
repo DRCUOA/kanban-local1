@@ -22,7 +22,14 @@ import {
   type InsertOwner,
   type TaskHistoryEntry,
   type StageKind,
+  type TaskDependency,
+  taskDependencies,
 } from '@shared/schema';
+import {
+  applyDependencySet,
+  dependencySetError,
+  type TaskDependencySet,
+} from '@shared/task-dependencies';
 import type { TaskProjectFilter } from '@shared/project-scope';
 import { TASK_PRIORITY, TASK_RECURRENCE, DEFAULT_STAGE_KIND } from '@shared/constants';
 import { stageKind } from '@shared/stage-state';
@@ -107,12 +114,18 @@ function projectCondition(filter: TaskProjectFilter | undefined) {
     : eq(tasks.projectId, filter.projectId);
 }
 
+/** A dependency write that breaks a rule the user can fix; the route answers 400. */
+export class DependencyRuleError extends Error {}
+
 export interface IStorage {
   getTasks(filter?: TaskProjectFilter): Promise<Task[]>;
   getArchivedTasks(filter?: TaskProjectFilter): Promise<Task[]>;
   getTasksByStage(stageId: number): Promise<Task[]>;
   getTaskById(id: number): Promise<Task | undefined>;
   createTask(task: InsertTask): Promise<Task>;
+  getTaskDependencies(): Promise<TaskDependency[]>;
+  /** Replaces the given side(s) of a task's dependency edges; rejects with Error(message) on a rule break. */
+  setTaskDependencies(taskId: number, set: TaskDependencySet): Promise<void>;
   updateTask(id: number, task: Partial<InsertTask>): Promise<Task | undefined>;
   archiveTask(id: number): Promise<Task | undefined>;
   unarchiveTask(id: number): Promise<Task | undefined>;
@@ -198,6 +211,33 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(tasks)
       .where(and(eq(tasks.stageId, stageId), eq(tasks.archived, false), isNull(tasks.deletedAt)));
+  }
+
+  async getTaskDependencies(): Promise<TaskDependency[]> {
+    return await db.select().from(taskDependencies);
+  }
+
+  async setTaskDependencies(taskId: number, set: TaskDependencySet): Promise<void> {
+    await db.transaction(async (tx) => {
+      // Serialise writers so two requests cannot each add half of a loop.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(18)`);
+      const edges = await tx.select().from(taskDependencies);
+      const ids = new Set((await tx.select({ id: tasks.id }).from(tasks)).map((t) => t.id));
+      const error = dependencySetError(edges, taskId, set, ids);
+      if (error) throw new DependencyRuleError(error);
+      if (set.predecessorIds) {
+        await tx.delete(taskDependencies).where(eq(taskDependencies.successorId, taskId));
+      }
+      if (set.successorIds) {
+        await tx.delete(taskDependencies).where(eq(taskDependencies.predecessorId, taskId));
+      }
+      const next = applyDependencySet(edges, taskId, set).filter(
+        (e) => e.predecessorId === taskId || e.successorId === taskId,
+      );
+      if (next.length > 0) {
+        await tx.insert(taskDependencies).values(next).onConflictDoNothing();
+      }
+    });
   }
 
   async getTaskById(id: number): Promise<Task | undefined> {

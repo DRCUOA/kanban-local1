@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import type { Express, Request, Response } from 'express';
 import type { Server } from 'http';
-import { storage } from './storage';
+import { storage, DependencyRuleError } from './storage';
 import { AppError, asyncHandler } from './errors';
 import { parseIdParam } from './utils';
 import { api } from '@shared/routes';
@@ -22,6 +22,7 @@ import type {
   OwnerSummary,
   InsertOwner,
   TaskHistoryEntry,
+  TaskDependency,
 } from '@shared/schema';
 import type {
   ApiErrorResponse,
@@ -38,6 +39,7 @@ import {
 } from '@shared/export';
 import { projectScopeToFilter } from '@shared/project-scope';
 import { logger } from '@shared/logger';
+import { goalLinkError, normaliseGoalLink } from '@shared/task-goal';
 import { registerGmailPubSubWebhook } from './webhooks/gmail-pubsub';
 import express from 'express';
 import type { ExportAttachment } from '@shared/export';
@@ -99,6 +101,31 @@ async function assertOwnerNameFree(name: string, exceptId?: number): Promise<voi
  * invent a person, so an unknown id is a 400 that names it — EPIC-06 OWN-R3.
  * Returns an error message, or null when the write is fine.
  */
+/**
+ * Applies the goal-link rules to a task write (migration 0017): only a
+ * building-block keeps a goal, and the goal must exist and be a goal. `current`
+ * is the stored row for a PATCH, so a write that only changes `type` still
+ * clears a goal it no longer qualifies for. Returns the write to store and an
+ * error message (null when fine).
+ */
+async function checkGoalLink<T extends { type?: string | null; goalTaskId?: number | null }>(
+  write: T,
+  current?: Task,
+): Promise<{ write: T; error: string | null }> {
+  const type = write.type !== undefined ? write.type : (current?.type ?? null);
+  const goalTaskId =
+    write.goalTaskId !== undefined ? write.goalTaskId : (current?.goalTaskId ?? null);
+  const normalised = normaliseGoalLink({ ...write, type, goalTaskId });
+  // Only touch the goal column when the caller did, or when normalising cleared it.
+  const out = { ...write };
+  if (write.goalTaskId !== undefined || normalised.goalTaskId !== goalTaskId) {
+    out.goalTaskId = normalised.goalTaskId;
+  }
+  if (normalised.goalTaskId == null) return { write: out, error: null };
+  const target = await storage.getTaskById(normalised.goalTaskId);
+  return { write: out, error: goalLinkError(normalised.goalTaskId, target, current?.id) };
+}
+
 async function unknownOwnerMessage(ownerId: number | null | undefined): Promise<string | null> {
   if (ownerId === undefined || ownerId === null) return null;
   const owner = await storage.getOwnerById(ownerId);
@@ -147,6 +174,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // Distinct owners — registered before any /api/tasks/:id routes so the
   // literal "owners" segment never gets captured as an id.
+  app.get(
+    api.taskDependencies.list.path,
+    async (_req: Request, res: Response<TaskDependency[]>) => {
+      res.json(await storage.getTaskDependencies());
+    },
+  );
+
   app.get(api.tasks.owners.path, async (_req: Request, res: Response<string[]>) => {
     const owners = await storage.getDistinctOwners();
     res.json(owners);
@@ -159,7 +193,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res: Response<Task | ApiErrorResponse>,
     ) => {
       try {
-        const taskData = api.tasks.create.input.parse(req.body);
+        const parsed = api.tasks.create.input.parse(req.body);
+        const goalCheck = await checkGoalLink(parsed);
+        if (goalCheck.error) {
+          return res.status(400).json({ error: goalCheck.error, status: 400 });
+        }
+        const { predecessorIds, successorIds, ...taskData } = goalCheck.write;
         const unknownOwner = await unknownOwnerMessage(taskData.ownerId);
         if (unknownOwner) {
           return res.status(400).json({ error: unknownOwner, status: 400 });
@@ -171,6 +210,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const task = await storage.createTask(
           prepared ? { ...taskData, description: prepared.description } : taskData,
         );
+        if (predecessorIds || successorIds) {
+          try {
+            await storage.setTaskDependencies(task.id, { predecessorIds, successorIds });
+          } catch (depError) {
+            // The task did not get the links the caller asked for; do not leave it half made.
+            await storage.deleteTask(task.id);
+            throw depError;
+          }
+        }
         if (prepared) {
           await syncTaskAttachments(storage, task.id, prepared.attachmentIds, { release: false });
         }
@@ -184,6 +232,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           res
             .status(400)
             .json({ error: error.errors[0]?.message ?? 'Validation error', status: 400 });
+        } else if (error instanceof DependencyRuleError) {
+          res.status(400).json({ error: error.message, status: 400 });
         } else {
           res.status(500).json({ error: 'Internal Server Error', status: 500 });
         }
@@ -200,7 +250,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       try {
         const id = parseIdParam(req.params.id, res);
         if (id === null) return;
-        const updates = api.tasks.update.input.parse(req.body);
+        const parsedUpdates = api.tasks.update.input.parse(req.body);
+        const goalCheck = await checkGoalLink(parsedUpdates, await storage.getTaskById(id));
+        if (goalCheck.error) {
+          return res.status(400).json({ error: goalCheck.error, status: 400 });
+        }
+        const { predecessorIds, successorIds, ...updates } = goalCheck.write;
+        // Links first: if they break a rule nothing else about the task has changed.
+        if (predecessorIds || successorIds) {
+          await storage.setTaskDependencies(id, { predecessorIds, successorIds });
+        }
         const unknownOwner = await unknownOwnerMessage(updates.ownerId);
         if (unknownOwner) {
           return res.status(400).json({ error: unknownOwner, status: 400 });
@@ -231,6 +290,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           res
             .status(400)
             .json({ error: error.errors[0]?.message ?? 'Validation error', status: 400 });
+        } else if (error instanceof DependencyRuleError) {
+          res.status(400).json({ error: error.message, status: 400 });
+        } else if ((error as { code?: string }).code === '23514') {
+          // The goal-link guard (migration 0017), e.g. a goal that still has
+          // building-blocks being retyped.
+          res.status(400).json({ error: (error as Error).message, status: 400 });
         } else {
           res.status(500).json({ error: 'Internal Server Error', status: 500 });
         }
@@ -385,6 +450,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           stages: allStages,
           subStages: allSubStages,
           projects: allProjects,
+          dependencies: await storage.getTaskDependencies(),
           attachments,
           includeAttachments: query.includeAttachments,
           includeArchived: query.includeArchived,
