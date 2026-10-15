@@ -12,12 +12,14 @@ interface StageHeadersProps {
    * viewport too narrow for both, it wraps under the stage chips.
    */
   children?: ReactNode;
+  /** Read-only content in the space between the chips and the trailing slot. */
+  center?: ReactNode;
 }
 
 const getDefaultStageColor = (index: number): string =>
   DEFAULT_STAGE_COLORS[index % DEFAULT_STAGE_COLORS.length]!;
 
-export function StageHeaders({ tasks, children }: StageHeadersProps) {
+export function StageHeaders({ tasks, children, center }: StageHeadersProps) {
   const { data: stages = [] } = useStages();
 
   const sortedStages = useMemo(() => {
@@ -42,7 +44,7 @@ export function StageHeaders({ tasks, children }: StageHeadersProps) {
             content) so the trailing slot wraps to a second line as soon as
             the two no longer fit side by side, rather than the chips being
             squeezed into a scrolling sliver. */}
-        <div className="scroll-tabs min-w-0 flex-auto" data-testid="stage-chips">
+        <div className="scroll-tabs min-w-0 flex-initial" data-testid="stage-chips">
           {sortedStages.map((stage: any) => {
             const stageColor = stageColorMap.get(stage.id) || DEFAULT_STAGE_COLORS[0];
             const stageCount = activeTasks.filter((t) => t.stageId === stage.id).length;
@@ -68,6 +70,7 @@ export function StageHeaders({ tasks, children }: StageHeadersProps) {
             );
           })}
         </div>
+        {center && <div className="min-w-0 flex-1">{center}</div>}
         {children && <div className="ml-auto min-w-0 max-w-full">{children}</div>}
       </div>
     </div>
