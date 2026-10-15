@@ -42,7 +42,8 @@ import { logger } from '@shared/logger';
 import { goalLinkError, normaliseGoalLink } from '@shared/task-goal';
 import { suggestGoalPlan, GoalPlanRequestError } from './goal-plan';
 import { getAiSettings, updateAiSettings, SettingsRequestError } from './settings';
-import { registerGmailPubSubWebhook } from './webhooks/gmail-pubsub';
+import { registerGmailPubSubWebhook, GMAIL_PUBSUB_WEBHOOK_PATH } from './webhooks/gmail-pubsub';
+import { installAccess } from './access';
 import express from 'express';
 import type { ExportAttachment } from '@shared/export';
 import {
@@ -160,6 +161,9 @@ async function laneOwnerClashMessage(
 }
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
+  // First: every /api request below needs an admitted device (server/access).
+  // The Gmail webhook keeps its own guard, Google's signed token.
+  installAccess(app, [GMAIL_PUBSUB_WEBHOOK_PATH]);
   registerGmailPubSubWebhook(app);
 
   app.get(healthPath, (_req: Request, res: Response<{ ok: true }>) => {

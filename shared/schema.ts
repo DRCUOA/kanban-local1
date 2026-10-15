@@ -232,6 +232,21 @@ export const appSettings = pgTable('app_settings', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+/** Access codes and export tokens issued by the developer console (migration 0022). Only digests are stored. */
+export const accessDevices = pgTable('access_devices', {
+  id: serial('id').primaryKey(),
+  kind: text('kind').notNull().default('device'),
+  label: text('label').notNull(),
+  codeHash: text('code_hash').notNull().unique(),
+  issuedAt: timestamp('issued_at').notNull().defaultNow(),
+  admittedAt: timestamp('admitted_at'),
+  browserKeyHash: text('browser_key_hash'),
+  firstSeenAt: timestamp('first_seen_at'),
+  lastSeenAt: timestamp('last_seen_at'),
+  revokedAt: timestamp('revoked_at'),
+});
+export type AccessDevice = typeof accessDevices.$inferSelect;
+
 /** Gmail watch cursor: one row per monitored mailbox. */
 export const gmailWatchCursor = pgTable('gmail_watch_cursor', {
   mailbox: text('mailbox').primaryKey(),

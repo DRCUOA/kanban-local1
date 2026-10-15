@@ -47,6 +47,8 @@ The app serves both API and client on **port 5000** (`http://localhost:5000`).
 | Variable | Required | Description |
 |---|---|---|
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `CODE_HASH_KEY` | **Production** | 32+ random characters. Keys the hash access codes and tokens are stored under. Without it the access gate is off (local development only); production refuses to start |
+| `DEVELOPER_SECRET` | **Production** | 16+ random characters. Opens the developer console at `/console`, where access codes and export tokens are issued and revoked. Production refuses to start without it |
 | `PORT` | No | Server port (default: `5000`) |
 | `NODE_ENV` | No | `development` or `production` |
 | `GMAIL_INBOUND_WORKER_DISABLED` | No | Set to `true` in production if you are not using the Gmail inbound pipeline (avoids background polling) |
@@ -56,6 +58,8 @@ The app serves both API and client on **port 5000** (`http://localhost:5000`).
 ### Production on Railway
 
 The repo includes [`railway.json`](railway.json) (Dockerfile builder, health check on `/api/health`). Provision a **PostgreSQL** plugin in the same Railway project and set **`DATABASE_URL`** from the database service (reference the variable Railway provides). Set **`NODE_ENV=production`**. Railway injects **`PORT`** automatically; the server reads it.
+
+**Access (before the first deploy with it):** set `CODE_HASH_KEY` and `DEVELOPER_SECRET` on the service. After deploying, open `/console`, enter the developer secret, issue an **access code** per browser you use (shown once), and enter it on the board's access-code screen; each browser stays trusted for 90 days. Issue an **export token** for the briefing agent and have it send `Authorization: Bearer <token>` to `GET /api/export` (the only route a token opens). Revoke either from the console. `/api/health` and the Gmail Pub/Sub webhook stay open (the webhook checks Google's signed token).
 
 On **deploy**, the production server runs SQL migrations from `migrations/` before starting (using Drizzle’s migrator). You can also run `npm run db:migrate` locally or in CI when `DATABASE_URL` points at your database (uses `drizzle-kit migrate`).
 
