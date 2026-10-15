@@ -10,6 +10,7 @@ import { ProjectSection } from './ProjectSection';
 import { OwnerSection } from './OwnerSection';
 import { StageSection } from './StageSection';
 import { SubStageSection } from './SubStageSection';
+import { AiSection } from './AiSection';
 
 export interface AdminProps {}
 
@@ -33,6 +34,7 @@ export default function Admin(_props: AdminProps) {
         <OwnerSection owners={owners} isLoading={isLoadingOwners} />
         <StageSection stages={stages} isLoading={isLoading} />
         <SubStageSection stages={stages} subStages={subStages} />
+        <AiSection />
         <BuiltByTk className="pb-2 pt-1" />
       </div>
     </div>

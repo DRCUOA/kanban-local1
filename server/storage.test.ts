@@ -82,6 +82,10 @@ class MemStorage implements IStorage {
     await Promise.resolve();
   }
 
+  async applyGoalPlan(): Promise<{ created: Record<string, number> }> {
+    return Promise.resolve({ created: {} });
+  }
+
   async clearTaskDependencySides(): Promise<void> {
     await Promise.resolve();
   }

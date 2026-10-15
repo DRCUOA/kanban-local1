@@ -346,6 +346,14 @@ Reports: a **critical path** weights each task (effort or duration) and finds th
 
 Scheduling is `shared/schedule.ts` (critical path method: forward and backward pass, slack) fed by `shared/goal-view.ts`. A task has no duration of its own, so **effort counts as days** (no effort = 1 day, finished tasks = 0) and the plan starts today. Only dependencies between the goal's own tasks are used. Nothing is stored: the schedule is derived each time, so it cannot go stale when a task moves.
 
+#### AI assistant: "Make this a goal"
+
+The task form's **Make this a goal** button sends a saved `goal` task (title, description, metadata, existing building-blocks) to OpenAI and shows the suggested goal wording and building-blocks for editing; nothing is stored until the user saves one row, the ticked rows or all of them. The form refuses, by toast and before any request, a task with unsaved changes or one that is not of type Goal; the server repeats the type check.
+
+- Prompt: `shared/goal-plan.ts` (`GOAL_PLAN_SYSTEM_PROMPT` + `buildGoalPlanUserPrompt`). The output is pinned by OpenAI structured output to `{ goal: {title, description}, subtasks: [{key, title, description, effort 1–5, dependsOn}] }`; `normaliseGoalPlan` keeps only dependencies on earlier suggestions or existing blocks, so a plan is acyclic as suggested.
+- `POST /api/tasks/:id/goal-plan` asks (nothing saved). `POST /api/tasks/:id/goal-plan/apply` saves in one transaction: optional goal wording, new building-blocks (goal's project and owner, first backlog column) and their dependencies; the database triggers still enforce the goal, project and acyclic rules.
+- Settings: `app_settings` (migration `0021`). Admin → AI assistant sets the model and the API key. The key is stored AES-256-GCM encrypted with a key derived from `SETTINGS_SECRET` and is never returned (only its last four characters); without `SETTINGS_SECRET` only `OPENAI_API_KEY` can be used. The page has no login, so anyone who can open Admin can replace the key.
+
 ### task_attachments
 
 A file attached to a task description (`shared/attachments.ts`). The description references a row by `/api/attachments/:id`; the bytes live here, never as base64 inside the description text. Large values are TOASTed out of line by Postgres, so metadata reads stay cheap.
