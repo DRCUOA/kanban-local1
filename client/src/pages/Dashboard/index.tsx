@@ -19,6 +19,8 @@ import { DashboardContent } from './DashboardContent';
 import { DashboardBottomNav } from './DashboardBottomNav';
 import { useOwners } from '@/hooks/use-owners';
 import { useFilteredTasks } from './use-filtered-tasks';
+import { ActiveFilters } from './ActiveFilters';
+import { describeActiveFilters } from './active-filters';
 import { OWNER_FILTER_ALL, type OwnerFilter } from './owner-view';
 import type { BoardWarningKind } from '@shared/board-warnings';
 import { useTaskImportExport } from './use-task-import-export';
@@ -52,6 +54,17 @@ export default function Dashboard(_props: DashboardProps) {
 
   const { data: stages = [] } = useStages();
   const { data: owners = [] } = useOwners();
+  const { projects, currentProject } = useProjectScope();
+  const activeFilters = describeActiveFilters({
+    scope,
+    projectName: currentProject?.name ?? null,
+    hasProjects: projects.length > 0,
+    owners,
+    ownerFilter,
+    warningFilter,
+    searchQuery,
+    focusMode,
+  });
 
   const filteredTasks = useFilteredTasks({
     tasks,
@@ -161,7 +174,7 @@ export default function Dashboard(_props: DashboardProps) {
           <div className="hidden px-3 pt-2 lg:block">
             {/* Warnings ride in the chip row (right-aligned, wrapping under the
               chips when narrow) instead of stacking as banners above the board. */}
-            <StageHeaders tasks={tasks}>
+            <StageHeaders tasks={tasks} center={<ActiveFilters filters={activeFilters} />}>
               {/* Counted against the whole board, so a pill's number does not
                   change under the filter it is applying. */}
               <TaskWarnings
