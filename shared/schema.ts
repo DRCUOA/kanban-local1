@@ -7,6 +7,7 @@ import {
   boolean,
   jsonb,
   unique,
+  primaryKey,
   customType,
 } from 'drizzle-orm/pg-core';
 import { createInsertSchema } from 'drizzle-zod';
@@ -155,6 +156,10 @@ export const tasks = pgTable('tasks', {
   priority: text('priority').default(TASK_PRIORITY.NORMAL),
   // Null = unset. 'goal' or 'building-block' (see TASK_TYPE).
   type: text('type'),
+  // Building-block → the goal it contributes to. Null for goals and for unassigned
+  // blocks. FK to tasks(id) ON DELETE SET NULL and the goal-only rules are enforced
+  // at DB level (migration 0017); not via .references() to avoid circular inference.
+  goalTaskId: integer('goal_task_id'),
   effort: integer('effort'), // EFFORT_MIN–EFFORT_MAX
   dueDate: timestamp('due_date'), // Optional due date
   updatedAt: timestamp('updated_at').defaultNow(),
@@ -199,6 +204,26 @@ export const taskAttachments = pgTable('task_attachments', {
   data: bytea('data').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+/**
+ * Predecessor → successor edges (migration 0018). One row per edge, stored in
+ * one direction only; a task's successors are the rows where it is the
+ * predecessor. Acyclicity is enforced by a database trigger.
+ */
+export const taskDependencies = pgTable(
+  'task_dependencies',
+  {
+    predecessorId: integer('predecessor_id')
+      .notNull()
+      .references(() => tasks.id, { onDelete: 'cascade' }),
+    successorId: integer('successor_id')
+      .notNull()
+      .references(() => tasks.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.predecessorId, t.successorId] })],
+);
+export type TaskDependency = typeof taskDependencies.$inferSelect;
 
 /** Gmail watch cursor: one row per monitored mailbox. */
 export const gmailWatchCursor = pgTable('gmail_watch_cursor', {
@@ -264,6 +289,14 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   }),
   subtasks: many(tasks, {
     relationName: 'subtasks',
+  }),
+  goal: one(tasks, {
+    fields: [tasks.goalTaskId],
+    references: [tasks.id],
+    relationName: 'goalBlocks',
+  }),
+  buildingBlocks: many(tasks, {
+    relationName: 'goalBlocks',
   }),
   attachments: many(taskAttachments),
   owner: one(owners, {
@@ -411,6 +444,10 @@ export const insertTaskSchema = createInsertSchema(tasks)
     archived: z.boolean().optional(),
     priority: taskPriorityEnum.optional(),
     type: taskTypeEnum.optional().nullable(),
+    goalTaskId: z.number().int().positive().optional().nullable(),
+    // Not columns: the form's way of replacing the task's dependency edges. Absent = untouched.
+    predecessorIds: z.array(z.number().int().positive()).optional(),
+    successorIds: z.array(z.number().int().positive()).optional(),
     effort: z.number().min(EFFORT_MIN).max(EFFORT_MAX).optional().nullable(),
     dueDate: z.coerce.date().optional().nullable(),
     tags: z.array(z.string()).optional().nullable(),

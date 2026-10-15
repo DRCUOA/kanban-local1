@@ -11,6 +11,7 @@ import {
   type TaskPriorityValue,
 } from '@shared/constants';
 import { TaskTypeField } from '@/components/TaskTypeField';
+import { TaskDependenciesField } from '@/components/TaskDependenciesField';
 import { useCreateTask } from '@/hooks/use-tasks';
 import { useToast } from '@/hooks/use-toast';
 import { useStages } from '@/hooks/use-stages';
@@ -77,6 +78,7 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
       projectId: defaultProjectId,
       priority: TASK_PRIORITY.NORMAL,
       type: null,
+      goalTaskId: null,
       recurrence: TASK_RECURRENCE.NONE,
       ownerId: null,
     },
@@ -105,6 +107,7 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
           description: '',
           priority: TASK_PRIORITY.NORMAL,
           type: null,
+          goalTaskId: null,
           recurrence: TASK_RECURRENCE.NONE,
           ownerId: null,
         });
@@ -255,6 +258,7 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
             />
 
             <TaskTypeField control={form.control} />
+            <TaskDependenciesField control={form.control} />
 
             <div className="grid grid-cols-2 gap-3">
               <FormField

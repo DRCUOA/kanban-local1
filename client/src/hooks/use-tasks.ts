@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { api } from '@shared/routes';
-import type { Task, InsertTask } from '@shared/schema';
+import type { Task, InsertTask, TaskDependency } from '@shared/schema';
 import {
   PROJECT_SCOPE_ALL,
   serializeProjectScope,
@@ -25,12 +25,21 @@ export function useTasks(scope: ProjectScope = PROJECT_SCOPE_ALL) {
   });
 }
 
+/** Every predecessor → successor edge. Refetched with the task list, since a task write can change it. */
+export function useTaskDependencies() {
+  return useQuery({
+    queryKey: [api.taskDependencies.list.path],
+    queryFn: () => apiGet<TaskDependency[]>(api.taskDependencies.list.path),
+  });
+}
+
 export function useCreateTask() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (task: InsertTask) => apiPost<Task>(api.tasks.create.path, task),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.tasks.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.taskDependencies.list.path] });
       // New task may have introduced a brand-new owner label; refresh the picker.
       queryClient.invalidateQueries({ queryKey: [api.tasks.owners.path] });
     },
@@ -46,6 +55,7 @@ export function useUpdateTask() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.tasks.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.taskDependencies.list.path] });
       queryClient.invalidateQueries({ queryKey: [api.tasks.owners.path] });
     },
   });

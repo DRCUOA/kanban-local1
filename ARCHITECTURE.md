@@ -265,6 +265,8 @@ A person work can be assigned to (`docs/epics/EPIC-06-owner-as-entity.md`). An o
 | archived | boolean | Default false |
 | status | text | `backlog` / `in_progress` / `done` / `abandoned` |
 | priority | text | `low` / `normal` / `high` / `critical` |
+| type | text | Nullable (unset). `goal` or `building-block`; a `CHECK` enforces the two values |
+| goal_task_id | integer FK → tasks | Nullable. The `goal` a `building-block` contributes to. `ON DELETE SET NULL`; indexed. See **Goal link** below |
 | effort | integer | 1–5, nullable |
 | due_date | timestamp | Nullable |
 | tags | jsonb | `string[]` |
@@ -275,6 +277,66 @@ A person work can be assigned to (`docs/epics/EPIC-06-owner-as-entity.md`). An o
 | owner | text | **Read-only mirror** of `owners.name`, kept in step by two triggers so `GET /api/export` and the daily-briefing agent read the field they read before EPIC-06. A task write sets `owner_id`; EPIC-06 story OWN-10 drops this column and its triggers |
 | updated_at | timestamp | |
 | created_at | timestamp | |
+
+#### Goal link and dependencies at a glance
+
+Three different relationships between tasks, deliberately in three different places so none is overloaded:
+
+| Question | Where | Cardinality |
+|---|---|---|
+| Which goal does this block contribute to? (*membership*) | `tasks.goal_task_id` | block → 0..1 goal; goal → 0..n blocks |
+| What is this a subtask of? (*decomposition*) | `tasks.parent_task_id` | task → 0..1 parent (no DB FK yet, see EPIC-05 OQ-6) |
+| What must finish before this? (*ordering*) | `task_dependencies` | many-to-many |
+
+```mermaid
+erDiagram
+    TASKS ||--o{ TASKS : "goal_task_id: goal has many building-blocks"
+    TASKS ||--o{ TASKS : "parent_task_id: subtasks"
+    TASKS ||--o{ TASK_DEPENDENCIES : "predecessor_id"
+    TASKS ||--o{ TASK_DEPENDENCIES : "successor_id"
+    STAGES ||--o{ TASKS : stage_id
+    PROJECTS |o--o{ TASKS : project_id
+    OWNERS |o--o{ TASKS : owner_id
+    TASKS {
+        int id PK
+        text type "goal | building-block | null"
+        int goal_task_id FK "only when type = building-block"
+        int parent_task_id
+    }
+    TASK_DEPENDENCIES {
+        int predecessor_id PK,FK "must finish first"
+        int successor_id PK,FK "waits for predecessor"
+        timestamp created_at
+    }
+```
+
+**Goal link** (migration `0017_task_goal_link.sql`; `shared/task-goal.ts`). A block has 0 or 1 goal, a goal has 0..n blocks, and a block with no goal is an unassigned orphan. All of this is enforced in the database as well as the API:
+
+- `goal_task_id` may be set only when `type = 'building-block'` (`CHECK`), must point at a task whose `type = 'goal'` (trigger), and cannot point at the task itself (`CHECK`).
+- Goals do not nest, so the goal graph is two levels deep and cannot loop.
+- A goal that still has blocks cannot be retyped (trigger); reassign them first.
+- Deleting a goal forever sets its blocks' `goal_task_id` to null. Binning keeps the link.
+- The API clears `goal_task_id` when a task is changed away from `building-block`.
+
+### task_dependencies
+
+Predecessor / successor, a **many-to-many** on `tasks` (migration `0018_task_dependencies.sql`; `shared/task-dependencies.ts`). A task may have any number of predecessors and any number of successors.
+
+| Column | Type | Notes |
+|---|---|---|
+| predecessor_id | integer FK → tasks | Must finish before `successor_id`. `ON DELETE CASCADE` |
+| successor_id | integer FK → tasks | Waits for `predecessor_id`. `ON DELETE CASCADE`; indexed (the primary key serves lookups by predecessor) |
+| created_at | timestamp | |
+
+Primary key `(predecessor_id, successor_id)`. One row is **one edge in one direction**: "successor" is not a second stored fact, it is the same row read from the other end (a task's successors are the rows where it is `predecessor_id`). Storing both directions would let two rows disagree about one relation. Timing judgements (late, on time) are derived at read time and never stored.
+
+- Two distinct tasks (`CHECK`); no duplicate edge (primary key).
+- **Acyclic**: a trigger rejects an edge whose predecessor is already downstream of its successor, so a critical path always exists.
+- Deleting a task forever removes its edges. Binning or archiving keeps them; whether a binned or done predecessor counts is a read-time judgement.
+
+API: `GET /api/task-dependencies` lists every edge. `POST /api/tasks` and `PATCH /api/tasks/:id` accept optional `predecessorIds` and/or `successorIds`; a side that is present **replaces** that side's edges, a side left out is untouched, and a rule break answers 400 with the reason. `GET /api/export` carries the edges between exported tasks as an optional `dependencies` array (no `EXPORT_FORMAT_VERSION` bump). The task form edits both sides under Predecessors / Successors. Import restores neither `goal_task_id` nor edges: ids are remapped on import.
+
+Reports: a **critical path** weights each task (effort or duration) and finds the longest path through this DAG. A **project view** groups tasks by `goal_task_id` and lays each group's blocks out along the edges.
 
 ### task_attachments
 

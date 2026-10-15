@@ -1,0 +1,178 @@
+import { useMemo } from 'react';
+import { type Control } from 'react-hook-form';
+import { X } from 'lucide-react';
+import type { InsertTask, Task } from '@shared/schema';
+import { reachable } from '@shared/task-dependencies';
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import { useTasks, useTaskDependencies } from '@/hooks/use-tasks';
+
+type Side = 'predecessorIds' | 'successorIds';
+
+interface PickerProps {
+  control: Control<InsertTask>;
+  name: Side;
+  label: string;
+  hint: string;
+  testId: string;
+  /** Tasks that may be chosen. */
+  options: Task[];
+  /** What the saved task already has, shown until the user edits this side. */
+  saved: number[];
+  titleOf: (id: number) => string;
+}
+
+function DependencyPicker({
+  control,
+  name,
+  label,
+  hint,
+  testId,
+  options,
+  saved,
+  titleOf,
+}: PickerProps) {
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => {
+        // undefined = untouched, so the saved edges show and none are sent.
+        const current: number[] = field.value ?? saved;
+        const set = (next: number[]) => {
+          field.onChange(next);
+        };
+        const toggle = (id: number) => {
+          set(current.includes(id) ? current.filter((x) => x !== id) : [...current, id]);
+        };
+        return (
+          <FormItem>
+            <FormLabel className="text-xs">{label}</FormLabel>
+            <Popover>
+              <PopoverTrigger asChild>
+                <FormControl>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-12 w-full justify-start rounded-md font-normal"
+                    data-testid={testId}
+                  >
+                    {current.length === 0 ? hint : `${current.length} selected — edit`}
+                  </Button>
+                </FormControl>
+              </PopoverTrigger>
+              <PopoverContent className="max-h-72 w-80 overflow-y-auto" align="start">
+                {options.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No other tasks can be linked.</p>
+                ) : (
+                  <ul className="space-y-1">
+                    {options.map((t) => (
+                      <li key={t.id}>
+                        <label className="flex cursor-pointer items-start gap-2 rounded px-1 py-1.5 text-sm hover:bg-muted">
+                          <input
+                            type="checkbox"
+                            className="mt-1"
+                            checked={current.includes(t.id)}
+                            onChange={() => {
+                              toggle(t.id);
+                            }}
+                          />
+                          <span>
+                            <span className="text-muted-foreground">#{t.id}</span> {t.title}
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </PopoverContent>
+            </Popover>
+            {current.length > 0 && (
+              <ul className="flex flex-wrap gap-1.5" aria-label={label}>
+                {current.map((id) => (
+                  <li
+                    key={id}
+                    className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
+                  >
+                    <span className="max-w-[12rem] truncate">
+                      #{id} {titleOf(id)}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${titleOf(id)}`}
+                      onClick={() => {
+                        set(current.filter((x) => x !== id));
+                      }}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <FormMessage />
+          </FormItem>
+        );
+      }}
+    />
+  );
+}
+
+/**
+ * Predecessors (must finish before this task) and successors (wait for this
+ * task). Many-to-many: a task can have any number of each. Options that would
+ * close a loop are left out; the server re-checks and is the authority.
+ * `taskId` is absent while creating, when there is nothing saved yet.
+ */
+export function TaskDependenciesField({
+  control,
+  taskId,
+}: {
+  control: Control<InsertTask>;
+  taskId?: number;
+}) {
+  const { data: tasks = [] } = useTasks();
+  const { data: edges = [] } = useTaskDependencies();
+
+  const { predOptions, succOptions, savedPreds, savedSuccs } = useMemo(() => {
+    const live = tasks.filter((t) => !t.archived && t.deletedAt == null && t.id !== taskId);
+    const below = taskId === undefined ? new Set<number>() : reachable(edges, taskId, 'successors');
+    const above =
+      taskId === undefined ? new Set<number>() : reachable(edges, taskId, 'predecessors');
+    return {
+      // A predecessor cannot already be downstream of this task, and vice versa.
+      predOptions: live.filter((t) => !below.has(t.id)),
+      succOptions: live.filter((t) => !above.has(t.id)),
+      savedPreds: edges.filter((e) => e.successorId === taskId).map((e) => e.predecessorId),
+      savedSuccs: edges.filter((e) => e.predecessorId === taskId).map((e) => e.successorId),
+    };
+  }, [tasks, edges, taskId]);
+
+  const titleOf = (id: number) => tasks.find((t) => t.id === id)?.title ?? 'Unknown task';
+
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <DependencyPicker
+        control={control}
+        name="predecessorIds"
+        label="Predecessors"
+        hint="Must finish before this task"
+        testId="task-predecessors"
+        options={predOptions}
+        saved={savedPreds}
+        titleOf={titleOf}
+      />
+      <DependencyPicker
+        control={control}
+        name="successorIds"
+        label="Successors"
+        hint="Wait for this task"
+        testId="task-successors"
+        options={succOptions}
+        saved={savedSuccs}
+        titleOf={titleOf}
+      />
+    </div>
+  );
+}
