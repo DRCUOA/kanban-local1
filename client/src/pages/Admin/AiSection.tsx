@@ -151,8 +151,7 @@ export function AiSection() {
             )}
             <p className="text-[10px] text-muted-foreground">
               Checked with OpenAI before saving, then stored {ENCRYPTION_LABEL[settings.encryption]}
-              . The key is never sent back to the browser. This page has no login, so anyone who can
-              open it can replace the key.
+              . The key is never sent back to the browser.
             </p>
           </form>
         </div>
