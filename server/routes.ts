@@ -40,6 +40,8 @@ import {
 import { projectScopeToFilter } from '@shared/project-scope';
 import { logger } from '@shared/logger';
 import { goalLinkError, normaliseGoalLink } from '@shared/task-goal';
+import { suggestGoalPlan, GoalPlanRequestError } from './goal-plan';
+import { getAiSettings, updateAiSettings, SettingsUnavailableError } from './settings';
 import { registerGmailPubSubWebhook } from './webhooks/gmail-pubsub';
 import express from 'express';
 import type { ExportAttachment } from '@shared/export';
@@ -177,6 +179,74 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // Distinct owners — registered before any /api/tasks/:id routes so the
   // literal "owners" segment never gets captured as an id.
+  // --- AI assistant ("Make this a goal") ---------------------------------
+
+  app.get(
+    api.aiSettings.get.path,
+    asyncHandler(async (_req: Request, res: Response) => {
+      res.json(await getAiSettings());
+    }),
+  );
+
+  app.put(
+    api.aiSettings.update.path,
+    asyncHandler(async (req: Request, res: Response) => {
+      const input = parseOrThrow(api.aiSettings.update.input, req.body);
+      try {
+        res.json(await updateAiSettings(input));
+      } catch (error) {
+        if (error instanceof SettingsUnavailableError) {
+          res.status(400).json({ error: error.message, status: 400 });
+          return;
+        }
+        throw error;
+      }
+    }),
+  );
+
+  app.post(
+    api.goalPlan.suggest.path,
+    asyncHandler(async (req: Request, res: Response) => {
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
+      try {
+        res.json(await suggestGoalPlan(id));
+      } catch (error) {
+        if (error instanceof GoalPlanRequestError) {
+          res.status(400).json({ error: error.message, status: 400 });
+          return;
+        }
+        // The provider's own message (bad key, unknown model, quota) is what
+        // the user needs to fix it; nothing secret is in it.
+        logger.error('goal-plan suggestion failed:', error);
+        const message = error instanceof Error ? error.message : 'AI request failed';
+        res.status(502).json({ error: `The AI request failed: ${message}`, status: 502 });
+      }
+    }),
+  );
+
+  app.post(
+    api.goalPlan.apply.path,
+    asyncHandler(async (req: Request, res: Response) => {
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
+      const plan = parseOrThrow(api.goalPlan.apply.input, req.body);
+      try {
+        res.status(201).json(await storage.applyGoalPlan(id, plan));
+      } catch (error) {
+        if (error instanceof DependencyRuleError) {
+          res.status(400).json({ error: error.message, status: 400 });
+          return;
+        }
+        if ((error as { code?: string }).code === '23514') {
+          res.status(400).json({ error: (error as Error).message, status: 400 });
+          return;
+        }
+        throw error;
+      }
+    }),
+  );
+
   app.get(
     api.taskDependencies.list.path,
     async (_req: Request, res: Response<TaskDependency[]>) => {

@@ -18,6 +18,13 @@ import {
 } from './schema';
 import { exportQuerySchema, taskExportBundleSchema } from './export';
 import { taskListQuerySchema } from './project-scope';
+import {
+  applyGoalPlanSchema,
+  updateAiSettingsSchema,
+  type AiSettingsResponse,
+  type ApplyGoalPlanResult,
+  type GoalPlanSuggestion,
+} from './goal-plan';
 
 export const api = {
   health: {
@@ -130,6 +137,43 @@ export const api = {
       path: '/api/tasks/owners',
       responses: {
         200: z.array(z.string()),
+      },
+    },
+  },
+  goalPlan: {
+    /** Ask the AI assistant to break a saved goal into building-blocks. Nothing is saved. */
+    suggest: {
+      method: 'POST' as const,
+      path: '/api/tasks/:id/goal-plan',
+      responses: {
+        200: z.custom<GoalPlanSuggestion>(),
+        400: z.object({ error: z.string(), status: z.number() }),
+      },
+    },
+    /** Save the edited plan: optional goal text, new blocks and their dependencies, atomically. */
+    apply: {
+      method: 'POST' as const,
+      path: '/api/tasks/:id/goal-plan/apply',
+      input: applyGoalPlanSchema,
+      responses: {
+        201: z.custom<ApplyGoalPlanResult>(),
+        400: z.object({ error: z.string(), status: z.number() }),
+      },
+    },
+  },
+  aiSettings: {
+    get: {
+      method: 'GET' as const,
+      path: '/api/settings/ai',
+      responses: { 200: z.custom<AiSettingsResponse>() },
+    },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/settings/ai',
+      input: updateAiSettingsSchema,
+      responses: {
+        200: z.custom<AiSettingsResponse>(),
+        400: z.object({ error: z.string(), status: z.number() }),
       },
     },
   },

@@ -38,7 +38,7 @@ import { RichTextEditor } from '@/components/RichTextEditor';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, X } from 'lucide-react';
+import { Plus, Sparkles, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useEffect, useState } from 'react';
@@ -383,25 +383,46 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
             {/* Spacer to push button to bottom */}
             <div className="flex-1" />
 
-            <div className="flex gap-3 pt-4 pb-safe-bottom sticky bottom-0 bg-background">
+            <div className="flex flex-col gap-3 pt-4 pb-safe-bottom sticky bottom-0 bg-background">
+              {/* Offered here so it can be found, but a plan needs a saved goal:
+                  the check runs before any request is made. */}
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1 h-12 rounded-md"
+                className="h-12 rounded-md border-primary/50 text-primary"
                 onClick={() => {
-                  setOpen(false);
+                  toast({
+                    title: 'Save the task first',
+                    description:
+                      'Set Type to Goal and create the task, then open it and press Make this a goal.',
+                    variant: 'destructive',
+                  });
                 }}
+                data-testid="button-make-goal-unsaved"
               >
-                Cancel
+                <Sparkles className="h-4 w-4 mr-2" />
+                Make this a goal
               </Button>
-              <Button
-                type="submit"
-                disabled={createTask.isPending}
-                className="flex-1 h-12 rounded-md active:scale-95 transition-transform"
-                data-testid="button-submit-task"
-              >
-                {createTask.isPending ? 'Creating...' : 'Create Task'}
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 h-12 rounded-md"
+                  onClick={() => {
+                    setOpen(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createTask.isPending}
+                  className="flex-1 h-12 rounded-md active:scale-95 transition-transform"
+                  data-testid="button-submit-task"
+                >
+                  {createTask.isPending ? 'Creating...' : 'Create Task'}
+                </Button>
+              </div>
             </div>
           </form>
         </Form>

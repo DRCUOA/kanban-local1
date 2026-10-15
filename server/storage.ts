@@ -25,13 +25,20 @@ import {
   type TaskDependency,
   taskDependencies,
 } from '@shared/schema';
+import type { ApplyGoalPlan, ApplyGoalPlanResult } from '@shared/goal-plan';
 import {
   applyDependencySet,
   dependencySetError,
   type TaskDependencySet,
 } from '@shared/task-dependencies';
 import type { TaskProjectFilter } from '@shared/project-scope';
-import { TASK_PRIORITY, TASK_RECURRENCE, DEFAULT_STAGE_KIND } from '@shared/constants';
+import {
+  TASK_PRIORITY,
+  TASK_RECURRENCE,
+  TASK_TYPE,
+  STAGE_KIND,
+  DEFAULT_STAGE_KIND,
+} from '@shared/constants';
 import { stageKind } from '@shared/stage-state';
 import { db } from './db';
 import {
@@ -125,6 +132,8 @@ export interface IStorage {
   createTask(task: InsertTask): Promise<Task>;
   getTaskDependencies(): Promise<TaskDependency[]>;
   /** Replaces the given side(s) of a task's dependency edges; rejects with Error(message) on a rule break. */
+  /** Saves an edited AI goal plan in one transaction: optional goal text, new blocks, their dependencies. */
+  applyGoalPlan(goalId: number, plan: ApplyGoalPlan): Promise<ApplyGoalPlanResult>;
   setTaskDependencies(
     taskId: number,
     set: TaskDependencySet,
@@ -221,6 +230,87 @@ export class DatabaseStorage implements IStorage {
 
   async getTaskDependencies(): Promise<TaskDependency[]> {
     return await db.select().from(taskDependencies);
+  }
+
+  async applyGoalPlan(goalId: number, plan: ApplyGoalPlan): Promise<ApplyGoalPlanResult> {
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(18)`);
+      const [goal] = await tx.select().from(tasks).where(eq(tasks.id, goalId));
+      if (!goal || goal.deletedAt) throw new DependencyRuleError('Task not found');
+      if (goal.type !== TASK_TYPE.GOAL) {
+        throw new DependencyRuleError('Set the task type to Goal and save before planning it');
+      }
+      if (plan.goal) {
+        await tx
+          .update(tasks)
+          .set({
+            title: plan.goal.title,
+            description: plan.goal.description,
+            updatedAt: new Date(),
+          })
+          .where(eq(tasks.id, goalId));
+      }
+
+      // New blocks start in the first backlog column, beside nothing else.
+      const allStages = await tx.select().from(stages).orderBy(stages.order);
+      const backlog = allStages.find((st) => stageKind(st) === STAGE_KIND.BACKLOG);
+      const stageId = backlog?.id ?? goal.stageId;
+
+      const keys = new Set(plan.subtasks.map((st) => st.key));
+      if (keys.size !== plan.subtasks.length)
+        throw new DependencyRuleError('Duplicate sub-task keys');
+      const existingBlocks = new Set(
+        (
+          await tx
+            .select({ id: tasks.id })
+            .from(tasks)
+            .where(and(eq(tasks.goalTaskId, goalId), isNull(tasks.deletedAt)))
+        ).map((r) => r.id),
+      );
+
+      const created: Record<string, number> = {};
+      for (const sub of plan.subtasks) {
+        const task = await insertTaskWithExecutor(tx, {
+          title: sub.title,
+          description: sub.description || null,
+          stageId,
+          projectId: goal.projectId,
+          ownerId: goal.ownerId,
+          type: TASK_TYPE.BUILDING_BLOCK,
+          goalTaskId: goalId,
+          effort: sub.effort,
+        });
+        created[sub.key] = task.id;
+      }
+
+      const edges: { predecessorId: number; successorId: number }[] = [];
+      for (const sub of plan.subtasks) {
+        const successorId = created[sub.key];
+        if (successorId === undefined) continue;
+        for (const dep of new Set(sub.dependsOn)) {
+          let predecessorId: number | undefined;
+          if (dep.startsWith('#')) {
+            predecessorId = Number(dep.slice(1));
+            if (!existingBlocks.has(predecessorId)) {
+              throw new DependencyRuleError(`${dep} is not a building-block of this goal`);
+            }
+          } else {
+            predecessorId = created[dep];
+            if (predecessorId === undefined) {
+              throw new DependencyRuleError(
+                `"${sub.title}" waits for a sub-task that is not being saved`,
+              );
+            }
+          }
+          edges.push({ predecessorId, successorId });
+        }
+      }
+      // One row at a time so the acyclic and same-project triggers see each edge.
+      for (const edge of edges) {
+        await tx.insert(taskDependencies).values(edge).onConflictDoNothing();
+      }
+      return { created };
+    });
   }
 
   async clearTaskDependencySides(taskId: number, set: TaskDependencySet): Promise<void> {

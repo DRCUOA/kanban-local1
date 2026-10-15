@@ -225,6 +225,13 @@ export const taskDependencies = pgTable(
 );
 export type TaskDependency = typeof taskDependencies.$inferSelect;
 
+/** App-wide key/value settings (migration 0021). Secret values are stored encrypted. */
+export const appSettings = pgTable('app_settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 /** Gmail watch cursor: one row per monitored mailbox. */
 export const gmailWatchCursor = pgTable('gmail_watch_cursor', {
   mailbox: text('mailbox').primaryKey(),

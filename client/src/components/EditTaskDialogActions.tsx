@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { Button } from '@/components/ui/button';
-import { Trash2, History, Share2 } from 'lucide-react';
+import { Trash2, History, Share2, Sparkles } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,6 +17,8 @@ export interface EditTaskDialogActionsProps {
   onViewHistory?: () => void;
   /** Opens the share dialog for the task; omitted when no task is loaded. */
   onShare?: () => void;
+  /** "Make this a goal": the dialog validates (saved, type Goal) before anything is called. */
+  onMakeGoal?: () => void;
   onDelete: () => void;
   onCancel: () => void;
   isSaving: boolean;
@@ -25,12 +27,25 @@ export interface EditTaskDialogActionsProps {
 export function EditTaskDialogActions({
   onViewHistory,
   onShare,
+  onMakeGoal,
   onDelete,
   onCancel,
   isSaving,
 }: EditTaskDialogActionsProps) {
   return (
     <div className="flex flex-col gap-3 pt-4 pb-safe-bottom sticky bottom-0 bg-background">
+      {onMakeGoal && (
+        <Button
+          type="button"
+          variant="outline"
+          className="h-12 rounded-md border-primary/50 text-primary"
+          onClick={onMakeGoal}
+          data-testid="button-make-goal"
+        >
+          <Sparkles className="h-4 w-4 mr-2" />
+          Make this a goal
+        </Button>
+      )}
       <div className="flex gap-2">
         {onViewHistory && (
           <Button

@@ -19,6 +19,7 @@ const mockStorage = vi.hoisted(() => ({
   getTaskDependencies: vi.fn(),
   setTaskDependencies: vi.fn(),
   clearTaskDependencySides: vi.fn(),
+  applyGoalPlan: vi.fn(),
   updateTask: vi.fn(),
   archiveTask: vi.fn(),
   unarchiveTask: vi.fn(),
@@ -430,6 +431,45 @@ describe('Task routes', () => {
       expect(res.status).toBe(400);
       expect(res.body).toHaveProperty('error');
       expect(res.body).toHaveProperty('status', 400);
+    });
+  });
+
+  // ---- AI goal plan ----
+
+  describe('POST /api/tasks/:id/goal-plan', () => {
+    it('refuses a task that is not a goal before calling the AI', async () => {
+      mockStorage.getTaskById.mockResolvedValue(fakeTask({ type: 'building-block' }));
+      const res = await request(app).post('/api/tasks/1/goal-plan');
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/Goal/);
+    });
+
+    it('answers 400 for a task that does not exist', async () => {
+      mockStorage.getTaskById.mockResolvedValue(undefined);
+      const res = await request(app).post('/api/tasks/9/goal-plan');
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe('POST /api/tasks/:id/goal-plan/apply', () => {
+    const body = {
+      subtasks: [{ key: 'S1', title: 'Measure', description: '', effort: 1, dependsOn: [] }],
+    };
+
+    it('saves through storage and returns the new ids', async () => {
+      mockStorage.applyGoalPlan.mockResolvedValue({ created: { S1: 42 } });
+      const res = await request(app).post('/api/tasks/1/goal-plan/apply').send(body);
+      expect(res.status).toBe(201);
+      expect(res.body).toEqual({ created: { S1: 42 } });
+      expect(mockStorage.applyGoalPlan).toHaveBeenCalledWith(1, expect.objectContaining(body));
+    });
+
+    it('rejects an invalid plan without touching storage', async () => {
+      const res = await request(app)
+        .post('/api/tasks/1/goal-plan/apply')
+        .send({ subtasks: [{ key: 'S1', title: '', description: '', effort: 9, dependsOn: [] }] });
+      expect(res.status).toBe(400);
+      expect(mockStorage.applyGoalPlan).not.toHaveBeenCalled();
     });
   });
 

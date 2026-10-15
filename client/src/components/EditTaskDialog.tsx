@@ -8,6 +8,9 @@ import { Form } from '@/components/ui/form';
 import { EditTaskFormFields } from '@/components/EditTaskFormFields';
 import { EditTaskDialogActions } from '@/components/EditTaskDialogActions';
 import { ShareDialog } from '@/components/ShareDialog';
+import { GoalPlanDialog } from '@/components/GoalPlanDialog';
+import { useToast } from '@/hooks/use-toast';
+import { TASK_TYPE } from '@shared/constants';
 import 'react-day-picker/dist/style.css';
 
 export interface EditTaskDialogProps {
@@ -24,6 +27,31 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
   // Share opens the format/action dialog. It reflects the saved task, so any
   // unsaved edits in this dialog are not included.
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isPlanOpen, setIsPlanOpen] = useState(false);
+  const { toast } = useToast();
+
+  // Checked here, before any request: the plan is built from the saved task,
+  // so unsaved edits would be ignored, and only a goal has building-blocks.
+  const makeGoal = () => {
+    if (!task) return;
+    if (form.formState.isDirty) {
+      toast({
+        title: 'Save your changes first',
+        description: 'The AI plans from the saved task. Save, then press Make this a goal.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (task.type !== TASK_TYPE.GOAL) {
+      toast({
+        title: 'This task is not a goal yet',
+        description: 'Set Type to Goal and save, then press Make this a goal.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setIsPlanOpen(true);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -49,6 +77,7 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
                     }
                   : undefined
               }
+              onMakeGoal={task ? makeGoal : undefined}
               onDelete={handleDelete}
               onCancel={() => {
                 onOpenChange(false);
@@ -58,6 +87,8 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
           </form>
         </Form>
       </DialogContent>
+
+      {task && <GoalPlanDialog goal={task} open={isPlanOpen} onOpenChange={setIsPlanOpen} />}
 
       <ShareDialog
         source={task ? { type: 'tasks', tasks: [task], stages } : null}
