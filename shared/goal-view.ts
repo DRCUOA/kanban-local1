@@ -71,3 +71,45 @@ export function planGoal(blocks: Task[], edges: TaskDependencyEdge[], stages: St
     edges,
   );
 }
+
+/** Work outside the goal that one of its blocks waits for. */
+export interface OutsideWait {
+  task: Task;
+  /** The goal that task belongs to, when it is a building-block of another goal. */
+  goal: Task | null;
+  done: boolean;
+}
+
+/**
+ * For each of the goal's blocks, the predecessors that are not blocks of this
+ * goal: another goal's block, or a task with no goal. The goal's schedule only
+ * uses edges between its own blocks, so these are shown as "starts after"
+ * markers instead of moving any dates. Archived or binned predecessors are
+ * left out, as they are gone from the board.
+ */
+export function outsideWaits(
+  blocks: Task[],
+  edges: TaskDependencyEdge[],
+  tasks: Task[],
+  stages: Stage[],
+): Map<number, OutsideWait[]> {
+  const own = new Set(blocks.map((b) => b.id));
+  const byId = new Map(tasks.map((t) => [t.id, t]));
+  const out = new Map<number, OutsideWait[]>();
+  for (const e of edges) {
+    if (!own.has(e.successorId) || own.has(e.predecessorId)) continue;
+    const task = byId.get(e.predecessorId);
+    if (!task || !isLive(task)) continue;
+    const goal = task.goalTaskId != null ? (byId.get(task.goalTaskId) ?? null) : null;
+    const list = out.get(e.successorId) ?? [];
+    list.push({ task, goal, done: isClosedTaskByStage(task, stages) });
+    out.set(e.successorId, list);
+  }
+  return out;
+}
+
+/** "#12 Order timber (Build a shed), not done" — one outside wait as text. */
+export function describeOutsideWait(w: OutsideWait): string {
+  const where = w.goal ? ` (${w.goal.title})` : '';
+  return `#${w.task.id} ${w.task.title}${where}${w.done ? ', done' : ', not done'}`;
+}

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { Stage, Task } from './schema';
 import {
   blocksOfGoal,
+  describeOutsideWait,
+  outsideWaits,
   goalProgress,
   goalsInProject,
   planGoal,
@@ -77,5 +79,37 @@ describe('planGoal', () => {
     expect(plan.order.map((i) => i.id)).toEqual([1, 2, 3]);
     expect(plan.length).toBe(6);
     expect(plan.criticalPath.map((i) => i.id)).toEqual([1, 2, 3]);
+  });
+});
+
+describe('outsideWaits', () => {
+  const goalA = task({ id: 500, type: 'goal' });
+  const goalB = task({ id: 600, type: 'goal' });
+  const a1 = task({ id: 501, type: 'building-block', goalTaskId: 500 });
+  const a2 = task({ id: 502, type: 'building-block', goalTaskId: 500 });
+  const b1 = task({ id: 601, type: 'building-block', goalTaskId: 600, stageId: 2 });
+  const loose = task({ id: 700 });
+  const gone = task({ id: 701, archived: true });
+  const all = [goalA, goalB, a1, a2, b1, loose, gone];
+  const e = (predecessorId: number, successorId: number) => ({ predecessorId, successorId });
+
+  it('lists only predecessors from outside the goal, with their goal and state', () => {
+    const waits = outsideWaits(
+      [a1, a2],
+      [e(501, 502), e(601, 501), e(700, 502), e(701, 502), e(502, 601)],
+      all,
+      stages,
+    );
+    expect(waits.get(501)?.map((w) => [w.task.id, w.goal?.id ?? null, w.done])).toEqual([
+      [601, 600, true],
+    ]);
+    expect(waits.get(502)?.map((w) => [w.task.id, w.goal?.id ?? null, w.done])).toEqual([
+      [700, null, false],
+    ]);
+  });
+
+  it('describes a wait in one line', () => {
+    const [w] = outsideWaits([a1], [e(601, 501)], all, stages).get(501) ?? [];
+    expect(w && describeOutsideWait(w)).toBe('#601 t (t), done');
   });
 });
