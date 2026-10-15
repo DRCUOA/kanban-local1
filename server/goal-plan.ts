@@ -72,14 +72,19 @@ export async function suggestGoalPlan(goalId: number): Promise<GoalPlanSuggestio
   }
 
   const ctx = await goalContext(goal);
+  // Responses API with JSON-schema output: GPT-6 models support structured
+  // output there, while some (e.g. gpt-6.1-sol) offer no tool calling on Chat
+  // Completions, which is what LangChain's default structured output relies on.
   const model = new ChatOpenAI({
     model: config.model,
     apiKey: config.apiKey,
     timeout: TIMEOUT_MS,
     maxRetries: 1,
+    useResponsesApi: true,
   });
   const runnable = model.withStructuredOutput(goalPlanSuggestionSchema, {
     name: 'goal_plan',
+    method: 'jsonSchema',
     strict: true,
   });
   const started = Date.now();

@@ -1,32 +1,44 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Sparkles } from 'lucide-react';
+import type { AiSettingsResponse } from '@shared/goal-plan';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAiSettings, useUpdateAiSettings } from '@/hooks/use-goal-plan';
 
-const SOURCE_LABEL = {
+const SOURCE_LABEL: Record<AiSettingsResponse['keySource'], string> = {
   admin: 'Using the key saved here',
-  env: 'Using OPENAI_API_KEY from the server environment',
-  none: 'No key set: "Make this a goal" will not work until one is added',
-} as const;
+  env: 'Using OPENAI_API_KEY from the server environment; a key saved here takes over from it',
+  none: 'No key set: “Make this a goal” will not work until one is added',
+  unreadable:
+    'A key was saved but can no longer be decrypted (the server secret changed). Enter it again',
+};
+
+const ENCRYPTION_LABEL: Record<AiSettingsResponse['encryption'], string> = {
+  'settings-secret': 'encrypted with the server’s SETTINGS_SECRET',
+  'database-derived':
+    'encrypted with a key derived from the server’s database connection (set SETTINGS_SECRET for a separate secret)',
+};
 
 /**
- * Admin card for the AI assistant: which OpenAI model "Make this a goal" uses,
- * and the API key. The key is write-only: it is stored encrypted on the server
- * and only its last four characters ever come back.
+ * Admin card for the AI assistant: which OpenAI model “Make this a goal” uses,
+ * and the API key. Models are GPT-5 or later only; with a key set, the list is
+ * what that key can call. The key is write-only: checked with OpenAI before it
+ * is saved, stored encrypted, and only its last four characters come back.
  */
 export function AiSection() {
   const { toast } = useToast();
   const { data: settings, isLoading } = useAiSettings();
   const update = useUpdateAiSettings();
-  const [model, setModel] = useState('');
   const [apiKey, setApiKey] = useState('');
-
-  useEffect(() => {
-    if (settings) setModel(settings.model);
-  }, [settings]);
 
   const save = (body: { model?: string; apiKey?: string | null }, done: string) => {
     update.mutate(body, {
@@ -35,10 +47,16 @@ export function AiSection() {
         toast({ description: done });
       },
       onError: (error) => {
-        toast({ description: error.message, variant: 'destructive' });
+        toast({ title: 'Not saved', description: error.message, variant: 'destructive' });
       },
     });
   };
+
+  // Keep the current model selectable even if the account list does not include it.
+  const options =
+    settings && !settings.models.some((m) => m.id === settings.model)
+      ? [{ id: settings.model, note: 'Current setting' }, ...settings.models]
+      : (settings?.models ?? []);
 
   return (
     <Card className="p-4" data-testid="admin-ai-section">
@@ -55,53 +73,43 @@ export function AiSection() {
       {isLoading || !settings ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
-        <div className="space-y-5">
-          <form
-            className="space-y-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              save({ model: model.trim() }, `Model set to ${model.trim()}`);
-            }}
-          >
+        <div className="space-y-6">
+          <div className="space-y-2">
             <label htmlFor="ai-model" className="text-xs font-medium">
               Model
             </label>
-            <div className="flex gap-2">
-              <Input
-                id="ai-model"
-                list="ai-model-suggestions"
-                value={model}
-                onChange={(e) => {
-                  setModel(e.target.value);
-                }}
-                className="h-10"
-                data-testid="input-ai-model"
-              />
-              <datalist id="ai-model-suggestions">
-                {settings.suggestedModels.map((m) => (
-                  <option key={m} value={m} />
+            <Select
+              value={settings.model}
+              disabled={update.isPending}
+              onValueChange={(model) => {
+                save({ model }, `Model set to ${model}`);
+              }}
+            >
+              <SelectTrigger id="ai-model" className="h-11" data-testid="select-ai-model">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {options.map((m) => (
+                  <SelectItem key={m.id} value={m.id} className="py-2.5">
+                    <span className="font-medium">{m.id}</span>
+                    {m.note && <span className="ml-2 text-xs text-muted-foreground">{m.note}</span>}
+                  </SelectItem>
                 ))}
-              </datalist>
-              <Button
-                type="submit"
-                disabled={
-                  update.isPending || model.trim() === '' || model.trim() === settings.model
-                }
-              >
-                Save
-              </Button>
-            </div>
+              </SelectContent>
+            </Select>
             <p className="text-[10px] text-muted-foreground">
-              Any OpenAI chat model id that supports structured output, e.g.{' '}
-              {settings.suggestedModels.join(', ')}.
+              {settings.modelsSource === 'account'
+                ? 'GPT-5 and later models your API key can use.'
+                : 'GPT-5 and later models from OpenAI’s documentation. Add a key to list exactly what your account can use.'}{' '}
+              Saved as soon as you choose.
             </p>
-          </form>
+          </div>
 
           <form
             className="space-y-2"
             onSubmit={(e) => {
               e.preventDefault();
-              save({ apiKey: apiKey.trim() }, 'API key saved');
+              save({ apiKey: apiKey.trim() }, 'API key checked with OpenAI and saved');
             }}
           >
             <label htmlFor="ai-key" className="text-xs font-medium">
@@ -111,48 +119,41 @@ export function AiSection() {
               {SOURCE_LABEL[settings.keySource]}
               {settings.keyHint ? ` (${settings.keyHint})` : ''}.
             </p>
-            {settings.canStoreKey ? (
-              <>
-                <div className="flex gap-2">
-                  <Input
-                    id="ai-key"
-                    type="password"
-                    autoComplete="off"
-                    placeholder={settings.keySource === 'admin' ? 'Replace the key' : 'sk-…'}
-                    value={apiKey}
-                    onChange={(e) => {
-                      setApiKey(e.target.value);
-                    }}
-                    className="h-10"
-                    data-testid="input-ai-key"
-                  />
-                  <Button type="submit" disabled={update.isPending || apiKey.trim().length < 10}>
-                    Save key
-                  </Button>
-                </div>
-                {settings.keySource === 'admin' && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="h-8 px-2 text-xs"
-                    onClick={() => {
-                      save({ apiKey: null }, 'Saved key removed');
-                    }}
-                  >
-                    Remove saved key
-                  </Button>
-                )}
-                <p className="text-[10px] text-muted-foreground">
-                  Stored encrypted on the server and never shown again. Anyone who can open this
-                  page can replace it.
-                </p>
-              </>
-            ) : (
-              <p className="text-[10px] text-muted-foreground">
-                To save a key here, set SETTINGS_SECRET (16+ characters) on the server and restart.
-                Until then the server’s OPENAI_API_KEY is used.
-              </p>
+            <div className="flex gap-2">
+              <Input
+                id="ai-key"
+                type="password"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder={settings.keySource === 'admin' ? 'Replace the saved key' : 'sk-…'}
+                value={apiKey}
+                onChange={(e) => {
+                  setApiKey(e.target.value);
+                }}
+                className="h-10"
+                data-testid="input-ai-key"
+              />
+              <Button type="submit" disabled={update.isPending || apiKey.trim().length < 10}>
+                {update.isPending ? 'Checking…' : 'Save key'}
+              </Button>
+            </div>
+            {(settings.keySource === 'admin' || settings.keySource === 'unreadable') && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-8 px-2 text-xs"
+                onClick={() => {
+                  save({ apiKey: null }, 'Saved key removed');
+                }}
+              >
+                Remove saved key
+              </Button>
             )}
+            <p className="text-[10px] text-muted-foreground">
+              Checked with OpenAI before saving, then stored {ENCRYPTION_LABEL[settings.encryption]}
+              . The key is never sent back to the browser. This page has no login, so anyone who can
+              open it can replace the key.
+            </p>
           </form>
         </div>
       )}

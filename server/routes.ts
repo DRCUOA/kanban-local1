@@ -41,7 +41,7 @@ import { projectScopeToFilter } from '@shared/project-scope';
 import { logger } from '@shared/logger';
 import { goalLinkError, normaliseGoalLink } from '@shared/task-goal';
 import { suggestGoalPlan, GoalPlanRequestError } from './goal-plan';
-import { getAiSettings, updateAiSettings, SettingsUnavailableError } from './settings';
+import { getAiSettings, updateAiSettings, SettingsRequestError } from './settings';
 import { registerGmailPubSubWebhook } from './webhooks/gmail-pubsub';
 import express from 'express';
 import type { ExportAttachment } from '@shared/export';
@@ -195,11 +195,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       try {
         res.json(await updateAiSettings(input));
       } catch (error) {
-        if (error instanceof SettingsUnavailableError) {
+        if (error instanceof SettingsRequestError) {
           res.status(400).json({ error: error.message, status: 400 });
           return;
         }
-        throw error;
+        logger.error('AI settings update failed:', error);
+        res.status(502).json({
+          error: 'Could not reach OpenAI to check the key. Nothing was saved; try again.',
+          status: 502,
+        });
       }
     }),
   );
