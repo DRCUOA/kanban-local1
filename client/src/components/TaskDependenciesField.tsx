@@ -3,6 +3,7 @@ import { useWatch, type Control } from 'react-hook-form';
 import { X } from 'lucide-react';
 import type { InsertTask, Task } from '@shared/schema';
 import { reachable } from '@shared/task-dependencies';
+import { TASK_TYPE } from '@shared/constants';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,8 @@ interface PickerProps {
   titleOf: (id: number) => string;
   /** Whether a linked task is in the project this task is (becoming) in. */
   fits: (id: number) => boolean;
+  /** Greyed out and read-only (the task is a goal). */
+  disabled: boolean;
 }
 
 function DependencyPicker({
@@ -35,6 +38,7 @@ function DependencyPicker({
   saved,
   titleOf,
   fits,
+  disabled,
 }: PickerProps) {
   return (
     <FormField
@@ -51,9 +55,9 @@ function DependencyPicker({
           set(current.includes(id) ? current.filter((x) => x !== id) : [...current, id]);
         };
         return (
-          <FormItem>
+          <FormItem className={disabled ? 'opacity-50' : undefined} aria-disabled={disabled}>
             <PruneToProject
-              pruned={pruned}
+              pruned={disabled ? 0 : pruned}
               untouched={field.value === undefined}
               current={current}
               onPrune={set}
@@ -66,6 +70,7 @@ function DependencyPicker({
                     type="button"
                     variant="outline"
                     className="h-12 w-full justify-start rounded-md font-normal"
+                    disabled={disabled}
                     data-testid={testId}
                   >
                     {current.length === 0 ? hint : `${current.length} selected — edit`}
@@ -123,6 +128,8 @@ function DependencyPicker({
                     </span>
                     <button
                       type="button"
+                      disabled={disabled}
+                      className="disabled:cursor-not-allowed"
                       aria-label={`Remove ${titleOf(id)}`}
                       onClick={() => {
                         set(current.filter((x) => x !== id));
@@ -185,6 +192,8 @@ export function TaskDependenciesField({
   const { data: tasks = [] } = useTasks();
   const { data: edges = [] } = useTaskDependencies();
   const projectId = useWatch({ control, name: 'projectId' }) ?? null;
+  // A goal is ordered through its building-blocks, not by links of its own.
+  const isGoal = useWatch({ control, name: 'type' }) === TASK_TYPE.GOAL;
 
   const { predOptions, succOptions, savedPreds, savedSuccs } = useMemo(() => {
     // Only tasks in the same project can be linked; "no project" is a project of its own.
@@ -214,29 +223,39 @@ export function TaskDependenciesField({
   const titleOf = (id: number) => tasks.find((t) => t.id === id)?.title ?? 'Unknown task';
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <DependencyPicker
-        control={control}
-        name="predecessorIds"
-        label="Predecessors"
-        hint="Must finish before this task"
-        testId="task-predecessors"
-        options={predOptions}
-        saved={savedPreds}
-        titleOf={titleOf}
-        fits={fits}
-      />
-      <DependencyPicker
-        control={control}
-        name="successorIds"
-        label="Successors"
-        hint="Wait for this task"
-        testId="task-successors"
-        options={succOptions}
-        saved={savedSuccs}
-        titleOf={titleOf}
-        fits={fits}
-      />
+    <div className="space-y-1.5" data-testid="task-dependencies">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <DependencyPicker
+          control={control}
+          name="predecessorIds"
+          label="Predecessors"
+          hint="Must finish before this task"
+          testId="task-predecessors"
+          options={predOptions}
+          saved={savedPreds}
+          titleOf={titleOf}
+          fits={fits}
+          disabled={isGoal}
+        />
+        <DependencyPicker
+          control={control}
+          name="successorIds"
+          label="Successors"
+          hint="Wait for this task"
+          testId="task-successors"
+          options={succOptions}
+          saved={savedSuccs}
+          titleOf={titleOf}
+          fits={fits}
+          disabled={isGoal}
+        />
+      </div>
+      {isGoal && (
+        <p className="text-xs text-muted-foreground" data-testid="dependencies-goal-note">
+          Not used for a goal: its order comes from its building-blocks and their predecessors and
+          successors.
+        </p>
+      )}
     </div>
   );
 }
