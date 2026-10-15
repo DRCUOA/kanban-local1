@@ -82,6 +82,10 @@ class MemStorage implements IStorage {
     await Promise.resolve();
   }
 
+  async clearTaskDependencySides(): Promise<void> {
+    await Promise.resolve();
+  }
+
   async createTask(insert: InsertTask): Promise<Task> {
     const initialKind = this.kindOfStage(insert.stageId);
 

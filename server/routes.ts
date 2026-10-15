@@ -254,14 +254,27 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const id = parseIdParam(req.params.id, res);
         if (id === null) return;
         const parsedUpdates = api.tasks.update.input.parse(req.body);
-        const goalCheck = await checkGoalLink(parsedUpdates, await storage.getTaskById(id));
+        const currentTask = await storage.getTaskById(id);
+        const goalCheck = await checkGoalLink(parsedUpdates, currentTask);
         if (goalCheck.error) {
           return res.status(400).json({ error: goalCheck.error, status: 400 });
         }
         const { predecessorIds, successorIds, ...updates } = goalCheck.write;
-        // Links first: if they break a rule nothing else about the task has changed.
-        if (predecessorIds || successorIds) {
-          await storage.setTaskDependencies(id, { predecessorIds, successorIds });
+        // Check the links first, so a bad set is refused before anything changes.
+        const hasLinks = predecessorIds !== undefined || successorIds !== undefined;
+        const nextProject = updates.projectId;
+        const movesProject = nextProject !== undefined && nextProject !== currentTask?.projectId;
+        if (hasLinks) {
+          await storage.setTaskDependencies(
+            id,
+            { predecessorIds, successorIds },
+            { projectId: nextProject, dryRun: true },
+          );
+          // A move would be refused while the old links still span the two
+          // projects, so the sides being replaced are released first.
+          if (movesProject) {
+            await storage.clearTaskDependencySides(id, { predecessorIds, successorIds });
+          }
         }
         const unknownOwner = await unknownOwnerMessage(updates.ownerId);
         if (unknownOwner) {
@@ -279,6 +292,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         );
         if (!updatedTask) {
           return res.status(404).json({ error: 'Task not found', status: 404 });
+        }
+        if (hasLinks) {
+          await storage.setTaskDependencies(id, { predecessorIds, successorIds });
         }
         if (prepared || updates.description === null) {
           await syncTaskAttachments(storage, id, prepared?.attachmentIds ?? [], { release: true });

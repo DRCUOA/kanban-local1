@@ -18,6 +18,7 @@ const mockStorage = vi.hoisted(() => ({
   createTask: vi.fn(),
   getTaskDependencies: vi.fn(),
   setTaskDependencies: vi.fn(),
+  clearTaskDependencySides: vi.fn(),
   updateTask: vi.fn(),
   archiveTask: vi.fn(),
   unarchiveTask: vi.fn(),

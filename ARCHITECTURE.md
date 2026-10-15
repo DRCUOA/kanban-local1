@@ -333,6 +333,7 @@ Primary key `(predecessor_id, successor_id)`. One row is **one edge in one direc
 
 - Two distinct tasks (`CHECK`); no duplicate edge (primary key).
 - **Acyclic**: a trigger rejects an edge whose predecessor is already downstream of its successor, so a critical path always exists.
+- **Same project** (migration `0020_dependency_same_project.sql`): an edge joins two tasks in the same project, "no project" counting as a project of its own. Enforced both ways: adding an edge across projects is refused, and so is moving a task into another project while an edge still links it to a task left behind. The task form lists only same-project tasks, and when a task's project changes it drops the links that no longer fit (and says so). Edges written before 0020 are checked when either task's project next changes.
 - Deleting a task forever removes its edges. Binning or archiving keeps them; whether a binned or done predecessor counts is a read-time judgement.
 
 API: `GET /api/task-dependencies` lists every edge. `POST /api/tasks` and `PATCH /api/tasks/:id` accept optional `predecessorIds` and/or `successorIds`; a side that is present **replaces** that side's edges, a side left out is untouched, and a rule break answers 400 with the reason. `GET /api/export` carries the edges between exported tasks as an optional `dependencies` array (no `EXPORT_FORMAT_VERSION` bump). The task form edits both sides under Predecessors / Successors. Import restores neither `goal_task_id` nor edges: ids are remapped on import.
