@@ -166,6 +166,7 @@ export function useTaskImportExport({ tasks, stages }: UseTaskImportExportOption
                 stageId: taskData.stageId || stagesData[0]!.id,
                 projectId: resolveProjectId(taskData.projectId),
                 priority: taskData.priority || TASK_PRIORITY.NORMAL,
+                type: taskData.type ?? null,
                 effort: taskData.effort || undefined,
                 dueDate: taskData.dueDate ? new Date(taskData.dueDate) : undefined,
                 tags: Array.isArray(taskData.tags) ? taskData.tags : [],

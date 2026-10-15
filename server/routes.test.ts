@@ -76,6 +76,7 @@ function fakeTask(overrides: Partial<Task> = {}): Task {
     archived: false,
     deletedAt: null,
     priority: 'normal',
+    type: null,
     effort: null,
     dueDate: null,
     updatedAt: NOW,

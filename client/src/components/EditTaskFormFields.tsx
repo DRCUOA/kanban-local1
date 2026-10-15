@@ -16,6 +16,7 @@ import {
 } from '@shared/constants';
 import { stageKind } from '@shared/stage-state';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { TaskTypeField } from '@/components/TaskTypeField';
 import { VoiceInput } from '@/components/VoiceInput';
 import { appendTranscript } from '@/lib/dictation';
 import { RichTextEditor } from '@/components/RichTextEditor';
@@ -272,6 +273,7 @@ export function EditTaskFormFields({ control, stages }: EditTaskFormFieldsProps)
             </FormItem>
           )}
         />
+        <TaskTypeField control={control} />
       </div>
 
       <FormField

@@ -16,6 +16,7 @@ import {
   STAGE_KIND_VALUES,
   DEFAULT_STAGE_KIND,
   TASK_PRIORITY,
+  TASK_TYPE_VALUES,
   TASK_RECURRENCE,
   EFFORT_MIN,
   EFFORT_MAX,
@@ -107,6 +108,10 @@ export const taskPriorityEnum = z.enum([
 ]);
 export type TaskPriority = z.infer<typeof taskPriorityEnum>;
 
+// Task type enum — values sourced from shared/constants.ts
+export const taskTypeEnum = z.enum(TASK_TYPE_VALUES);
+export type TaskType = z.infer<typeof taskTypeEnum>;
+
 // Task recurrence enum — values sourced from shared/constants.ts
 export const taskRecurrenceEnum = z.enum([
   TASK_RECURRENCE.NONE,
@@ -148,6 +153,8 @@ export const tasks = pgTable('tasks', {
   // filtering on the other got a different set. Dropped in EPIC-03 story 2;
   // a task's state is the `kind` of the stage it sits in.
   priority: text('priority').default(TASK_PRIORITY.NORMAL),
+  // Null = unset. 'goal' or 'building-block' (see TASK_TYPE).
+  type: text('type'),
   effort: integer('effort'), // EFFORT_MIN–EFFORT_MAX
   dueDate: timestamp('due_date'), // Optional due date
   updatedAt: timestamp('updated_at').defaultNow(),
@@ -403,6 +410,7 @@ export const insertTaskSchema = createInsertSchema(tasks)
     projectId: z.number().int().positive().optional().nullable(),
     archived: z.boolean().optional(),
     priority: taskPriorityEnum.optional(),
+    type: taskTypeEnum.optional().nullable(),
     effort: z.number().min(EFFORT_MIN).max(EFFORT_MAX).optional().nullable(),
     dueDate: z.coerce.date().optional().nullable(),
     tags: z.array(z.string()).optional().nullable(),

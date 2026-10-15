@@ -12,6 +12,7 @@ const makeTask = (overrides: Partial<Task> = {}): Task => ({
   archived: false,
   deletedAt: null,
   priority: 'normal',
+  type: null,
   effort: null,
   dueDate: null,
   updatedAt: new Date(),

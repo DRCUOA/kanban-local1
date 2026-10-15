@@ -7,6 +7,7 @@ import {
   type InsertTask,
   type Task,
   type TaskPriority,
+  type TaskType,
   type TaskRecurrence,
 } from '@shared/schema';
 import { TASK_PRIORITY, TASK_RECURRENCE } from '@shared/constants';
@@ -51,6 +52,7 @@ export function useEditTaskForm({ task, open, onOpenChange }: UseEditTaskFormOpt
           description: task.description || '',
           stageId: task.stageId,
           priority: (task.priority as TaskPriority) || TASK_PRIORITY.NORMAL,
+          type: (task.type as TaskType | null) ?? null,
           effort: task.effort || undefined,
           dueDate: parsedDueDate,
           tags: Array.isArray(task.tags) ? task.tags : [],
@@ -65,6 +67,7 @@ export function useEditTaskForm({ task, open, onOpenChange }: UseEditTaskFormOpt
           description: task.description || '',
           stageId: task.stageId || 1,
           priority: (task.priority as TaskPriority) || TASK_PRIORITY.NORMAL,
+          type: (task.type as TaskType | null) ?? null,
           effort: task.effort || undefined,
           dueDate: undefined,
           tags: [],
