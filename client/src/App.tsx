@@ -11,6 +11,8 @@ import Admin from '@/pages/Admin';
 import Archive from '@/pages/Archive';
 import Filing from '@/pages/Filing';
 import Bin from '@/pages/Bin';
+import ProjectView from '@/pages/Goals/ProjectView';
+import GoalView from '@/pages/Goals/GoalView';
 import NotFound from '@/pages/not-found';
 
 function Router() {
@@ -21,6 +23,8 @@ function Router() {
       <Route path={ROUTES.ARCHIVE} component={Archive} />
       <Route path={ROUTES.FILING} component={Filing} />
       <Route path={ROUTES.BIN} component={Bin} />
+      <Route path={ROUTES.PROJECT_VIEW} component={ProjectView} />
+      <Route path={ROUTES.GOAL_VIEW} component={GoalView} />
       <Route component={NotFound} />
     </Switch>
   );

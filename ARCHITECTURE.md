@@ -340,6 +340,12 @@ API: `GET /api/task-dependencies` lists every edge. `POST /api/tasks` and `PATCH
 
 Reports: a **critical path** weights each task (effort or duration) and finds the longest path through this DAG. A **project view** groups tasks by `goal_task_id` and lays each group's blocks out along the edges.
 
+#### Project and goal views
+
+`/projects/:projectId` (`none` for tasks with no project) lists the project's goals with progress and days left; `/goals/:goalId` shows one goal's building-blocks in dependency order, with a critical path and a Gantt chart on demand. The board header's target button opens the view for the scoped project.
+
+Scheduling is `shared/schedule.ts` (critical path method: forward and backward pass, slack) fed by `shared/goal-view.ts`. A task has no duration of its own, so **effort counts as days** (no effort = 1 day, finished tasks = 0) and the plan starts today. Only dependencies between the goal's own tasks are used. Nothing is stored: the schedule is derived each time, so it cannot go stale when a task moves.
+
 ### task_attachments
 
 A file attached to a task description (`shared/attachments.ts`). The description references a row by `/api/attachments/:id`; the bytes live here, never as base64 inside the description text. Large values are TOASTed out of line by Postgres, so metadata reads stay cheap.

@@ -209,7 +209,17 @@ export const ROUTES = {
   ARCHIVE: '/archive',
   FILING: '/filing',
   BIN: '/bin',
+  /** `/projects/:projectId`, with `none` for tasks that have no project. */
+  PROJECT_VIEW: '/projects/:projectId',
+  /** `/goals/:goalId`. */
+  GOAL_VIEW: '/goals/:goalId',
 } as const;
+
+export const projectViewPath = (projectId: number | 'none'): string =>
+  ROUTES.PROJECT_VIEW.replace(':projectId', String(projectId));
+
+export const goalViewPath = (goalId: number): string =>
+  ROUTES.GOAL_VIEW.replace(':goalId', String(goalId));
 
 // --- Default Stage Colors ---
 
