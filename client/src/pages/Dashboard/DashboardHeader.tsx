@@ -1,6 +1,9 @@
 import { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { Search, X } from 'lucide-react';
+import { Search, Target, X } from 'lucide-react';
+import { useLocation } from 'wouter';
+import { projectViewPath } from '@shared/constants';
+import { PROJECT_SCOPE_NONE } from '@shared/project-scope';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { AppLogo } from '@/components/AppLogo';
@@ -34,7 +37,11 @@ export function DashboardHeader({
   onClearSearch,
   ...moreActions
 }: DashboardHeaderProps) {
-  const { projects } = useProjectScope();
+  const { projects, scope } = useProjectScope();
+  const [, navigate] = useLocation();
+  // The goals view of whatever project the board is scoped to; not offered for "All projects".
+  const goalsTarget =
+    typeof scope === 'number' ? scope : scope === PROJECT_SCOPE_NONE ? 'none' : null;
   const hasProjects = projects.length > 0;
   const hasQuery = searchQuery.length > 0;
   const [searchOpen, setSearchOpen] = useState(false);
@@ -115,6 +122,20 @@ export function DashboardHeader({
             >
               <Search className="h-5 w-5" aria-hidden />
             </button>
+            {goalsTarget !== null && (
+              <button
+                type="button"
+                aria-label="Project goals"
+                title="Project goals"
+                className="flex h-10 w-10 items-center justify-center rounded-md transition-all active:scale-90"
+                onClick={() => {
+                  navigate(projectViewPath(goalsTarget));
+                }}
+                data-testid="button-project-goals"
+              >
+                <Target className="h-5 w-5" aria-hidden />
+              </button>
+            )}
             <MoreActionsMenu {...moreActions} />
           </div>
         </div>
