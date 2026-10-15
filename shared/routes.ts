@@ -14,6 +14,7 @@ import {
   type OwnerSummary,
   type TaskHistoryEntry,
   type TaskAttachment,
+  type TaskDependency,
 } from './schema';
 import { exportQuerySchema, taskExportBundleSchema } from './export';
 import { taskListQuerySchema } from './project-scope';
@@ -129,6 +130,16 @@ export const api = {
       path: '/api/tasks/owners',
       responses: {
         200: z.array(z.string()),
+      },
+    },
+  },
+  taskDependencies: {
+    /** Every predecessor → successor edge, for the form pickers and for critical-path views. */
+    list: {
+      method: 'GET' as const,
+      path: '/api/task-dependencies',
+      responses: {
+        200: z.array(z.custom<TaskDependency>()),
       },
     },
   },

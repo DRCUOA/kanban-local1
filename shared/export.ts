@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { TaskDependencyEdge } from './task-dependencies';
 import type { Task, Stage, SubStage, Project, TaskAttachment } from './schema';
 import {
   annotateTasksWithUrgency,
@@ -70,6 +71,8 @@ export interface TaskExportBundle {
   stages: Stage[];
   subStages: SubStage[];
   tasks: ExportTask[];
+  /** Predecessor → successor edges between the exported tasks (additive; no version bump). */
+  dependencies?: TaskDependencyEdge[];
   /** Every project, so a scoped file still resolves each task's `projectId`. */
   projects: Project[];
   /** The exported tasks' files. Last in the envelope: with bytes it is the heavy part. */
@@ -97,6 +100,9 @@ export const taskExportBundleSchema = z.object({
   stages: z.array(z.custom<Stage>()),
   subStages: z.array(z.custom<SubStage>()),
   tasks: z.array(z.custom<Task>()),
+  dependencies: z
+    .array(z.object({ predecessorId: z.number(), successorId: z.number() }))
+    .optional(),
   projects: z.array(z.custom<Project>()),
   // Optional so export files written before attachments had rows still validate.
   attachments: z.array(z.custom<ExportAttachment>()).optional(),
@@ -178,6 +184,8 @@ export interface BuildExportBundleInput {
   subStages: SubStage[];
   /** Every project on the board. Defaults to none (the in-memory fallback). */
   projects?: Project[];
+  /** Every dependency edge; those between exported tasks are written out. */
+  dependencies?: TaskDependencyEdge[];
   includeArchived: boolean;
   /** Project ids `tasks` were filtered to; omit (or null) for an unscoped export. */
   projectIds?: number[] | null;
@@ -199,6 +207,7 @@ export function buildExportBundle({
   stages,
   subStages,
   projects = [],
+  dependencies = [],
   includeArchived,
   projectIds = null,
   attachments = [],
@@ -212,6 +221,7 @@ export function buildExportBundle({
   const now = new Date(exportedAt);
   const zone = resolveTimezone(timezone);
   const annotatedTasks = annotateTasksWithUrgency(tasks, stages, now, zone);
+  const taskIds = new Set(tasks.map((t) => t.id));
 
   return {
     formatVersion: EXPORT_FORMAT_VERSION,
@@ -243,6 +253,9 @@ export function buildExportBundle({
     stages,
     subStages,
     tasks: annotatedTasks,
+    dependencies: dependencies.filter(
+      (d) => taskIds.has(d.predecessorId) && taskIds.has(d.successorId),
+    ),
     projects,
     attachments,
   };

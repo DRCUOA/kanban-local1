@@ -106,6 +106,20 @@
       "when": 1792454400000,
       "tag": "0016_task_type",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792540800000,
+      "tag": "0017_task_goal_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792627200000,
+      "tag": "0018_task_dependencies",
+      "breakpoints": true
     }
   ]
 }

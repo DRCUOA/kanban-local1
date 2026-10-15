@@ -5,6 +5,7 @@
 **Status:** Draft — not ready for refinement; gated on B-01 (see *Sequencing*)
 **Owner:** Platform
 **Target:** unsized. Sizing is an output of ATOMIC-00, not an input to it.
+**Note (migration 0018):** the predecessor/successor edge table and its form CRUD were built ahead of this epic's gate at the owner's direction: Option A shape, acyclic at write time, no stored temporal class. OQ-2, OQ-3 and OQ-8 are answered in code by `migrations/0018_task_dependencies.sql`; the rest stay open.
 **Supersedes:** nothing. **Superseded by:** nothing.
 
 > **Read this first.** Behaviour here is *fuzzy by declaration* (author's own
