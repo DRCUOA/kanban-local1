@@ -72,7 +72,20 @@ function DependencyPicker({
                   </Button>
                 </FormControl>
               </PopoverTrigger>
-              <PopoverContent className="max-h-72 w-80 overflow-y-auto" align="start">
+              <PopoverContent
+                className="max-h-[min(18rem,var(--radix-popover-content-available-height))] w-80 overflow-y-auto overscroll-contain"
+                align="start"
+                collisionPadding={12}
+                // The popover is portalled outside the edit dialog, whose scroll
+                // lock swallows wheel and touch scrolling anywhere else. Keeping
+                // the events inside the list lets it scroll.
+                onWheel={(e) => {
+                  e.stopPropagation();
+                }}
+                onTouchMove={(e) => {
+                  e.stopPropagation();
+                }}
+              >
                 {options.length === 0 ? (
                   <p className="text-xs text-muted-foreground">No other tasks can be linked.</p>
                 ) : (
