@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { type Control } from 'react-hook-form';
+import { useEffect, useMemo } from 'react';
+import { useWatch, type Control } from 'react-hook-form';
 import { X } from 'lucide-react';
 import type { InsertTask, Task } from '@shared/schema';
 import { reachable } from '@shared/task-dependencies';
@@ -21,6 +21,8 @@ interface PickerProps {
   /** What the saved task already has, shown until the user edits this side. */
   saved: number[];
   titleOf: (id: number) => string;
+  /** Whether a linked task is in the project this task is (becoming) in. */
+  fits: (id: number) => boolean;
 }
 
 function DependencyPicker({
@@ -32,6 +34,7 @@ function DependencyPicker({
   options,
   saved,
   titleOf,
+  fits,
 }: PickerProps) {
   return (
     <FormField
@@ -39,7 +42,8 @@ function DependencyPicker({
       name={name}
       render={({ field }) => {
         // undefined = untouched, so the saved edges show and none are sent.
-        const current: number[] = field.value ?? saved;
+        const current: number[] = (field.value ?? saved).filter(fits);
+        const pruned = (field.value ?? saved).length - current.length;
         const set = (next: number[]) => {
           field.onChange(next);
         };
@@ -48,6 +52,12 @@ function DependencyPicker({
         };
         return (
           <FormItem>
+            <PruneToProject
+              pruned={pruned}
+              untouched={field.value === undefined}
+              current={current}
+              onPrune={set}
+            />
             <FormLabel className="text-xs">{label}</FormLabel>
             <Popover>
               <PopoverTrigger asChild>
@@ -111,12 +121,39 @@ function DependencyPicker({
                 ))}
               </ul>
             )}
+            {pruned > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {pruned} link{pruned > 1 ? 's' : ''} to other projects will be removed on save.
+              </p>
+            )}
             <FormMessage />
           </FormItem>
         );
       }}
     />
   );
+}
+
+/**
+ * When the task's project changes, links to tasks left behind cannot stay.
+ * Writing the surviving set into the form makes the save replace the side
+ * (which the server needs in order to accept the move).
+ */
+function PruneToProject({
+  pruned,
+  untouched,
+  current,
+  onPrune,
+}: {
+  pruned: number;
+  untouched: boolean;
+  current: number[];
+  onPrune: (next: number[]) => void;
+}) {
+  useEffect(() => {
+    if (pruned > 0 && untouched) onPrune(current);
+  }, [pruned, untouched]);
+  return null;
 }
 
 /**
@@ -134,9 +171,17 @@ export function TaskDependenciesField({
 }) {
   const { data: tasks = [] } = useTasks();
   const { data: edges = [] } = useTaskDependencies();
+  const projectId = useWatch({ control, name: 'projectId' }) ?? null;
 
   const { predOptions, succOptions, savedPreds, savedSuccs } = useMemo(() => {
-    const live = tasks.filter((t) => !t.archived && t.deletedAt == null && t.id !== taskId);
+    // Only tasks in the same project can be linked; "no project" is a project of its own.
+    const live = tasks.filter(
+      (t) =>
+        !t.archived &&
+        t.deletedAt == null &&
+        t.id !== taskId &&
+        (t.projectId ?? null) === projectId,
+    );
     const below = taskId === undefined ? new Set<number>() : reachable(edges, taskId, 'successors');
     const above =
       taskId === undefined ? new Set<number>() : reachable(edges, taskId, 'predecessors');
@@ -147,7 +192,11 @@ export function TaskDependenciesField({
       savedPreds: edges.filter((e) => e.successorId === taskId).map((e) => e.predecessorId),
       savedSuccs: edges.filter((e) => e.predecessorId === taskId).map((e) => e.successorId),
     };
-  }, [tasks, edges, taskId]);
+  }, [tasks, edges, taskId, projectId]);
+  const fits = (id: number) => {
+    const t = tasks.find((x) => x.id === id);
+    return t ? (t.projectId ?? null) === projectId : true;
+  };
 
   const titleOf = (id: number) => tasks.find((t) => t.id === id)?.title ?? 'Unknown task';
 
@@ -162,6 +211,7 @@ export function TaskDependenciesField({
         options={predOptions}
         saved={savedPreds}
         titleOf={titleOf}
+        fits={fits}
       />
       <DependencyPicker
         control={control}
@@ -172,6 +222,7 @@ export function TaskDependenciesField({
         options={succOptions}
         saved={savedSuccs}
         titleOf={titleOf}
+        fits={fits}
       />
     </div>
   );

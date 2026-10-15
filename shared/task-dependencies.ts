@@ -89,18 +89,24 @@ export function hasCycle(edges: TaskDependencyEdge[]): boolean {
 /**
  * Returns a user-facing message when applying `set` to `taskId` is invalid,
  * or null. Mirrors the database rules (migration 0018) so the API answers 400
- * with words. `existingIds` is every task id that exists.
+ * with words. `projectOf` maps every existing task id to its project, and
+ * `taskProjectId` is the task's own project after the write: a dependency only
+ * joins tasks in the same project (migration 0020), "no project" counting as
+ * one project of its own.
  */
 export function dependencySetError(
   edges: TaskDependencyEdge[],
   taskId: number,
   set: TaskDependencySet,
-  existingIds: Set<number>,
+  projectOf: Map<number, number | null>,
+  taskProjectId: number | null,
 ): string | null {
   const mentioned = [...(set.predecessorIds ?? []), ...(set.successorIds ?? [])];
   if (mentioned.includes(taskId)) return 'A task cannot depend on itself';
-  const unknown = mentioned.find((id) => !existingIds.has(id));
+  const unknown = mentioned.find((id) => !projectOf.has(id));
   if (unknown !== undefined) return `Unknown task ${unknown}`;
+  const elsewhere = mentioned.find((id) => projectOf.get(id) !== taskProjectId);
+  if (elsewhere !== undefined) return `Task ${elsewhere} is in a different project`;
   const preds = new Set(set.predecessorIds ?? []);
   const clash = (set.successorIds ?? []).find((id) => preds.has(id));
   if (clash !== undefined) return `Task ${clash} cannot be both a predecessor and a successor`;

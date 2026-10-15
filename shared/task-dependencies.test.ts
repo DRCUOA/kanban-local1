@@ -11,7 +11,13 @@ const e = (predecessorId: number, successorId: number): TaskDependencyEdge => ({
   predecessorId,
   successorId,
 });
-const ids = new Set([1, 2, 3, 4]);
+const projectOf = new Map<number, number | null>([
+  [1, null],
+  [2, null],
+  [3, null],
+  [4, null],
+  [5, 9],
+]);
 
 describe('reachable', () => {
   const edges = [e(1, 2), e(2, 3)];
@@ -43,15 +49,28 @@ describe('dependencySetError', () => {
   const edges = [e(1, 2), e(2, 3)];
   it('accepts a valid many-to-many set', () => {
     expect(
-      dependencySetError(edges, 4, { predecessorIds: [1, 2], successorIds: [3] }, ids),
+      dependencySetError(edges, 4, { predecessorIds: [1, 2], successorIds: [3] }, projectOf, null),
     ).toBeNull();
   });
   it('rejects self, unknown, both-sides and loops', () => {
-    expect(dependencySetError(edges, 1, { predecessorIds: [1] }, ids)).toMatch(/itself/);
-    expect(dependencySetError(edges, 1, { predecessorIds: [99] }, ids)).toMatch(/Unknown/);
-    expect(dependencySetError(edges, 4, { predecessorIds: [1], successorIds: [1] }, ids)).toMatch(
-      /both/,
+    expect(dependencySetError(edges, 1, { predecessorIds: [1] }, projectOf, null)).toMatch(
+      /itself/,
     );
-    expect(dependencySetError(edges, 1, { predecessorIds: [3] }, ids)).toMatch(/loop/);
+    expect(dependencySetError(edges, 1, { predecessorIds: [99] }, projectOf, null)).toMatch(
+      /Unknown/,
+    );
+    expect(
+      dependencySetError(edges, 4, { predecessorIds: [1], successorIds: [1] }, projectOf, null),
+    ).toMatch(/both/);
+    expect(dependencySetError(edges, 1, { predecessorIds: [3] }, projectOf, null)).toMatch(/loop/);
+  });
+  it('rejects a task in another project, and allows the same project', () => {
+    expect(dependencySetError([], 4, { predecessorIds: [5] }, projectOf, null)).toMatch(
+      /different project/,
+    );
+    expect(dependencySetError([], 4, { predecessorIds: [5] }, projectOf, 9)).toBeNull();
+    expect(dependencySetError([], 4, { predecessorIds: [1] }, projectOf, 9)).toMatch(
+      /different project/,
+    );
   });
 });

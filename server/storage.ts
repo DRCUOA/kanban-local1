@@ -125,7 +125,13 @@ export interface IStorage {
   createTask(task: InsertTask): Promise<Task>;
   getTaskDependencies(): Promise<TaskDependency[]>;
   /** Replaces the given side(s) of a task's dependency edges; rejects with Error(message) on a rule break. */
-  setTaskDependencies(taskId: number, set: TaskDependencySet): Promise<void>;
+  setTaskDependencies(
+    taskId: number,
+    set: TaskDependencySet,
+    opts?: { projectId?: number | null; dryRun?: boolean },
+  ): Promise<void>;
+  /** Deletes the given side(s) of a task's edges, ahead of a project move that would orphan them. */
+  clearTaskDependencySides(taskId: number, set: TaskDependencySet): Promise<void>;
   updateTask(id: number, task: Partial<InsertTask>): Promise<Task | undefined>;
   archiveTask(id: number): Promise<Task | undefined>;
   unarchiveTask(id: number): Promise<Task | undefined>;
@@ -217,14 +223,36 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(taskDependencies);
   }
 
-  async setTaskDependencies(taskId: number, set: TaskDependencySet): Promise<void> {
+  async clearTaskDependencySides(taskId: number, set: TaskDependencySet): Promise<void> {
+    if (set.predecessorIds) {
+      await db.delete(taskDependencies).where(eq(taskDependencies.successorId, taskId));
+    }
+    if (set.successorIds) {
+      await db.delete(taskDependencies).where(eq(taskDependencies.predecessorId, taskId));
+    }
+  }
+
+  async setTaskDependencies(
+    taskId: number,
+    set: TaskDependencySet,
+    opts: { projectId?: number | null; dryRun?: boolean } = {},
+  ): Promise<void> {
     await db.transaction(async (tx) => {
       // Serialise writers so two requests cannot each add half of a loop.
       await tx.execute(sql`SELECT pg_advisory_xact_lock(18)`);
       const edges = await tx.select().from(taskDependencies);
-      const ids = new Set((await tx.select({ id: tasks.id }).from(tasks)).map((t) => t.id));
-      const error = dependencySetError(edges, taskId, set, ids);
+      const projectOf = new Map(
+        (await tx.select({ id: tasks.id, projectId: tasks.projectId }).from(tasks)).map((t) => [
+          t.id,
+          t.projectId,
+        ]),
+      );
+      // The task's project after the write, which a PATCH may be changing.
+      const taskProject =
+        opts.projectId !== undefined ? opts.projectId : (projectOf.get(taskId) ?? null);
+      const error = dependencySetError(edges, taskId, set, projectOf, taskProject);
       if (error) throw new DependencyRuleError(error);
+      if (opts.dryRun) return;
       if (set.predecessorIds) {
         await tx.delete(taskDependencies).where(eq(taskDependencies.successorId, taskId));
       }
