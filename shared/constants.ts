@@ -142,6 +142,24 @@ export const PRIORITY_SORT_ORDER: Record<TaskPriorityValue, number> = {
   [TASK_PRIORITY.LOW]: 1,
 } as const;
 
+// --- Task Type ---
+// A `goal` is the outcome being pursued ("build a shed"); a `building-block`
+// is a piece of work towards one ("buy some wood"). Unset (null) is allowed.
+
+export const TASK_TYPE = {
+  GOAL: 'goal',
+  BUILDING_BLOCK: 'building-block',
+} as const;
+
+export type TaskTypeValue = (typeof TASK_TYPE)[keyof typeof TASK_TYPE];
+
+export const TASK_TYPE_VALUES = [TASK_TYPE.GOAL, TASK_TYPE.BUILDING_BLOCK] as const;
+
+export const TASK_TYPE_LABEL: Record<TaskTypeValue, string> = {
+  [TASK_TYPE.GOAL]: 'Goal',
+  [TASK_TYPE.BUILDING_BLOCK]: 'Building block',
+} as const;
+
 // --- Task Recurrence ---
 
 export const TASK_RECURRENCE = {

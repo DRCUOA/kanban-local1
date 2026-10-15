@@ -90,6 +90,7 @@ class MemStorage implements IStorage {
       projectId: insert.projectId ?? null,
       archived: insert.archived ?? false,
       priority: insert.priority ?? TASK_PRIORITY.NORMAL,
+      type: insert.type ?? null,
       effort: insert.effort ?? null,
       dueDate: insert.dueDate ?? null,
       tags: insert.tags ?? null,

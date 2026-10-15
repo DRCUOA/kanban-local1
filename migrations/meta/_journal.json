@@ -99,6 +99,13 @@
       "when": 1792368000000,
       "tag": "0015_drop_task_status",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1792454400000,
+      "tag": "0016_task_type",
+      "breakpoints": true
     }
   ]
 }
