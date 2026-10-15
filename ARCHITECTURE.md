@@ -317,6 +317,7 @@ erDiagram
 - A goal that still has blocks cannot be retyped (trigger); reassign them first.
 - Deleting a goal forever sets its blocks' `goal_task_id` to null. Binning keeps the link.
 - The API clears `goal_task_id` when a task is changed away from `building-block`.
+- **Project consistency** (migration `0019_goal_project_consistency.sql`): when a goal has a `project_id`, its blocks must have the same one; a goal with no project is cross-cutting and takes blocks from any project. Enforced both ways: linking or moving a block, and moving a goal into a project while blocks sit elsewhere. Rows written before 0019 are checked the next time they are touched. The task form offers only goals that fit the block's project.
 
 ### task_dependencies
 

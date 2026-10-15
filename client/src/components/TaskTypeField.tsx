@@ -26,9 +26,16 @@ const UNSET = 'unset';
  */
 export function TaskTypeField({ control }: { control: Control<InsertTask> }) {
   const type = useWatch({ control, name: 'type' });
+  const projectId = useWatch({ control, name: 'projectId' }) ?? null;
   const { data: allTasks = [] } = useTasks();
   const goals = allTasks.filter(
-    (t) => t.type === TASK_TYPE.GOAL && !t.archived && t.deletedAt == null,
+    (t) =>
+      t.type === TASK_TYPE.GOAL &&
+      !t.archived &&
+      t.deletedAt == null &&
+      // A goal in a project only takes blocks from that project; one with no
+      // project is cross-cutting and takes any.
+      (t.projectId == null || t.projectId === projectId),
   );
 
   return (
@@ -96,7 +103,7 @@ export function TaskTypeField({ control }: { control: Control<InsertTask> }) {
               </Select>
               {goals.length === 0 && (
                 <p className="text-xs text-muted-foreground">
-                  No goals yet. Create a task with type Goal first.
+                  No goals available for this project. Create a task with type Goal first.
                 </p>
               )}
               <FormMessage />

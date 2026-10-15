@@ -5,6 +5,7 @@ export interface GoalLinkTask {
   id?: number;
   type: string | null;
   goalTaskId: number | null;
+  projectId?: number | null;
 }
 
 /**
@@ -32,10 +33,20 @@ export function goalLinkError(
   goalTaskId: number | null | undefined,
   target: GoalLinkTask | undefined,
   selfId?: number,
+  /** The block's own project after the write; `undefined` skips the project rule. */
+  blockProjectId?: number | null,
 ): string | null {
   if (goalTaskId == null) return null;
   if (selfId !== undefined && goalTaskId === selfId) return 'A task cannot be its own goal';
   if (!target) return `Unknown goal task ${goalTaskId}`;
   if (target.type !== TASK_TYPE.GOAL) return `Task ${goalTaskId} is not a goal`;
+  // A goal with no project is cross-cutting: its blocks may be in any project.
+  if (
+    blockProjectId !== undefined &&
+    target.projectId != null &&
+    blockProjectId !== target.projectId
+  ) {
+    return 'A building-block must be in the same project as its goal';
+  }
   return null;
 }

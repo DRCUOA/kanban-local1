@@ -120,6 +120,13 @@
       "when": 1792627200000,
       "tag": "0018_task_dependencies",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792713600000,
+      "tag": "0019_goal_project_consistency",
+      "breakpoints": true
     }
   ]
 }

@@ -108,10 +108,9 @@ async function assertOwnerNameFree(name: string, exceptId?: number): Promise<voi
  * clears a goal it no longer qualifies for. Returns the write to store and an
  * error message (null when fine).
  */
-async function checkGoalLink<T extends { type?: string | null; goalTaskId?: number | null }>(
-  write: T,
-  current?: Task,
-): Promise<{ write: T; error: string | null }> {
+async function checkGoalLink<
+  T extends { type?: string | null; goalTaskId?: number | null; projectId?: number | null },
+>(write: T, current?: Task): Promise<{ write: T; error: string | null }> {
   const type = write.type !== undefined ? write.type : (current?.type ?? null);
   const goalTaskId =
     write.goalTaskId !== undefined ? write.goalTaskId : (current?.goalTaskId ?? null);
@@ -123,7 +122,11 @@ async function checkGoalLink<T extends { type?: string | null; goalTaskId?: numb
   }
   if (normalised.goalTaskId == null) return { write: out, error: null };
   const target = await storage.getTaskById(normalised.goalTaskId);
-  return { write: out, error: goalLinkError(normalised.goalTaskId, target, current?.id) };
+  const projectId = write.projectId !== undefined ? write.projectId : (current?.projectId ?? null);
+  return {
+    write: out,
+    error: goalLinkError(normalised.goalTaskId, target, current?.id, projectId),
+  };
 }
 
 async function unknownOwnerMessage(ownerId: number | null | undefined): Promise<string | null> {
