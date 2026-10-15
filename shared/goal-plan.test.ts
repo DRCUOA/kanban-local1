@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CURATED_OPENAI_MODELS,
+  DEFAULT_GOAL_PLAN_MODEL,
+  isPlanningModel,
   GOAL_PLAN_SYSTEM_PROMPT,
   applyGoalPlanSchema,
   buildGoalPlanUserPrompt,
@@ -90,5 +93,38 @@ describe('applyGoalPlanSchema', () => {
       applyGoalPlanSchema.safeParse({ subtasks: [sub('S1', [], { effort: 6 })] }).success,
     ).toBe(false);
     expect(applyGoalPlanSchema.safeParse({ subtasks: [sub('S1')] }).success).toBe(true);
+  });
+});
+
+describe('isPlanningModel', () => {
+  it('accepts GPT-5 and later text models only', () => {
+    for (const id of [
+      'gpt-6.1-sol',
+      'gpt-6-luna',
+      'gpt-5',
+      'gpt-5-mini',
+      'gpt-5.4-mini',
+      'gpt-7',
+    ]) {
+      expect(isPlanningModel(id)).toBe(true);
+    }
+    for (const id of [
+      'gpt-4.1',
+      'gpt-4o-mini',
+      'o4-mini',
+      'gpt-5.6-cyber',
+      'gpt-5.5-pro',
+      'gpt-5-codex',
+      'gpt-5-chat-latest',
+      'gpt-realtime-2',
+      'gpt-image-2.5-flare',
+      'gpt-5-2025-08-07',
+    ]) {
+      expect(isPlanningModel(id)).toBe(false);
+    }
+  });
+  it('every curated model passes, and the default is curated', () => {
+    expect(CURATED_OPENAI_MODELS.every((m) => isPlanningModel(m.id))).toBe(true);
+    expect(CURATED_OPENAI_MODELS.map((m) => m.id)).toContain(DEFAULT_GOAL_PLAN_MODEL);
   });
 });

@@ -1,18 +1,34 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
 import { eq } from 'drizzle-orm';
 import { appSettings } from '@shared/schema';
-import { DEFAULT_GOAL_PLAN_MODEL, type AiSettingsResponse } from '@shared/goal-plan';
-import { SUGGESTED_OPENAI_MODELS } from '@shared/goal-plan';
+import {
+  CURATED_OPENAI_MODELS,
+  DEFAULT_GOAL_PLAN_MODEL,
+  isPlanningModel,
+  type AiModelOption,
+  type AiSettingsResponse,
+} from '@shared/goal-plan';
+import { logger } from '@shared/logger';
 import { db } from './db';
 
 const KEY_MODEL = 'ai.openai_model';
 const KEY_API_KEY = 'ai.openai_api_key';
+const OPENAI_MODELS_URL = 'https://api.openai.com/v1/models';
 
-/** The 32-byte encryption key, or null when SETTINGS_SECRET is not set. */
-function secretKey(): Buffer | null {
+/**
+ * The 32-byte key that encrypts secrets at rest. SETTINGS_SECRET when set;
+ * otherwise derived from DATABASE_URL, which every deployment already has and
+ * which is not stored in the database, so a dump or backup of the database
+ * alone does not reveal the key. Changing whichever is in use makes a saved
+ * key unreadable; the Admin page then asks for it again.
+ */
+function encryptionKey(): { key: Buffer; source: 'settings-secret' | 'database-derived' } {
   const secret = process.env.SETTINGS_SECRET;
-  if (!secret || secret.length < 16) return null;
-  return createHash('sha256').update(secret).digest();
+  if (secret && secret.length >= 16) {
+    return { key: createHash('sha256').update(secret).digest(), source: 'settings-secret' };
+  }
+  const material = `kanban-settings-v1:${process.env.DATABASE_URL ?? ''}`;
+  return { key: createHash('sha256').update(material).digest(), source: 'database-derived' };
 }
 
 export function encryptSecret(plain: string, key: Buffer): string {
@@ -33,7 +49,6 @@ export function decryptSecret(stored: string, key: Buffer): string | null {
       'utf8',
     );
   } catch {
-    // Wrong or rotated SETTINGS_SECRET: treat as no stored key.
     return null;
   }
 }
@@ -57,49 +72,95 @@ async function writeSetting(key: string, value: string | null): Promise<void> {
 export interface AiConfig {
   model: string;
   apiKey: string | null;
-  keySource: 'admin' | 'env' | 'none';
+  keySource: AiSettingsResponse['keySource'];
 }
 
 /** The model and key the AI assistant uses: the Admin key first, then OPENAI_API_KEY. */
 export async function getAiConfig(): Promise<AiConfig> {
-  const model = (await readSetting(KEY_MODEL)) ?? DEFAULT_GOAL_PLAN_MODEL;
-  const key = secretKey();
+  const storedModel = await readSetting(KEY_MODEL);
+  // A model saved before the GPT-5+ rule (or retired) falls back to the default.
+  const model = storedModel && isPlanningModel(storedModel) ? storedModel : DEFAULT_GOAL_PLAN_MODEL;
   const stored = await readSetting(KEY_API_KEY);
-  const adminKey = stored && key ? decryptSecret(stored, key) : null;
+  const adminKey = stored ? decryptSecret(stored, encryptionKey().key) : null;
   if (adminKey) return { model, apiKey: adminKey, keySource: 'admin' };
   const envKey = process.env.OPENAI_API_KEY?.trim();
-  if (envKey) return { model, apiKey: envKey, keySource: 'env' };
-  return { model, apiKey: null, keySource: 'none' };
+  if (envKey) return { model, apiKey: envKey, keySource: stored ? 'unreadable' : 'env' };
+  return { model, apiKey: null, keySource: stored ? 'unreadable' : 'none' };
+}
+
+/** A key or request the user can fix; the route answers 400 with the message. */
+export class SettingsRequestError extends Error {}
+
+/**
+ * The account's model ids, from OpenAI. Used both to check a key before it is
+ * saved (a rejected key is never stored) and to list the models that key can
+ * actually call.
+ */
+async function fetchAccountModels(apiKey: string): Promise<string[]> {
+  const res = await fetch(OPENAI_MODELS_URL, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (res.status === 401) throw new SettingsRequestError('OpenAI rejected this API key.');
+  if (!res.ok) throw new Error(`OpenAI /v1/models answered ${res.status}`);
+  const body = (await res.json()) as { data?: { id: string }[] };
+  return (body.data ?? []).map((m) => m.id);
+}
+
+let modelCache: { keyHint: string; at: number; ids: string[] } | null = null;
+const MODEL_CACHE_MS = 10 * 60_000;
+
+async function modelOptions(
+  apiKey: string | null,
+): Promise<{ models: AiModelOption[]; source: 'account' | 'curated' }> {
+  const curated = CURATED_OPENAI_MODELS.map((m) => ({ id: m.id, note: m.note }));
+  if (!apiKey) return { models: curated, source: 'curated' };
+  const hint = apiKey.slice(-8);
+  try {
+    if (modelCache?.keyHint !== hint || Date.now() - modelCache.at > MODEL_CACHE_MS) {
+      modelCache = { keyHint: hint, at: Date.now(), ids: await fetchAccountModels(apiKey) };
+    }
+  } catch (error) {
+    logger.warn('Could not list OpenAI models; offering the curated list', error);
+    return { models: curated, source: 'curated' };
+  }
+  const notes = new Map(CURATED_OPENAI_MODELS.map((m, i) => [m.id, { note: m.note, rank: i }]));
+  const ids = modelCache.ids.filter(isPlanningModel);
+  if (ids.length === 0) return { models: curated, source: 'curated' };
+  // Curated (documented) models first in their order, then anything newer the account has.
+  ids.sort(
+    (a, b) => (notes.get(a)?.rank ?? 1000) - (notes.get(b)?.rank ?? 1000) || b.localeCompare(a),
+  );
+  return {
+    models: ids.map((id) => ({ id, note: notes.get(id)?.note ?? null })),
+    source: 'account',
+  };
 }
 
 export async function getAiSettings(): Promise<AiSettingsResponse> {
   const config = await getAiConfig();
+  const { models, source } = await modelOptions(config.apiKey);
   return {
     model: config.model,
     keySource: config.keySource,
     keyHint: config.apiKey ? `…${config.apiKey.slice(-4)}` : null,
-    canStoreKey: secretKey() !== null,
-    suggestedModels: SUGGESTED_OPENAI_MODELS,
+    encryption: encryptionKey().source,
+    models,
+    modelsSource: source,
   };
 }
-
-/** Thrown when a key is sent but cannot be stored encrypted. */
-export class SettingsUnavailableError extends Error {}
 
 export async function updateAiSettings(update: {
   model?: string;
   apiKey?: string | null;
 }): Promise<AiSettingsResponse> {
-  if (update.model !== undefined) await writeSetting(KEY_MODEL, update.model);
   if (update.apiKey === null) await writeSetting(KEY_API_KEY, null);
   if (typeof update.apiKey === 'string') {
-    const key = secretKey();
-    if (!key) {
-      throw new SettingsUnavailableError(
-        'SETTINGS_SECRET is not set on the server, so the key cannot be stored encrypted. Set it (16+ characters) and restart, or use OPENAI_API_KEY.',
-      );
-    }
-    await writeSetting(KEY_API_KEY, encryptSecret(update.apiKey, key));
+    // Checked against OpenAI first, so a mistyped key is refused, not stored.
+    await fetchAccountModels(update.apiKey);
+    await writeSetting(KEY_API_KEY, encryptSecret(update.apiKey, encryptionKey().key));
+    modelCache = null;
   }
+  if (update.model !== undefined) await writeSetting(KEY_MODEL, update.model);
   return getAiSettings();
 }

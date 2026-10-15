@@ -352,7 +352,8 @@ The task form's **Make this a goal** button sends a saved `goal` task (title, de
 
 - Prompt: `shared/goal-plan.ts` (`GOAL_PLAN_SYSTEM_PROMPT` + `buildGoalPlanUserPrompt`). The output is pinned by OpenAI structured output to `{ goal: {title, description}, subtasks: [{key, title, description, effort 1–5, dependsOn}] }`; `normaliseGoalPlan` keeps only dependencies on earlier suggestions or existing blocks, so a plan is acyclic as suggested.
 - `POST /api/tasks/:id/goal-plan` asks (nothing saved). `POST /api/tasks/:id/goal-plan/apply` saves in one transaction: optional goal wording, new building-blocks (goal's project and owner, first backlog column) and their dependencies; the database triggers still enforce the goal, project and acyclic rules.
-- Settings: `app_settings` (migration `0021`). Admin → AI assistant sets the model and the API key. The key is stored AES-256-GCM encrypted with a key derived from `SETTINGS_SECRET` and is never returned (only its last four characters); without `SETTINGS_SECRET` only `OPENAI_API_KEY` can be used. The page has no login, so anyone who can open Admin can replace the key.
+- Model: GPT-5 or later only (`isPlanningModel`), chosen from a dropdown on Admin → AI assistant. With a key set the list is the account's own (`GET /v1/models`, filtered); otherwise the curated list from OpenAI's docs. Default `gpt-6.1-sol`. Calls go to the **Responses API** with a strict JSON-schema format: some GPT-6 models have no tool calling on Chat Completions.
+- Key: set on the same page, checked against OpenAI before it is saved, stored in `app_settings` (migration `0021`) AES-256-GCM encrypted with `SETTINGS_SECRET`, or, if that is unset, a key derived from `DATABASE_URL`. It is never returned to the browser (last four characters only). `OPENAI_API_KEY` is the fallback. The page has no login, so anyone who can open Admin can replace (not read) the key.
 
 ### task_attachments
 

@@ -203,23 +203,69 @@ export interface ApplyGoalPlanResult {
   created: Record<string, number>;
 }
 
-/** Model choices offered on the Admin page; any other model id can be typed. */
-export const SUGGESTED_OPENAI_MODELS = ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4o', 'gpt-4o-mini'];
-export const DEFAULT_GOAL_PLAN_MODEL = 'gpt-4.1-mini';
+/**
+ * GPT-5 and later only. Ids and notes from OpenAI's models pages
+ * (developers.openai.com/api/docs/models, checked 16 Oct 2026); when a key is
+ * set the Admin page lists what that key can actually use instead.
+ */
+export const CURATED_OPENAI_MODELS: { id: string; note: string }[] = [
+  { id: 'gpt-6.1-sol', note: 'Balanced: near-Astra quality at lower cost (recommended)' },
+  { id: 'gpt-6-astra', note: 'Most capable, highest cost' },
+  { id: 'gpt-6-sol', note: 'Previous Sol' },
+  { id: 'gpt-6-luna', note: 'Most efficient, lowest cost' },
+  { id: 'gpt-5.6-sol', note: 'GPT-5.6 flagship' },
+  { id: 'gpt-5.6-terra', note: 'GPT-5.6 mid tier' },
+  { id: 'gpt-5.6-luna', note: 'GPT-5.6 efficient tier' },
+  { id: 'gpt-5.5', note: 'GPT-5.5' },
+  { id: 'gpt-5.4', note: 'GPT-5.4' },
+  { id: 'gpt-5.4-mini', note: 'GPT-5.4 small' },
+  { id: 'gpt-5.2', note: 'GPT-5.2' },
+  { id: 'gpt-5', note: 'GPT-5 (previous generation)' },
+  { id: 'gpt-5-mini', note: 'GPT-5 small (previous generation)' },
+  { id: 'gpt-5-nano', note: 'GPT-5 smallest (previous generation)' },
+];
+export const DEFAULT_GOAL_PLAN_MODEL = 'gpt-6.1-sol';
+
+/**
+ * True for a GPT text model of version 5 or later that can plan: excludes the
+ * specialist families (audio, image, realtime, codex, security, pro, search)
+ * and the "chat-latest" aliases.
+ */
+export function isPlanningModel(id: string): boolean {
+  const m = /^gpt-(\d+)(?:\.\d+)?(?:-|$)/.exec(id);
+  if (!m || Number(m[1]) < 5) return false;
+  return !/(codex|cyber|realtime|audio|image|transcribe|tts|search|live|chat-latest|-pro\b|-\d{4}-\d{2}-\d{2}$)/.test(
+    id,
+  );
+}
+
+export interface AiModelOption {
+  id: string;
+  note: string | null;
+}
 
 /** Admin view of the AI settings. The key itself is never sent back. */
 export interface AiSettingsResponse {
   model: string;
-  keySource: 'admin' | 'env' | 'none';
+  /** Where the key in use comes from; 'unreadable' = a saved key that can no longer be decrypted. */
+  keySource: 'admin' | 'env' | 'none' | 'unreadable';
   /** Last four characters of the key in use, for recognition. */
   keyHint: string | null;
-  /** False when SETTINGS_SECRET is not set, so a key cannot be stored encrypted. */
-  canStoreKey: boolean;
-  suggestedModels: string[];
+  /** How a saved key is encrypted at rest. */
+  encryption: 'settings-secret' | 'database-derived';
+  /** Models to offer: what the key can use (GPT-5+), or the curated list without a key. */
+  models: AiModelOption[];
+  modelsSource: 'account' | 'curated';
 }
 
 export const updateAiSettingsSchema = z.object({
-  model: z.string().trim().min(1).max(100).optional(),
+  model: z
+    .string()
+    .trim()
+    .min(1)
+    .max(100)
+    .refine(isPlanningModel, 'Choose a GPT-5 or later text model')
+    .optional(),
   /** A new key to store, or null to remove the stored one (the env key then applies). */
   apiKey: z.string().trim().min(10).max(500).nullable().optional(),
 });
