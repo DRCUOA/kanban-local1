@@ -5,7 +5,7 @@ import { OWNER_FILTER_ALL, OWNER_FILTER_NONE, type OwnerFilter } from './owner-v
 
 export interface ActiveFilter {
   /** Stable key, also the test id suffix. */
-  key: 'project' | 'owner' | 'warning' | 'search' | 'focus';
+  key: 'project' | 'goal' | 'owner' | 'warning' | 'search' | 'focus';
   label: string;
   value: string;
   /** True when it narrows the board; false for the "everything" default. */
@@ -29,6 +29,8 @@ export interface ActiveFilterInput {
   warningFilter: BoardWarningKind | null;
   searchQuery: string;
   focusMode: boolean;
+  /** The goal the board is narrowed to, by name. */
+  goalName?: string | null;
 }
 
 /**
@@ -49,6 +51,10 @@ export function describeActiveFilters(input: ActiveFilterInput): ActiveFilter[] 
       value,
       narrowing: input.projectName !== null || input.scope === PROJECT_SCOPE_NONE,
     });
+  }
+
+  if (input.goalName) {
+    out.push({ key: 'goal', label: 'Goal', value: input.goalName, narrowing: true });
   }
 
   const ownerValue =

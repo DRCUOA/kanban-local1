@@ -9,6 +9,7 @@ import {
   type ProjectScope,
 } from '@shared/project-scope';
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/lib/api';
+import type { BulkUpdateRequest, BulkUpdateResult } from '@shared/bulk-edit';
 
 /**
  * Live tasks, filtered server-side to the given project scope. The scope is
@@ -30,6 +31,18 @@ export function useTaskDependencies() {
   return useQuery({
     queryKey: [api.taskDependencies.list.path],
     queryFn: () => apiGet<TaskDependency[]>(api.taskDependencies.list.path),
+  });
+}
+
+/** Set one field to one value on many tasks; all or nothing. */
+export function useBulkUpdateTasks() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: BulkUpdateRequest) =>
+      apiPost<BulkUpdateResult>(api.bulkUpdate.run.path, body),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [api.tasks.list.path] });
+    },
   });
 }
 

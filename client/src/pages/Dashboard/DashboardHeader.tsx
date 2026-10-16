@@ -12,11 +12,17 @@ import { useProjectScope } from '@/hooks/use-project-scope';
 import { cn } from '@/lib/utils';
 import { BuiltByTk } from '@/components/BuiltByTk';
 import { MoreActionsMenu, type MoreActionsMenuProps } from './MoreActionsMenu';
+import { GoalFilterSelect } from './GoalFilterSelect';
+import type { Task } from '@shared/schema';
 
 export interface DashboardHeaderProps extends MoreActionsMenuProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onClearSearch: () => void;
+  /** Goals in scope, and the one the board is narrowed to. */
+  goals?: Task[];
+  goalFilter?: number | null;
+  onGoalFilterChange?: (next: number | null) => void;
 }
 
 /**
@@ -35,6 +41,9 @@ export function DashboardHeader({
   searchQuery,
   onSearchChange,
   onClearSearch,
+  goals = [],
+  goalFilter = null,
+  onGoalFilterChange,
   ...moreActions
 }: DashboardHeaderProps) {
   const { projects, scope } = useProjectScope();
@@ -106,6 +115,14 @@ export function DashboardHeader({
 
           {/* Hidden until a project exists. */}
           <ProjectSelector className="min-w-0 lg:order-4" />
+          {onGoalFilterChange && (
+            <GoalFilterSelect
+              goals={goals}
+              value={goalFilter}
+              onChange={onGoalFilterChange}
+              className="hidden lg:order-4 lg:flex"
+            />
+          )}
 
           <div
             className="flex min-w-0 flex-1 basis-0 items-center justify-end gap-1 lg:order-5 lg:flex-none"

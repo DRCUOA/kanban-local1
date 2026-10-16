@@ -328,3 +328,31 @@ describe('useFilteredTasks and the header warning pills', () => {
     expect(filtered({ ...base, warningFilter: 'overdue', searchQuery: '2' })).toEqual([2]);
   });
 });
+
+describe('useFilteredTasks goal filter', () => {
+  it('shows the goal and its building-blocks only, together with other filters', () => {
+    const goal = makeTask({ id: 10, title: 'Build a shed', type: 'goal' });
+    const block = makeTask({ id: 11, title: 'Buy timber', type: 'building-block', goalTaskId: 10 });
+    const other = makeTask({
+      id: 12,
+      title: 'Other block',
+      type: 'building-block',
+      goalTaskId: 99,
+    });
+    const loose = makeTask({ id: 13, title: 'Loose task' });
+    const run = (goalFilter: number | null, searchQuery = '') =>
+      renderHook(() =>
+        useFilteredTasks({
+          tasks: [goal, block, other, loose],
+          searchQuery,
+          focusMode: false,
+          viewMode: 'detail',
+          stages,
+          goalFilter,
+        }),
+      ).result.current.map((t) => t.id);
+    expect(run(10).sort()).toEqual([10, 11]);
+    expect(run(10, 'timber')).toEqual([11]);
+    expect(run(null).length).toBe(4);
+  });
+});

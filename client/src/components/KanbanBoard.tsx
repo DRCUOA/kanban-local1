@@ -17,6 +17,9 @@ import { KanbanDragOverlay } from './KanbanDragOverlay';
 import { ColumnResizer } from './ColumnResizer';
 import { NavDropTargets } from './NavDropTargets';
 import { ShareDialog } from './ShareDialog';
+import { BulkEditDialog } from './BulkEditDialog';
+import { Button } from '@/components/ui/button';
+import { Layers, Share2, X } from 'lucide-react';
 import { TaskPreviewPane } from './TaskPreviewPane';
 import { TaskSelectionContext } from './task-selection-context';
 import { DEFAULT_STAGE_COLORS, isClosedStageKind } from '@shared/constants';
@@ -141,9 +144,19 @@ export function KanbanBoard({
     isMarqueeActive,
     onPointerDown: handleMarqueePointerDown,
     selectOnly,
+    clearSelection,
   } = useMarqueeSelection({ containerRef: boardRef, tasks: activeTasks });
 
   const [shareTasks, setShareTasks] = useState<Task[]>([]);
+  const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
+  // The selection in reading order: stage by stage, soonest due first.
+  const selectedInOrder = useMemo(
+    () =>
+      sortedStages.flatMap((stage) =>
+        dueSortedTasks.filter((t) => t.stageId === stage.id && selectedTaskIds.has(t.id)),
+      ),
+    [sortedStages, dueSortedTasks, selectedTaskIds],
+  );
   const [isShareOpen, setIsShareOpen] = useState(false);
 
   const handleTaskContextMenu = useCallback(
@@ -522,6 +535,59 @@ export function KanbanBoard({
             }}
           />
         )}
+
+        {/* What to do with a selection: shown once there is one and nothing is being dragged. */}
+        {selectedTaskIds.size > 0 && !isMarqueeActive && activeId === null && (
+          <div
+            role="toolbar"
+            aria-label="Selected tasks"
+            data-no-marquee
+            data-testid="selection-action-bar"
+            className="fixed bottom-32 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-lg border bg-popover px-3 py-2 text-sm shadow-lg"
+          >
+            <span className="px-1 font-medium tabular-nums" aria-live="polite">
+              {selectedTaskIds.size} selected
+            </span>
+            <Button
+              size="sm"
+              onClick={() => {
+                setIsBulkEditOpen(true);
+              }}
+              data-testid="button-bulk-edit"
+            >
+              <Layers className="mr-1.5 h-4 w-4" aria-hidden />
+              Edit together
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setShareTasks(selectedInOrder);
+                setIsShareOpen(true);
+              }}
+            >
+              <Share2 className="mr-1.5 h-4 w-4" aria-hidden />
+              Share
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label="Clear selection"
+              title="Clear selection (Esc)"
+              onClick={clearSelection}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
+        <BulkEditDialog
+          tasks={selectedInOrder}
+          stages={sortedStages}
+          open={isBulkEditOpen}
+          onOpenChange={setIsBulkEditOpen}
+          onDone={clearSelection}
+        />
 
         <ShareDialog
           source={{ type: 'tasks', tasks: shareTasks, stages: sortedStages }}

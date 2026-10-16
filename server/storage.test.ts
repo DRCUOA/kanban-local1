@@ -86,6 +86,10 @@ class MemStorage implements IStorage {
     return Promise.resolve({ created: {} });
   }
 
+  async bulkUpdateTasks(): Promise<number> {
+    return Promise.resolve(0);
+  }
+
   async clearTaskDependencySides(): Promise<void> {
     await Promise.resolve();
   }

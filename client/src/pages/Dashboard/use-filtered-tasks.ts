@@ -26,6 +26,8 @@ export interface UseFilteredTasksOptions {
   ownerFilter?: OwnerFilter;
   /** Restrict the board to the tasks behind one header warning pill. */
   warningFilter?: BoardWarningKind | null;
+  /** Restrict the board to one goal and its building-blocks. */
+  goalFilter?: number | null;
 }
 
 /**
@@ -48,6 +50,7 @@ export function useFilteredTasks({
   stages,
   ownerFilter = OWNER_FILTER_ALL,
   warningFilter = null,
+  goalFilter = null,
 }: UseFilteredTasksOptions): Task[] {
   return useMemo(() => {
     const taskId = parseTaskIdQuery(searchQuery);
@@ -66,6 +69,7 @@ export function useFilteredTasks({
       tasks?.filter(
         (t) =>
           ownerFilterMatches(t.ownerId, ownerFilter) &&
+          (goalFilter === null || t.id === goalFilter || t.goalTaskId === goalFilter) &&
           (warningFilter === null || matchesBoardWarning(t, warningFilter, stages, now)) &&
           (t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (t.description &&
@@ -101,5 +105,15 @@ export function useFilteredTasks({
     }
 
     return filtered;
-  }, [tasks, archivedTasks, searchQuery, focusMode, viewMode, stages, ownerFilter, warningFilter]);
+  }, [
+    tasks,
+    archivedTasks,
+    searchQuery,
+    focusMode,
+    viewMode,
+    stages,
+    ownerFilter,
+    warningFilter,
+    goalFilter,
+  ]);
 }

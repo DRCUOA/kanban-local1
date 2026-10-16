@@ -142,6 +142,8 @@ export interface IStorage {
   /** Deletes the given side(s) of a task's edges, ahead of a project move that would orphan them. */
   clearTaskDependencySides(taskId: number, set: TaskDependencySet): Promise<void>;
   updateTask(id: number, task: Partial<InsertTask>): Promise<Task | undefined>;
+  /** Applies each task's change in one transaction: all of them, or none (a rule break rolls back). */
+  bulkUpdateTasks(changes: { id: number; updates: Partial<InsertTask> }[]): Promise<number>;
   archiveTask(id: number): Promise<Task | undefined>;
   unarchiveTask(id: number): Promise<Task | undefined>;
   getDeletedTasks(): Promise<Task[]>;
@@ -456,6 +458,40 @@ export class DatabaseStorage implements IStorage {
 
   async createTask(insertTask: InsertTask): Promise<Task> {
     return insertTaskWithExecutor(db, insertTask);
+  }
+
+  async bulkUpdateTasks(changes: { id: number; updates: Partial<InsertTask> }[]): Promise<number> {
+    const stageKinds = new Map(
+      (await db.select().from(stages)).map((st) => [st.id, stageKind(st)]),
+    );
+    return db.transaction(async (tx) => {
+      let count = 0;
+      for (const { id, updates } of changes) {
+        const [current] = await tx.select().from(tasks).where(eq(tasks.id, id));
+        if (!current || current.deletedAt) continue;
+        let history = current.history ?? [];
+        // The same history line a single move writes.
+        if (updates.stageId !== undefined && updates.stageId !== current.stageId) {
+          history = [
+            ...history,
+            {
+              status: stageKinds.get(updates.stageId) ?? DEFAULT_STAGE_KIND,
+              timestamp: new Date().toISOString(),
+            },
+          ];
+        }
+        await tx
+          .update(tasks)
+          .set({
+            ...updates,
+            updatedAt: new Date(),
+            history: history.length > 0 ? history : undefined,
+          })
+          .where(eq(tasks.id, id));
+        count += 1;
+      }
+      return count;
+    });
   }
 
   async updateTask(id: number, updates: Partial<InsertTask>): Promise<Task | undefined> {

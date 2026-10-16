@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-empty-function, @typescript-eslint/no-misused-promises -- R2 baseline: strict fixes deferred to follow-up tasks */
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { TASK_TYPE } from '@shared/constants';
 import { useTasks, useArchivedTasks } from '@/hooks/use-tasks';
 import { EditTaskDialog } from '@/components/EditTaskDialog';
 import { ShareDialog } from '@/components/ShareDialog';
@@ -51,10 +52,25 @@ export default function Dashboard(_props: DashboardProps) {
   const [sortByOwner, setSortByOwner] = useState(false);
   // Which header warning pill is filtering the board, if any.
   const [warningFilter, setWarningFilter] = useState<BoardWarningKind | null>(null);
+  // Which goal the board is narrowed to (the goal and its building-blocks), if any.
+  const [goalFilter, setGoalFilter] = useState<number | null>(null);
 
   const { data: stages = [] } = useStages();
   const { data: owners = [] } = useOwners();
   const { projects, currentProject } = useProjectScope();
+  // Goals in the current project scope, for the goal filter.
+  const goals = useMemo(
+    () =>
+      (tasks ?? [])
+        .filter((t) => t.type === TASK_TYPE.GOAL && !t.archived)
+        .sort((a, b) => a.title.localeCompare(b.title)),
+    [tasks],
+  );
+  // A goal that leaves the scope (another project chosen, archived) stops filtering.
+  useEffect(() => {
+    if (goalFilter !== null && tasks && !goals.some((g) => g.id === goalFilter))
+      setGoalFilter(null);
+  }, [goalFilter, goals, tasks]);
   const activeFilters = describeActiveFilters({
     scope,
     projectName: currentProject?.name ?? null,
@@ -64,6 +80,7 @@ export default function Dashboard(_props: DashboardProps) {
     warningFilter,
     searchQuery,
     focusMode,
+    goalName: goals.find((g) => g.id === goalFilter)?.title ?? null,
   });
 
   const filteredTasks = useFilteredTasks({
@@ -75,6 +92,7 @@ export default function Dashboard(_props: DashboardProps) {
     stages,
     ownerFilter,
     warningFilter,
+    goalFilter,
   });
   const { handleExport, handleImport } = useTaskImportExport({ tasks, stages });
 
@@ -163,6 +181,9 @@ export default function Dashboard(_props: DashboardProps) {
           onClearSearch={() => {
             setSearchQuery('');
           }}
+          goals={goals}
+          goalFilter={goalFilter}
+          onGoalFilterChange={setGoalFilter}
           {...moreActions}
         />
 
@@ -194,7 +215,9 @@ export default function Dashboard(_props: DashboardProps) {
           viewMode={viewMode}
           boardLayout={boardLayout}
           sortByOwner={sortByOwner}
-          isFiltered={warningFilter !== null || ownerFilter !== OWNER_FILTER_ALL}
+          isFiltered={
+            warningFilter !== null || ownerFilter !== OWNER_FILTER_ALL || goalFilter !== null
+          }
           searchQuery={searchQuery}
           onTaskClick={handleTaskClick}
         />
