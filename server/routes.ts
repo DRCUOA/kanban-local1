@@ -43,6 +43,7 @@ import { goalLinkError, normaliseGoalLink } from '@shared/task-goal';
 import { bulkChange } from '@shared/bulk-edit';
 import { TASK_TYPE } from '@shared/constants';
 import { suggestGoalPlan, GoalPlanRequestError } from './goal-plan';
+import { goalPlanOptionsSchema } from '@shared/goal-plan';
 import { getAiSettings, updateAiSettings, SettingsRequestError } from './settings';
 import { registerGmailPubSubWebhook, GMAIL_PUBSUB_WEBHOOK_PATH } from './webhooks/gmail-pubsub';
 import { installAccess } from './access';
@@ -270,8 +271,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     asyncHandler(async (req: Request, res: Response) => {
       const id = parseIdParam(req.params.id, res);
       if (id === null) return;
+      const options = parseOrThrow(goalPlanOptionsSchema, req.body ?? {});
       try {
-        res.json(await suggestGoalPlan(id));
+        res.json(await suggestGoalPlan(id, options));
       } catch (error) {
         if (error instanceof GoalPlanRequestError) {
           res.status(400).json({ error: error.message, status: 400 });
