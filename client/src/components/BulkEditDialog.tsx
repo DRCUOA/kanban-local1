@@ -324,7 +324,7 @@ export function BulkEditDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="flex max-h-[90vh] flex-col sm:max-w-xl"
+        className="flex max-h-[90vh] flex-col lg:max-w-xl"
         data-testid="bulk-edit-dialog"
       >
         <DialogHeader>
@@ -385,7 +385,7 @@ export function BulkEditDialog({
           </p>
         )}
 
-        <div className="flex flex-col gap-2 border-t pt-3 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-2 border-t pt-3 lg:flex-row lg:items-center">
           <p className="flex-1 text-xs text-muted-foreground" aria-live="polite">
             {field && summary
               ? `Set ${BULK_FIELD_LABEL[field]} to ${summary} on ${n} task${n === 1 ? '' : 's'}.`

@@ -126,7 +126,8 @@ describe('EditTaskFormFields', () => {
     // No Status field: the Stage picker above is the task's state (EPIC-03).
     expect(screen.queryByText('Status')).toBeNull();
     expect(screen.getByText('Priority')).toBeDefined();
-    expect(screen.getByText(/Effort/)).toBeDefined();
+    // Effort sits in the collapsed planning section; its label and the summary both name it.
+    expect(screen.getAllByText(/Effort/).length).toBeGreaterThan(0);
     expect(screen.getByText('Due Date')).toBeDefined();
   });
 

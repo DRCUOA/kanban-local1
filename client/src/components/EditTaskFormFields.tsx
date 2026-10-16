@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { useState } from 'react';
-import { useWatch } from 'react-hook-form';
+import { useFormState, useWatch } from 'react-hook-form';
 import type { Control } from 'react-hook-form';
 import type { InsertTask } from '@shared/schema';
 import type { Stage } from '@shared/schema';
@@ -9,6 +9,7 @@ import { useProjectScope } from '@/hooks/use-project-scope';
 import {
   TASK_PRIORITY,
   TASK_PRIORITY_LABEL,
+  TASK_TYPE_LABEL,
   STAGE_KIND_LABEL,
   EFFORT_MIN,
   EFFORT_MAX,
@@ -34,7 +35,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
-import { Check, Pencil, X } from 'lucide-react';
+import { Check, ChevronDown, Pencil, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { OwnerSelector } from './OwnerSelector';
 import { ProjectSelect } from './ProjectSelect';
@@ -55,6 +56,30 @@ export function EditTaskFormFields({ control, stages, taskId }: EditTaskFormFiel
   const { projects } = useProjectScope();
   const selectedStageId = useWatch({ control, name: 'stageId' });
   const selectedProjectId = useWatch({ control, name: 'projectId' });
+  // Priority, type, dependencies and effort sit in a collapsed section so the
+  // form opens on what almost every edit touches. The summary keeps what is
+  // set visible, and an error inside it forces it open.
+  const [planningOpen, setPlanningOpen] = useState(false);
+  const { errors } = useFormState({ control });
+  const priority = useWatch({ control, name: 'priority' });
+  const type = useWatch({ control, name: 'type' });
+  const effort = useWatch({ control, name: 'effort' });
+  const planningHasError = [
+    'priority',
+    'type',
+    'goalTaskId',
+    'predecessorIds',
+    'successorIds',
+    'effort',
+  ].some((k) => k in errors);
+  const planningShown = planningOpen || planningHasError;
+  const planningSummary = [
+    TASK_PRIORITY_LABEL[priority! || TASK_PRIORITY.NORMAL],
+    type && TASK_TYPE_LABEL[type as keyof typeof TASK_TYPE_LABEL],
+    effort ? `Effort ${effort}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
   // Blank tags exist in pre-validation data; they can't be selected (a Radix
   // SelectItem value must be a non-empty string) so leave them out entirely.
   const stageSubStages = allSubStages
@@ -247,40 +272,6 @@ export function EditTaskFormFields({ control, stages, taskId }: EditTaskFormFiel
         )}
       />
 
-      {/* No Status field. It was a second state machine a user could set
-          independently of the column the card sat in, which is how tasks came
-          to read "Done" in Backlog (EPIC-03 finding #1). Move the card — or
-          change its Stage above — and the state follows. */}
-      <div className="grid grid-cols-2 gap-3">
-        <FormField
-          control={control}
-          name="priority"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs">Priority</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value || TASK_PRIORITY.NORMAL}>
-                <FormControl>
-                  <SelectTrigger className="h-12 rounded-md">
-                    <SelectValue />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {(Object.values(TASK_PRIORITY) as TaskPriorityValue[]).map((priority) => (
-                    <SelectItem key={priority} value={priority} className="py-3">
-                      {TASK_PRIORITY_LABEL[priority]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <TaskTypeField control={control} />
-      </div>
-
-      <TaskDependenciesField control={control} taskId={taskId} />
-
       <FormField
         control={control}
         name="ownerId"
@@ -295,96 +286,165 @@ export function EditTaskFormFields({ control, stages, taskId }: EditTaskFormFiel
         )}
       />
 
-      <div className="grid grid-cols-2 gap-3">
-        <FormField
-          control={control}
-          name="effort"
-          render={({ field }) => (
+      <FormField
+        control={control}
+        name="dueDate"
+        render={({ field }) => {
+          const hasDate =
+            field.value && field.value instanceof Date && !isNaN(field.value.getTime());
+          return (
             <FormItem>
-              <FormLabel className="text-xs">
-                Effort ({EFFORT_MIN}-{EFFORT_MAX})
-              </FormLabel>
-              <FormControl>
-                <div className="flex gap-1.5">
-                  {Array.from(
-                    { length: EFFORT_MAX - EFFORT_MIN + 1 },
-                    (_, i) => EFFORT_MIN + i,
-                  ).map((val) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => field.onChange(val)}
-                      className={cn(
-                        'flex-1 h-12 rounded-md text-base font-semibold transition-colors',
-                        field.value === val
-                          ? 'bg-primary text-primary-foreground neo-raised'
-                          : 'bg-secondary/50 text-secondary-foreground hover:bg-secondary',
-                      )}
-                    >
-                      {val}
-                    </button>
-                  ))}
-                </div>
-              </FormControl>
+              <FormLabel className="text-xs">Due Date</FormLabel>
+              <div className="flex gap-1.5">
+                <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          'flex-1 h-12 justify-start text-left font-normal rounded-md',
+                          !hasDate && 'text-muted-foreground',
+                        )}
+                      >
+                        {hasDate ? format(field.value!, 'MMM d, yyyy') : 'Pick date'}
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={field.value ?? undefined}
+                      onSelect={(date: Date | undefined) => {
+                        field.onChange(date ?? null);
+                        setDueDateOpen(false);
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                {hasDate && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-12 w-12 rounded-md shrink-0"
+                    onClick={() => field.onChange(null)}
+                    aria-label="Clear due date"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
               <FormMessage />
             </FormItem>
-          )}
-        />
+          );
+        }}
+      />
+      <div className="rounded-md border border-border/60">
+        <button
+          type="button"
+          className="flex min-h-12 w-full items-center gap-3 px-3 text-left"
+          aria-expanded={planningShown}
+          aria-controls="task-planning-fields"
+          onClick={() => {
+            setPlanningOpen((o) => !o);
+          }}
+          data-testid="button-toggle-planning"
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block text-xs font-medium">
+              Priority, type, effort and dependencies
+            </span>
+            {!planningShown && (
+              <span className="block truncate text-xs text-muted-foreground">
+                {planningSummary}
+              </span>
+            )}
+          </span>
+          <ChevronDown
+            className={cn(
+              'h-4 w-4 flex-shrink-0 transition-transform',
+              planningShown && 'rotate-180',
+            )}
+            aria-hidden
+          />
+        </button>
+        <div
+          id="task-planning-fields"
+          className={cn('flex-col gap-4 px-3 pb-3', planningShown ? 'flex' : 'hidden')}
+        >
+          {/* No Status field. It was a second state machine a user could set
+              independently of the column the card sat in, which is how tasks came
+              to read "Done" in Backlog (EPIC-03 finding #1). Move the card — or
+              change its Stage above — and the state follows. */}
+          <div className="grid grid-cols-2 gap-3">
+            <FormField
+              control={control}
+              name="priority"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs">Priority</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value || TASK_PRIORITY.NORMAL}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="h-12 rounded-md">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {(Object.values(TASK_PRIORITY) as TaskPriorityValue[]).map((priority) => (
+                        <SelectItem key={priority} value={priority} className="py-3">
+                          {TASK_PRIORITY_LABEL[priority]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <TaskTypeField control={control} />
+          </div>
 
-        <FormField
-          control={control}
-          name="dueDate"
-          render={({ field }) => {
-            const hasDate =
-              field.value && field.value instanceof Date && !isNaN(field.value.getTime());
-            return (
+          <TaskDependenciesField control={control} taskId={taskId} />
+
+          <FormField
+            control={control}
+            name="effort"
+            render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-xs">Due Date</FormLabel>
-                <div className="flex gap-1.5">
-                  <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            'flex-1 h-12 justify-start text-left font-normal rounded-md',
-                            !hasDate && 'text-muted-foreground',
-                          )}
-                        >
-                          {hasDate ? format(field.value!, 'MMM d, yyyy') : 'Pick date'}
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={field.value ?? undefined}
-                        onSelect={(date: Date | undefined) => {
-                          field.onChange(date ?? null);
-                          setDueDateOpen(false);
-                        }}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  {hasDate && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-12 w-12 rounded-md shrink-0"
-                      onClick={() => field.onChange(null)}
-                      aria-label="Clear due date"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
+                <FormLabel className="text-xs">
+                  Effort ({EFFORT_MIN}-{EFFORT_MAX})
+                </FormLabel>
+                <FormControl>
+                  <div className="flex gap-1.5">
+                    {Array.from(
+                      { length: EFFORT_MAX - EFFORT_MIN + 1 },
+                      (_, i) => EFFORT_MIN + i,
+                    ).map((val) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => field.onChange(val)}
+                        className={cn(
+                          'flex-1 h-12 rounded-md text-base font-semibold transition-colors',
+                          field.value === val
+                            ? 'bg-primary text-primary-foreground neo-raised'
+                            : 'bg-secondary/50 text-secondary-foreground hover:bg-secondary',
+                        )}
+                      >
+                        {val}
+                      </button>
+                    ))}
+                  </div>
+                </FormControl>
                 <FormMessage />
               </FormItem>
-            );
-          }}
-        />
+            )}
+          />
+        </div>
       </div>
     </>
   );

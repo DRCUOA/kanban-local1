@@ -32,7 +32,8 @@ import {
 } from '@/components/ui/select';
 import { queryClient } from '@/lib/queryClient';
 import { apiPost, apiPatch, apiDelete } from '@/lib/api';
-import { Trash2, Edit } from 'lucide-react';
+import { Edit } from 'lucide-react';
+import { ConfirmDeleteButton } from './ConfirmDeleteButton';
 import { ColorPicker } from '@/components/ColorPicker';
 import { useState } from 'react';
 
@@ -313,26 +314,24 @@ export function StageSection({ stages, isLoading }: StageSectionProps) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-10 w-10 rounded-md"
+                  className="h-11 w-11 rounded-md"
                   onClick={() => {
                     openEditDialog(stage);
                   }}
+                  aria-label={`Edit ${stage.name}`}
                   data-testid={`button-edit-stage-${stage.id}`}
                 >
                   <Edit className="w-4 h-4" />
                 </Button>
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  className="h-10 w-10 rounded-md"
-                  onClick={() => {
+                <ConfirmDeleteButton
+                  name={stage.name}
+                  description="Its sub-stages go with it. This action cannot be undone."
+                  disabled={deleteMutation.isPending}
+                  testId={`button-delete-stage-${stage.id}`}
+                  onConfirm={() => {
                     deleteMutation.mutate(stage.id);
                   }}
-                  disabled={deleteMutation.isPending}
-                  data-testid={`button-delete-stage-${stage.id}`}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                />
               </div>
             </div>
           ))}

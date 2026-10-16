@@ -184,7 +184,7 @@ export function GoalPlanDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-full max-h-full max-w-full flex-col rounded-none sm:h-[90vh] sm:max-w-3xl sm:rounded-lg">
+      <DialogContent className="flex h-full max-h-full max-w-full flex-col rounded-none lg:h-[90vh] lg:max-w-3xl lg:rounded-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Sparkles className="h-4 w-4 text-primary" aria-hidden />
@@ -202,7 +202,7 @@ export function GoalPlanDialog({
             aria-label="How the AI should help"
             data-testid="goal-plan-options"
           >
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2 lg:grid-cols-2">
               <OptionBox
                 checked={options.how}
                 disabled={suggest.isPending}
@@ -228,7 +228,7 @@ export function GoalPlanDialog({
               type="button"
               onClick={run}
               disabled={suggest.isPending || apply.isPending}
-              className="w-full sm:w-auto"
+              className="w-full lg:w-auto"
               data-testid="goal-plan-run"
             >
               {suggest.isPending ? (

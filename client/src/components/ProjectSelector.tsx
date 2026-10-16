@@ -52,7 +52,7 @@ export function ProjectSelector({ className }: { className?: string }) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Project: ${label}`}
-        className="flex h-10 max-w-[12rem] items-center gap-2 rounded-md px-3 text-sm font-medium neo-raised transition-all active:scale-95"
+        className="flex h-11 max-w-[12rem] items-center gap-2 rounded-md px-3 text-sm font-medium neo-raised transition-all active:scale-95"
         onClick={() => {
           setOpen(!open);
         }}

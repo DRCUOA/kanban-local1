@@ -89,7 +89,7 @@ export default function ProjectView() {
             </p>
           </div>
         ) : (
-          <ul className="mx-auto grid max-w-5xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mx-auto grid max-w-5xl gap-3 lg:grid-cols-2 xl:grid-cols-3">
             {goals.map((goal) => {
               const blocks = blocksOfGoal(tasks, goal.id);
               const progress = goalProgress(blocks, stages);

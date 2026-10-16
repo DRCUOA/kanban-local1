@@ -4,6 +4,9 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { EditTaskDialogActions } from './EditTaskDialogActions';
 
+/** The rarer task actions sit behind the More button. */
+const openMore = () => fireEvent.click(screen.getByTestId('button-task-more'));
+
 describe('EditTaskDialogActions', () => {
   const defaults = {
     onDelete: vi.fn(),
@@ -19,8 +22,9 @@ describe('EditTaskDialogActions', () => {
     expect(screen.getByText('Save')).toBeDefined();
   });
 
-  it('renders Delete button that opens a confirmation dialog', () => {
+  it('offers Delete in the More menu', () => {
     render(<EditTaskDialogActions {...defaults} />);
+    openMore();
     expect(screen.getByTestId('button-delete-task')).toBeDefined();
   });
 
@@ -44,6 +48,7 @@ describe('EditTaskDialogActions', () => {
     const onViewHistory = vi.fn();
     render(<EditTaskDialogActions {...defaults} onViewHistory={onViewHistory} />);
 
+    openMore();
     expect(screen.getByText('History')).toBeDefined();
     fireEvent.click(screen.getByText('History'));
     expect(onViewHistory).toHaveBeenCalledOnce();
@@ -51,6 +56,7 @@ describe('EditTaskDialogActions', () => {
 
   it('does not render the History button when onViewHistory is omitted', () => {
     render(<EditTaskDialogActions {...defaults} />);
+    openMore();
     expect(screen.queryByText('History')).toBeNull();
   });
 
@@ -58,18 +64,21 @@ describe('EditTaskDialogActions', () => {
     const onShare = vi.fn();
     render(<EditTaskDialogActions {...defaults} onShare={onShare} />);
 
+    openMore();
     fireEvent.click(screen.getByTestId('button-share-task'));
     expect(onShare).toHaveBeenCalledOnce();
   });
 
   it('does not render the Share button when onShare is omitted', () => {
     render(<EditTaskDialogActions {...defaults} />);
+    openMore();
     expect(screen.queryByTestId('button-share-task')).toBeNull();
   });
 
   it('shows confirmation dialog content when Delete is clicked', () => {
     render(<EditTaskDialogActions {...defaults} />);
 
+    openMore();
     fireEvent.click(screen.getByTestId('button-delete-task'));
     expect(screen.getByText('Delete task?')).toBeDefined();
     expect(screen.getByText('This action cannot be undone.')).toBeDefined();

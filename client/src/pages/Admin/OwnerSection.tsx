@@ -330,7 +330,7 @@ export function OwnerSection({ owners, isLoading }: OwnerSectionProps) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-10 w-10 rounded-md"
+                  className="h-11 w-11 rounded-md"
                   onClick={() => {
                     openEdit(owner);
                   }}
@@ -342,7 +342,7 @@ export function OwnerSection({ owners, isLoading }: OwnerSectionProps) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-10 w-10 rounded-md"
+                  className="h-11 w-11 rounded-md"
                   onClick={() => {
                     toggleArchived(owner);
                   }}
@@ -359,7 +359,7 @@ export function OwnerSection({ owners, isLoading }: OwnerSectionProps) {
                 <Button
                   variant="destructive"
                   size="icon"
-                  className="h-10 w-10 rounded-md"
+                  className="h-11 w-11 rounded-md"
                   onClick={() => {
                     setPendingDelete(owner);
                   }}
