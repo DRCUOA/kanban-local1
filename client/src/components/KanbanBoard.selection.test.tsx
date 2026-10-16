@@ -65,6 +65,9 @@ vi.mock('@/components/ui/hover-card', () => ({
 
 // The dialog itself is covered by ShareDialog.test.tsx; here it is a stub that
 // surfaces which tasks the board asked it to share.
+// The bulk edit dialog has its own data hooks; the board only mounts it.
+vi.mock('./BulkEditDialog', () => ({ BulkEditDialog: () => null }));
+
 vi.mock('./ShareDialog', () => ({
   ShareDialog: ({ source, open }: { source: ShareDialogSource | null; open: boolean }) =>
     open && source?.type === 'tasks'
@@ -248,5 +251,37 @@ describe('KanbanBoard multi-select and share', () => {
     });
 
     expect(selectedIds(container)).toEqual([1, 2]);
+  });
+
+  it('lets a plain drag on empty board space select, and a plain click there does not', () => {
+    const { container } = renderBoard();
+    const board = screen.getByTestId('kanban-board-root');
+    const press = (x: number, y: number) => {
+      act(() => {
+        board.dispatchEvent(
+          new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: x, clientY: y }),
+        );
+      });
+    };
+    // A click (no movement) only clears.
+    press(5, 5);
+    act(() => {
+      window.dispatchEvent(new MouseEvent('pointerup'));
+    });
+    expect(selectedIds(container)).toEqual([]);
+
+    // A drag of more than a few pixels becomes a marquee.
+    press(5, 5);
+    act(() => {
+      window.dispatchEvent(new MouseEvent('pointermove', { clientX: 70, clientY: 160 }));
+    });
+    act(() => {
+      window.dispatchEvent(new MouseEvent('pointermove', { clientX: 70, clientY: 160 }));
+    });
+    act(() => {
+      window.dispatchEvent(new MouseEvent('pointerup'));
+    });
+    expect(selectedIds(container)).toEqual([1, 2]);
+    expect(screen.getByTestId('selection-action-bar').textContent).toContain('2 selected');
   });
 });

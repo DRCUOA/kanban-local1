@@ -40,6 +40,8 @@ import {
 import { projectScopeToFilter } from '@shared/project-scope';
 import { logger } from '@shared/logger';
 import { goalLinkError, normaliseGoalLink } from '@shared/task-goal';
+import { bulkChange } from '@shared/bulk-edit';
+import { TASK_TYPE } from '@shared/constants';
 import { suggestGoalPlan, GoalPlanRequestError } from './goal-plan';
 import { getAiSettings, updateAiSettings, SettingsRequestError } from './settings';
 import { registerGmailPubSubWebhook, GMAIL_PUBSUB_WEBHOOK_PATH } from './webhooks/gmail-pubsub';
@@ -183,6 +185,57 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // Distinct owners — registered before any /api/tasks/:id routes so the
   // literal "owners" segment never gets captured as an id.
+  // --- Bulk edit ----------------------------------------------------------
+
+  app.post(
+    api.bulkUpdate.run.path,
+    asyncHandler(async (req: Request, res: Response) => {
+      const { ids, field, value } = parseOrThrow(api.bulkUpdate.run.input, req.body);
+      let change: Record<string, unknown>;
+      try {
+        change = bulkChange(field, value);
+      } catch (error) {
+        const message = error instanceof z.ZodError ? error.errors[0]?.message : undefined;
+        throw new AppError(400, message ?? 'That value is not valid for this field');
+      }
+      const fail = (error: string) => res.status(400).json({ error, status: 400 });
+      if (field === 'ownerId') {
+        const unknown = await unknownOwnerMessage(change.ownerId as number | null);
+        if (unknown) return fail(unknown);
+      }
+      // The same goal-link rules a single save applies, task by task, so a
+      // type change clears goals it no longer allows and a goal must fit.
+      const changes: { id: number; updates: Partial<InsertTask> }[] = [];
+      for (const id of new Set(ids)) {
+        const current = await storage.getTaskById(id);
+        if (!current || current.deletedAt) return fail(`Task ${id} not found`);
+        let updates = change as Partial<InsertTask>;
+        if (field === 'goalTaskId' && change.goalTaskId != null) {
+          // Giving tasks a goal makes them its building-blocks; a goal cannot have one.
+          if (current.type === TASK_TYPE.GOAL) {
+            return fail(`#${id} ${current.title} is a goal, so it cannot belong to another goal`);
+          }
+          if (current.type !== TASK_TYPE.BUILDING_BLOCK) {
+            updates = { ...updates, type: TASK_TYPE.BUILDING_BLOCK };
+          }
+        }
+        const checked = await checkGoalLink(updates, current);
+        if (checked.error) return fail(`#${id} ${current.title}: ${checked.error}`);
+        changes.push({ id, updates: checked.write });
+      }
+      try {
+        res.json({ updated: await storage.bulkUpdateTasks(changes) });
+      } catch (error) {
+        // A database rule (goal link, project consistency, dependencies) refused
+        // one of them: nothing was changed.
+        if ((error as { code?: string }).code === '23514') {
+          return fail(`Nothing was changed: ${(error as Error).message}`);
+        }
+        throw error;
+      }
+    }),
+  );
+
   // --- AI assistant ("Make this a goal") ---------------------------------
 
   app.get(

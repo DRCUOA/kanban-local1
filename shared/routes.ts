@@ -18,6 +18,7 @@ import {
 } from './schema';
 import { exportQuerySchema, taskExportBundleSchema } from './export';
 import { taskListQuerySchema } from './project-scope';
+import { bulkUpdateRequestSchema, type BulkUpdateResult } from './bulk-edit';
 import {
   applyGoalPlanSchema,
   updateAiSettingsSchema,
@@ -137,6 +138,18 @@ export const api = {
       path: '/api/tasks/owners',
       responses: {
         200: z.array(z.string()),
+      },
+    },
+  },
+  bulkUpdate: {
+    /** Set one field to one value on many tasks, all or nothing. */
+    run: {
+      method: 'POST' as const,
+      path: '/api/tasks/bulk-update',
+      input: bulkUpdateRequestSchema,
+      responses: {
+        200: z.custom<BulkUpdateResult>(),
+        400: z.object({ error: z.string(), status: z.number() }),
       },
     },
   },

@@ -31,16 +31,18 @@ afterEach(cleanup);
 describe('TaskDependenciesField', () => {
   it('greys out both pickers for a goal, keeping what is linked visible', () => {
     render(<Harness type="goal" />);
-    expect(screen.getByTestId('task-predecessors').disabled).toBe(true);
-    expect(screen.getByTestId('task-successors').disabled).toBe(true);
-    expect(screen.getByTestId('dependencies-goal-note')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Remove Block A' }).disabled).toBe(true);
+    expect(screen.getByTestId<HTMLButtonElement>('task-predecessors').disabled).toBe(true);
+    expect(screen.getByTestId<HTMLButtonElement>('task-successors').disabled).toBe(true);
+    expect(screen.getByTestId<HTMLButtonElement>('dependencies-goal-note')).toBeTruthy();
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Remove Block A' }).disabled).toBe(
+      true,
+    );
   });
 
   it.each(['building-block', null] as const)('leaves them usable for type %s', (type) => {
     render(<Harness type={type} />);
-    expect(screen.getByTestId('task-predecessors').disabled).toBe(false);
-    expect(screen.getByTestId('task-successors').disabled).toBe(false);
+    expect(screen.getByTestId<HTMLButtonElement>('task-predecessors').disabled).toBe(false);
+    expect(screen.getByTestId<HTMLButtonElement>('task-successors').disabled).toBe(false);
     expect(screen.queryByTestId('dependencies-goal-note')).toBeNull();
   });
 });

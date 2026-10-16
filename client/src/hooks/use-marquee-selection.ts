@@ -4,15 +4,16 @@ import type { Task } from '@shared/schema';
 /**
  * Shift+drag marquee selection over the board's task cards.
  *
- * The marquee activates only when a primary-button press starts with Shift
- * held, so plain drags stay with dnd-kit (whose sensors ignore Shift-modified
- * presses — the two gestures are mutually exclusive by construction). Cards
- * are found by their `data-task-id` attribute inside the container; selection
- * updates live while the marquee is dragged and is additive to whatever was
- * selected when it started.
+ * Two ways to start one, neither of which competes with dnd-kit's card drag:
+ *  - a plain press on empty board space (not a card, not a control), which
+ *    becomes a marquee once the pointer moves a few pixels, so a click there
+ *    still just clears the selection; it starts a fresh selection;
+ *  - Shift+press anywhere, including on a card (dnd-kit's sensors ignore
+ *    Shift-modified presses), which adds to the current selection.
+ * Cards are found by their `data-task-id` attribute inside the container;
+ * selection updates live while the marquee is dragged.
  *
- * Clearing: Escape, or a plain (unshifted) press on any part of the board
- * that is not a task card.
+ * Clearing: Escape, or a plain click on board space that is not a task card.
  */
 
 export interface MarqueeRect {
@@ -28,6 +29,12 @@ export interface UseMarqueeSelectionOptions {
   /** Live tasks — selection is pruned when tasks disappear from the board. */
   tasks: Task[];
 }
+
+/** Pixels a plain press on empty space must travel before it becomes a marquee. */
+const ARM_DISTANCE = 5;
+/** Controls on the board that keep their own press behaviour. */
+const NOT_MARQUEE =
+  'button, a, input, textarea, select, label, [role="button"], [role="separator"], [contenteditable="true"], [data-no-marquee]';
 
 function intersects(card: DOMRect, rect: MarqueeRect): boolean {
   return (
@@ -46,8 +53,12 @@ export function useMarqueeSelection({ containerRef, tasks }: UseMarqueeSelection
     startY: number;
     baseSelection: ReadonlySet<number>;
   } | null>(null);
+  // A plain press on empty space, waiting to see whether it becomes a drag.
+  const [isArmed, setIsArmed] = useState(false);
 
   const isMarqueeActive = marqueeRect !== null;
+  const marqueeRectRef = useRef<MarqueeRect | null>(null);
+  marqueeRectRef.current = marqueeRect;
 
   const clearSelection = useCallback(() => {
     setSelectedTaskIds((prev) => (prev.size === 0 ? prev : new Set()));
@@ -98,8 +109,18 @@ export function useMarqueeSelection({ containerRef, tasks }: UseMarqueeSelection
       if (event.button !== 0) return;
 
       if (!event.shiftKey) {
-        // A plain press anywhere that is not a task card clears the selection.
-        if (!(event.target as HTMLElement).closest('[data-task-id]')) clearSelection();
+        const target = event.target as HTMLElement;
+        // A card belongs to dnd-kit; a control does its own thing.
+        if (target.closest('[data-task-id]')) return;
+        clearSelection();
+        if (target.closest(NOT_MARQUEE)) return;
+        // Empty space: becomes a marquee if the pointer moves (see below).
+        dragState.current = {
+          startX: event.clientX,
+          startY: event.clientY,
+          baseSelection: new Set(),
+        };
+        setIsArmed(true);
         return;
       }
 
@@ -115,6 +136,33 @@ export function useMarqueeSelection({ containerRef, tasks }: UseMarqueeSelection
     },
     [clearSelection, selectedTaskIds, updateMarquee],
   );
+
+  // An armed press turns into a marquee after a few pixels of movement.
+  useEffect(() => {
+    if (!isArmed) return;
+    const handleMove = (event: PointerEvent) => {
+      const state = dragState.current;
+      if (!state) return;
+      if (Math.hypot(event.clientX - state.startX, event.clientY - state.startY) < ARM_DISTANCE) {
+        return;
+      }
+      window.getSelection()?.removeAllRanges();
+      setIsArmed(false);
+      updateMarquee(event.clientX, event.clientY);
+    };
+    const disarm = () => {
+      if (dragState.current && marqueeRectRef.current === null) dragState.current = null;
+      setIsArmed(false);
+    };
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', disarm);
+    window.addEventListener('pointercancel', disarm);
+    return () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', disarm);
+      window.removeEventListener('pointercancel', disarm);
+    };
+  }, [isArmed, updateMarquee]);
 
   // Window-level listeners only while a marquee is being dragged.
   useEffect(() => {

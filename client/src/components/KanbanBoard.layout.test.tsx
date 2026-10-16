@@ -70,6 +70,9 @@ vi.mock('@/components/ui/hover-card', () => ({
     React.createElement('div', null, children),
 }));
 
+// The bulk edit dialog has its own data hooks; the board only mounts it.
+vi.mock('./BulkEditDialog', () => ({ BulkEditDialog: () => null }));
+
 vi.mock('./ShareDialog', () => ({
   ShareDialog: () => null,
 }));

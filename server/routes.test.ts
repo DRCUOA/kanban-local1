@@ -20,6 +20,7 @@ const mockStorage = vi.hoisted(() => ({
   setTaskDependencies: vi.fn(),
   clearTaskDependencySides: vi.fn(),
   applyGoalPlan: vi.fn(),
+  bulkUpdateTasks: vi.fn(),
   updateTask: vi.fn(),
   archiveTask: vi.fn(),
   unarchiveTask: vi.fn(),
@@ -431,6 +432,79 @@ describe('Task routes', () => {
       expect(res.status).toBe(400);
       expect(res.body).toHaveProperty('error');
       expect(res.body).toHaveProperty('status', 400);
+    });
+  });
+
+  // ---- Bulk edit ----
+
+  describe('POST /api/tasks/bulk-update', () => {
+    it('makes untyped tasks building-blocks when they are given a goal', async () => {
+      mockStorage.getTaskById.mockImplementation((id: number) =>
+        Promise.resolve(
+          id === 50 ? fakeTask({ id: 50, type: 'goal' }) : fakeTask({ id, type: null }),
+        ),
+      );
+      mockStorage.bulkUpdateTasks.mockResolvedValue(1);
+      const res = await request(app)
+        .post('/api/tasks/bulk-update')
+        .send({ ids: [7], field: 'goalTaskId', value: 50 });
+      expect(res.status).toBe(200);
+      expect(mockStorage.bulkUpdateTasks).toHaveBeenCalledWith([
+        { id: 7, updates: { goalTaskId: 50, type: 'building-block' } },
+      ]);
+    });
+
+    it('applies one field to every task in one call', async () => {
+      mockStorage.getTaskById.mockImplementation((id: number) => Promise.resolve(fakeTask({ id })));
+      mockStorage.bulkUpdateTasks.mockResolvedValue(3);
+      const res = await request(app)
+        .post('/api/tasks/bulk-update')
+        .send({ ids: [1, 2, 3, 3], field: 'priority', value: 'high' });
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ updated: 3 });
+      expect(mockStorage.bulkUpdateTasks).toHaveBeenCalledWith([
+        { id: 1, updates: { priority: 'high' } },
+        { id: 2, updates: { priority: 'high' } },
+        { id: 3, updates: { priority: 'high' } },
+      ]);
+    });
+
+    it('refuses a value the form would refuse, without touching storage', async () => {
+      const res = await request(app)
+        .post('/api/tasks/bulk-update')
+        .send({ ids: [1], field: 'effort', value: 9 });
+      expect(res.status).toBe(400);
+      expect(mockStorage.bulkUpdateTasks).not.toHaveBeenCalled();
+    });
+
+    it('applies the goal rules task by task and names the task that breaks them', async () => {
+      mockStorage.getTaskById.mockImplementation((id: number) =>
+        Promise.resolve(
+          id === 50
+            ? fakeTask({ id: 50, type: 'building-block' })
+            : fakeTask({ id, title: 'Already a goal', type: 'goal' }),
+        ),
+      );
+      const res = await request(app)
+        .post('/api/tasks/bulk-update')
+        .send({ ids: [7], field: 'goalTaskId', value: 50 });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/#7 Already a goal is a goal/);
+      expect(mockStorage.bulkUpdateTasks).not.toHaveBeenCalled();
+    });
+
+    it('reports a database rule break as nothing changed', async () => {
+      mockStorage.getTaskById.mockImplementation((id: number) => Promise.resolve(fakeTask({ id })));
+      mockStorage.bulkUpdateTasks.mockRejectedValue(
+        Object.assign(new Error('task 1 has dependencies on tasks in another project'), {
+          code: '23514',
+        }),
+      );
+      const res = await request(app)
+        .post('/api/tasks/bulk-update')
+        .send({ ids: [1], field: 'projectId', value: 4 });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/^Nothing was changed/);
     });
   });
 

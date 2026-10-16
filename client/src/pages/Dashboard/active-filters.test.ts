@@ -42,3 +42,13 @@ describe('describeActiveFilters', () => {
     expect(f.search?.value).toBe('“paint”');
   });
 });
+
+describe('goal filter', () => {
+  it('names the goal the board is narrowed to', () => {
+    const f = describeActiveFilters({ ...base, goalName: 'Build a shed' });
+    expect(f.find((x) => x.key === 'goal')).toMatchObject({
+      value: 'Build a shed',
+      narrowing: true,
+    });
+  });
+});
