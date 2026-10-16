@@ -42,7 +42,7 @@ export function PageHeader({
             variant="ghost"
             size="icon"
             onClick={onBack}
-            className="h-10 w-10 shrink-0 rounded-lg"
+            className="h-11 w-11 shrink-0 rounded-lg"
             aria-label="Back to the board"
             data-testid={backTestId}
           >

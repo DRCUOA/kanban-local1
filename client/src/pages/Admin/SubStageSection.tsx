@@ -26,7 +26,8 @@ import { apiPost, apiPatch, apiDelete } from '@/lib/api';
 import { laneShadeStyle } from '@/lib/lane-shade';
 import { useOwners } from '@/hooks/use-owners';
 import { DEFAULT_OWNER_COLOR } from '@shared/constants';
-import { Trash2, Edit } from 'lucide-react';
+import { Edit } from 'lucide-react';
+import { ConfirmDeleteButton } from './ConfirmDeleteButton';
 import { useState } from 'react';
 import {
   Select,
@@ -445,7 +446,7 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                         <Button
                           variant="outline"
                           size="icon"
-                          className="h-10 w-10 rounded-md"
+                          className="h-11 w-11 rounded-md"
                           onClick={() => {
                             openEditSubStageDialog(subStage);
                           }}
@@ -454,19 +455,14 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          className="h-10 w-10 rounded-md"
-                          onClick={() => {
+                        <ConfirmDeleteButton
+                          name={subStage.name}
+                          disabled={deleteSubStageMutation.isPending}
+                          testId={`button-delete-sub-stage-${subStage.id}`}
+                          onConfirm={() => {
                             deleteSubStageMutation.mutate(subStage.id);
                           }}
-                          disabled={deleteSubStageMutation.isPending}
-                          aria-label={`Delete ${subStage.name}`}
-                          data-testid={`button-delete-sub-stage-${subStage.id}`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        />
                       </div>
                     </div>
                   ))}

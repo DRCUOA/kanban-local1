@@ -543,9 +543,12 @@ export function KanbanBoard({
             aria-label="Selected tasks"
             data-no-marquee
             data-testid="selection-action-bar"
-            className="fixed bottom-32 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-lg border bg-popover px-3 py-2 text-sm shadow-lg"
+            className="fixed bottom-32 left-1/2 z-40 flex w-[calc(100vw-1rem)] max-w-md -translate-x-1/2 items-center gap-1.5 rounded-lg border bg-popover px-2 py-2 text-sm shadow-lg lg:w-auto lg:gap-2 lg:px-3"
           >
-            <span className="px-1 font-medium tabular-nums" aria-live="polite">
+            <span
+              className="min-w-0 flex-1 truncate px-1 font-medium tabular-nums lg:flex-none"
+              aria-live="polite"
+            >
               {selectedTaskIds.size} selected
             </span>
             <Button
@@ -566,8 +569,8 @@ export function KanbanBoard({
                 setIsShareOpen(true);
               }}
             >
-              <Share2 className="mr-1.5 h-4 w-4" aria-hidden />
-              Share
+              <Share2 className="h-4 w-4 lg:mr-1.5" aria-hidden />
+              <span className="sr-only lg:not-sr-only">Share</span>
             </Button>
             <Button
               size="sm"

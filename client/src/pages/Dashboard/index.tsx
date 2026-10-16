@@ -188,25 +188,45 @@ export default function Dashboard(_props: DashboardProps) {
         />
 
         {tasks && tasks.length > 0 && (
-          // Phones get the board alone: the column headers already name each
-          // stage with its count, and a card's border flags an overdue,
-          // high-priority or stale task, so the chips and pills only show from
-          // the tablet breakpoint, where they cost no board space.
-          <div className="hidden px-3 pt-2 lg:block">
-            {/* Warnings ride in the chip row (right-aligned, wrapping under the
-              chips when narrow) instead of stacking as banners above the board. */}
-            <StageHeaders tasks={tasks} center={<ActiveFilters filters={activeFilters} />}>
-              {/* Counted against the whole board, so a pill's number does not
-                  change under the filter it is applying. */}
-              <TaskWarnings
-                tasks={tasks}
-                activeKind={warningFilter}
-                onToggleKind={(kind) => {
-                  setWarningFilter((current) => (current === kind ? null : kind));
-                }}
+          <>
+            {/* Phones: the stage chips are left out (the column headers already
+              name each stage with its count), but a filter must never be
+              invisible. One quiet line shows what narrows the board, and the
+              warning pills scroll sideways in a single row instead of wrapping. */}
+            <div className="space-y-1.5 px-3 pt-2 lg:hidden" data-testid="phone-filter-strip">
+              <ActiveFilters
+                filters={activeFilters.filter((f) => f.narrowing)}
+                className="justify-start"
               />
-            </StageHeaders>
-          </div>
+              <div className="-mx-3 overflow-x-auto px-3 pb-1">
+                <TaskWarnings
+                  tasks={tasks}
+                  activeKind={warningFilter}
+                  className="w-max flex-nowrap"
+                  onToggleKind={(kind) => {
+                    setWarningFilter((current) => (current === kind ? null : kind));
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* From the tablet breakpoint the chips and pills cost no board space. */}
+            <div className="hidden px-3 pt-2 lg:block">
+              {/* Warnings ride in the chip row (right-aligned, wrapping under the
+                chips when narrow) instead of stacking as banners above the board. */}
+              <StageHeaders tasks={tasks} center={<ActiveFilters filters={activeFilters} />}>
+                {/* Counted against the whole board, so a pill's number does not
+                    change under the filter it is applying. */}
+                <TaskWarnings
+                  tasks={tasks}
+                  activeKind={warningFilter}
+                  onToggleKind={(kind) => {
+                    setWarningFilter((current) => (current === kind ? null : kind));
+                  }}
+                />
+              </StageHeaders>
+            </div>
+          </>
         )}
 
         <DashboardContent

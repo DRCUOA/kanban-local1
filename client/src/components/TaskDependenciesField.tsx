@@ -224,7 +224,7 @@ export function TaskDependenciesField({
 
   return (
     <div className="space-y-1.5" data-testid="task-dependencies">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <DependencyPicker
           control={control}
           name="predecessorIds"

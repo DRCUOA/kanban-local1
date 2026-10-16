@@ -12,7 +12,8 @@ import {
   Share2,
   Upload,
 } from 'lucide-react';
-import { User, ArrowDownAZ } from 'lucide-react';
+import { User, ArrowDownAZ, Target } from 'lucide-react';
+import type { Task } from '@shared/schema';
 import { MenuPanel } from '@/components/MenuPanel';
 import { BuiltByTk } from '@/components/BuiltByTk';
 import type { OwnerSummary } from '@shared/schema';
@@ -45,6 +46,14 @@ export interface MoreActionsMenuProps {
   onShareBoard: () => void;
   onExport: () => void;
   onImport: () => void;
+  /**
+   * Goals in scope and the one the board is narrowed to. The header shows a
+   * goal picker from the tablet breakpoint; on a phone this menu is where the
+   * goal filter lives.
+   */
+  goals?: Task[];
+  goalFilter?: number | null;
+  onGoalFilterChange?: (next: number | null) => void;
 }
 
 /**
@@ -70,6 +79,9 @@ export function MoreActionsMenu({
   onShareBoard,
   onExport,
   onImport,
+  goals = [],
+  goalFilter = null,
+  onGoalFilterChange,
 }: MoreActionsMenuProps) {
   const [open, setOpen] = useState(false);
   const activeOwners = owners.filter((owner) => !owner.archived || owner.id === ownerFilter);
@@ -93,7 +105,7 @@ export function MoreActionsMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="More options"
-        className="flex h-10 w-10 items-center justify-center rounded-md transition-all active:scale-90"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md transition-all active:scale-90"
         onClick={() => {
           setOpen(!open);
         }}
@@ -155,6 +167,39 @@ export function MoreActionsMenu({
           )}
           {boardLayout === 'vertical' ? 'Horiz' : 'Vert'}
         </button>
+
+        {onGoalFilterChange && (goals.length > 0 || goalFilter !== null) && (
+          <div className="lg:hidden" data-testid="more-goal-filter">
+            <div className="my-1 border-t border-border-subtle" />
+            <p className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Goal
+            </p>
+            <button
+              className={toggleRow(goalFilter === null)}
+              aria-pressed={goalFilter === null}
+              onClick={() => {
+                onGoalFilterChange(null);
+              }}
+            >
+              <Target className="h-4 w-4" />
+              All goals
+            </button>
+            {goals.map((goal) => (
+              <button
+                key={goal.id}
+                className={toggleRow(goalFilter === goal.id)}
+                aria-pressed={goalFilter === goal.id}
+                onClick={() => {
+                  onGoalFilterChange(goal.id);
+                }}
+                data-testid={`goal-filter-option-${goal.id}`}
+              >
+                <Target className="h-4 w-4 opacity-40" />
+                <span className="truncate">{goal.title}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="my-1 border-t border-border-subtle" />
 

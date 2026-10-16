@@ -133,7 +133,7 @@ export function DashboardHeader({
               aria-label="Search tasks"
               aria-expanded={searchVisible}
               aria-controls="dashboard-search"
-              className="flex h-10 w-10 items-center justify-center rounded-md transition-all active:scale-90 lg:hidden"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md transition-all active:scale-90 lg:hidden"
               onClick={searchVisible ? closeSearch : openSearch}
               data-testid="button-search-toggle"
             >
@@ -144,7 +144,7 @@ export function DashboardHeader({
                 type="button"
                 aria-label="Project goals"
                 title="Project goals"
-                className="flex h-10 w-10 items-center justify-center rounded-md transition-all active:scale-90"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md transition-all active:scale-90"
                 onClick={() => {
                   navigate(projectViewPath(goalsTarget));
                 }}
@@ -153,7 +153,12 @@ export function DashboardHeader({
                 <Target className="h-5 w-5" aria-hidden />
               </button>
             )}
-            <MoreActionsMenu {...moreActions} />
+            <MoreActionsMenu
+              {...moreActions}
+              goals={goals}
+              goalFilter={goalFilter}
+              onGoalFilterChange={onGoalFilterChange}
+            />
           </div>
         </div>
 

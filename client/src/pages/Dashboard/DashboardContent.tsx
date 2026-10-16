@@ -28,7 +28,7 @@ export function DashboardContent({
   onTaskClick,
 }: DashboardContentProps) {
   return (
-    <main className="flex-1 overflow-y-auto flex flex-col">
+    <main className="flex flex-1 flex-col overflow-y-auto pb-28">
       <div className="flex-1 flex flex-col min-h-0 px-3 pt-2">
         {focusMode && (
           <div className="mb-3 p-3 neo-container rounded-md border-l-4 border-l-primary flex-shrink-0">

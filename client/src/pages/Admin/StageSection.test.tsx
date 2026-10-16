@@ -93,7 +93,7 @@ describe('StageSection', () => {
     expect(screen.getByTestId('button-delete-stage-2')).toBeDefined();
   });
 
-  it('calls apiDelete when a delete button is clicked', async () => {
+  it('asks first, then calls apiDelete when a delete is confirmed', async () => {
     const { apiDelete } = await import('@/lib/api');
     const mockApiDelete = vi.mocked(apiDelete);
     mockApiDelete.mockResolvedValueOnce(undefined);
@@ -101,6 +101,8 @@ describe('StageSection', () => {
     render(<StageSection stages={mockStages} isLoading={false} />, { wrapper });
 
     fireEvent.click(screen.getByTestId('button-delete-stage-1'));
+    expect(mockApiDelete).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
 
     const { waitFor } = await import('@testing-library/react');
     await waitFor(() => {

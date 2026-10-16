@@ -330,7 +330,7 @@ export function ProjectSection({ projects, isLoading }: ProjectSectionProps) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-10 w-10 rounded-md"
+                  className="h-11 w-11 rounded-md"
                   onClick={() => {
                     openEdit(project);
                   }}
@@ -342,7 +342,7 @@ export function ProjectSection({ projects, isLoading }: ProjectSectionProps) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-10 w-10 rounded-md"
+                  className="h-11 w-11 rounded-md"
                   onClick={() => {
                     toggleArchived(project);
                   }}
@@ -361,7 +361,7 @@ export function ProjectSection({ projects, isLoading }: ProjectSectionProps) {
                 <Button
                   variant="destructive"
                   size="icon"
-                  className="h-10 w-10 rounded-md"
+                  className="h-11 w-11 rounded-md"
                   onClick={() => {
                     setPendingDelete(project);
                   }}

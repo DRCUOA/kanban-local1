@@ -65,6 +65,7 @@ export function OwnerSelector({
               'flex-1 h-12 justify-between text-left font-normal rounded-md',
               !selected && 'text-muted-foreground',
             )}
+            aria-label={selected ? `Owner: ${selected.name}` : 'Owner: choose'}
             data-testid="owner-selector-trigger"
           >
             <span className="flex items-center gap-2 min-w-0">

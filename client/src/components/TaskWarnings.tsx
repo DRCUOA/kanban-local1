@@ -129,7 +129,7 @@ export function TaskWarnings({
               onClick={() => onToggleKind?.(kind)}
               data-testid={`task-warning-${kind}`}
               className={cn(
-                'flex items-center gap-1.5 rounded-full px-3 py-1.5 transition-all active:scale-95',
+                'flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 transition-all active:scale-95 lg:min-h-0',
                 isActive ? TONE_ACTIVE_CLASS[pill.tone] : 'neo-raised',
                 TONE_CLASS[pill.tone],
               )}
