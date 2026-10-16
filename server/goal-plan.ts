@@ -1,12 +1,14 @@
-import { ChatOpenAI } from '@langchain/openai';
+import OpenAI from 'openai';
+import { zodTextFormat } from 'openai/helpers/zod';
 import { format } from 'date-fns';
 import {
-  GOAL_PLAN_SYSTEM_PROMPT,
+  buildGoalPlanInstructions,
   buildGoalPlanUserPrompt,
   descriptionToPlainText,
   goalPlanSuggestionSchema,
   normaliseGoalPlan,
   type GoalPlanContext,
+  type GoalPlanOptions,
   type GoalPlanSuggestion,
 } from '@shared/goal-plan';
 import { TASK_TYPE } from '@shared/constants';
@@ -16,7 +18,9 @@ import { storage } from './storage';
 import { getAiConfig } from './settings';
 import { logger } from '@shared/logger';
 
+/** Web search makes a plan slower; it still has to finish while the person waits. */
 const TIMEOUT_MS = 60_000;
+const TIMEOUT_WITH_SEARCH_MS = 150_000;
 
 /** A request the user can fix (wrong type, no key): answered 400 with the message. */
 export class GoalPlanRequestError extends Error {}
@@ -58,7 +62,10 @@ async function goalContext(goal: Task): Promise<GoalPlanContext> {
  * same checks the form runs (saved, type goal) are repeated here, because the
  * endpoint can be called directly.
  */
-export async function suggestGoalPlan(goalId: number): Promise<GoalPlanSuggestion> {
+export async function suggestGoalPlan(
+  goalId: number,
+  options: GoalPlanOptions = { how: false, whoWhere: false },
+): Promise<GoalPlanSuggestion> {
   const goal = await storage.getTaskById(goalId);
   if (!goal || goal.deletedAt) throw new GoalPlanRequestError('Task not found');
   if (goal.type !== TASK_TYPE.GOAL) {
@@ -72,31 +79,32 @@ export async function suggestGoalPlan(goalId: number): Promise<GoalPlanSuggestio
   }
 
   const ctx = await goalContext(goal);
-  // Responses API with JSON-schema output: GPT-6 models support structured
-  // output there, while some (e.g. gpt-6.1-sol) offer no tool calling on Chat
-  // Completions, which is what LangChain's default structured output relies on.
-  const model = new ChatOpenAI({
-    model: config.model,
+  // One Responses API call: structured output pins the JSON shape, and "who
+  // and where" adds the web search tool so contact details are current and
+  // come with the page they were read from.
+  const client = new OpenAI({
     apiKey: config.apiKey,
-    timeout: TIMEOUT_MS,
+    timeout: options.whoWhere ? TIMEOUT_WITH_SEARCH_MS : TIMEOUT_MS,
     maxRetries: 1,
-    useResponsesApi: true,
-  });
-  const runnable = model.withStructuredOutput(goalPlanSuggestionSchema, {
-    name: 'goal_plan',
-    method: 'jsonSchema',
-    strict: true,
   });
   const started = Date.now();
-  const raw = await runnable.invoke([
-    { role: 'system', content: GOAL_PLAN_SYSTEM_PROMPT },
-    { role: 'user', content: buildGoalPlanUserPrompt(ctx) },
-  ]);
+  const response = await client.responses.parse({
+    model: config.model,
+    instructions: buildGoalPlanInstructions(options),
+    input: buildGoalPlanUserPrompt(ctx),
+    text: { format: zodTextFormat(goalPlanSuggestionSchema, 'goal_plan') },
+    ...(options.whoWhere ? { tools: [{ type: 'web_search' as const }] } : {}),
+  });
+  const raw = response.output_parsed;
+  if (!raw) throw new Error('The model returned no plan');
   logger.info('goal-plan suggestion', {
     goalId,
     model: config.model,
+    how: options.how,
+    whoWhere: options.whoWhere,
     ms: Date.now() - started,
     subtasks: raw.subtasks.length,
+    contacts: raw.subtasks.reduce((n, st) => n + st.contacts.length, 0),
   });
   return normaliseGoalPlan(
     raw,

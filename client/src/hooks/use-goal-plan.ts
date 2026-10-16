@@ -5,6 +5,7 @@ import type {
   ApplyGoalPlan,
   ApplyGoalPlanResult,
   GoalPlanSuggestion,
+  GoalPlanOptions,
   UpdateAiSettings,
 } from '@shared/goal-plan';
 import { apiGet, apiPost, apiRequest } from '@/lib/api';
@@ -30,8 +31,11 @@ export function useUpdateAiSettings() {
 /** Asks the AI for a plan. Nothing is saved. */
 export function useSuggestGoalPlan() {
   return useMutation({
-    mutationFn: (goalId: number) =>
-      apiPost<GoalPlanSuggestion>(api.goalPlan.suggest.path.replace(':id', String(goalId))),
+    mutationFn: ({ goalId, options }: { goalId: number; options: GoalPlanOptions }) =>
+      apiPost<GoalPlanSuggestion>(
+        api.goalPlan.suggest.path.replace(':id', String(goalId)),
+        options,
+      ),
   });
 }
 

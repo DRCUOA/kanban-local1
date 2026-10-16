@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Check, Loader2, RefreshCw, Sparkles } from 'lucide-react';
 import { EFFORT_MAX, EFFORT_MIN } from '@shared/constants';
-import type { ApplyGoalPlan, GoalPlanSuggestion } from '@shared/goal-plan';
+import {
+  contactsToMarkdown,
+  type ApplyGoalPlan,
+  type GoalPlanContact,
+  type GoalPlanOptions,
+  type GoalPlanSuggestion,
+} from '@shared/goal-plan';
 import { blocksOfGoal } from '@shared/goal-view';
 import type { Task } from '@shared/schema';
 import {
@@ -27,6 +33,8 @@ interface Row {
   /** Keys of other rows, or "#id" of existing building-blocks. */
   dependsOn: string[];
   selected: boolean;
+  /** Who and where, from web search; saved into the description. */
+  contacts: GoalPlanContact[];
   /** Set once saved: the new task's id. */
   savedId?: number;
 }
@@ -64,20 +72,29 @@ export function GoalPlanDialog({
   const [rows, setRows] = useState<Row[]>([]);
   const [goalDraft, setGoalDraft] = useState<GoalDraft | null>(null);
 
+  const [options, setOptions] = useState<GoalPlanOptions>({ how: false, whoWhere: false });
+
   const run = () => {
     setRows([]);
     setGoalDraft(null);
-    suggest.mutate(goal.id, {
-      onSuccess: (plan) => {
-        setRows(toRows(plan));
-        setGoalDraft({ ...plan.goal, apply: false, applied: false });
+    suggest.mutate(
+      { goalId: goal.id, options },
+      {
+        onSuccess: (plan) => {
+          setRows(toRows(plan));
+          setGoalDraft({ ...plan.goal, apply: false, applied: false });
+        },
       },
-    });
+    );
   };
 
+  // Each opening starts clean: nothing is asked until "Plan this goal".
   useEffect(() => {
-    if (open) run();
-    // Ask once per opening; Regenerate asks again.
+    if (!open) return;
+    setRows([]);
+    setGoalDraft(null);
+    setOptions({ how: false, whoWhere: false });
+    suggest.reset();
   }, [open, goal.id]);
 
   const patch = (key: string, change: Partial<Row>) => {
@@ -110,7 +127,10 @@ export function GoalPlanDialog({
       subtasks: chosen.map((r) => ({
         key: r.key,
         title: r.title.trim(),
-        description: r.description.trim(),
+        // Contacts found by web search travel in the description, as Markdown.
+        description: [r.description.trim(), contactsToMarkdown(r.contacts)]
+          .filter(Boolean)
+          .join('\n\n'),
         effort: r.effort,
         // A dependency on a row saved earlier becomes a link to that task; one
         // on a row that is not being saved now cannot be kept.
@@ -171,26 +191,70 @@ export function GoalPlanDialog({
             Make this a goal
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Suggested building-blocks for “{goal.title}”. Edit anything, untick what you do not
-            want, then save. Nothing is stored until you save.
+            Choose how the AI should help, then plan “{goal.title}”. Edit anything, untick what you
+            do not want, then save. Nothing is stored until you save.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 space-y-4 overflow-y-auto pr-1" data-testid="goal-plan-body">
+          <section
+            className="space-y-3 rounded-md border bg-muted/30 p-3"
+            aria-label="How the AI should help"
+            data-testid="goal-plan-options"
+          >
+            <div className="grid gap-2 sm:grid-cols-2">
+              <OptionBox
+                checked={options.how}
+                disabled={suggest.isPending}
+                onChange={(how) => {
+                  setOptions((o) => ({ ...o, how }));
+                }}
+                title="Help me on the how"
+                detail="Plain explanations and a direct, step-by-step breakdown (boil the water, get a cup from the cupboard…)."
+                testId="goal-plan-option-how"
+              />
+              <OptionBox
+                checked={options.whoWhere}
+                disabled={suggest.isPending}
+                onChange={(whoWhere) => {
+                  setOptions((o) => ({ ...o, whoWhere }));
+                }}
+                title="Help me on the who and where"
+                detail="Searches the web for the right organisations, with phone numbers, emails, links and addresses."
+                testId="goal-plan-option-who-where"
+              />
+            </div>
+            <Button
+              type="button"
+              onClick={run}
+              disabled={suggest.isPending || apply.isPending}
+              className="w-full sm:w-auto"
+              data-testid="goal-plan-run"
+            >
+              {suggest.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : rows.length > 0 ? (
+                <RefreshCw className="mr-2 h-4 w-4" />
+              ) : (
+                <Sparkles className="mr-2 h-4 w-4" />
+              )}
+              {suggest.isPending ? 'Planning…' : rows.length > 0 ? 'Plan again' : 'Plan this goal'}
+            </Button>
+          </section>
+
           {suggest.isPending && (
-            <div className="flex flex-col items-center gap-3 py-16 text-sm text-muted-foreground">
+            <div className="flex flex-col items-center gap-3 py-10 text-center text-sm text-muted-foreground">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              Asking the AI to plan this goal…
+              {options.whoWhere
+                ? 'Searching the web for contacts and planning this goal. This can take a minute or two.'
+                : 'Asking the AI to plan this goal…'}
             </div>
           )}
 
           {suggest.isError && (
-            <div className="space-y-3 py-10 text-center" data-testid="goal-plan-error">
-              <p className="text-sm text-danger">{suggest.error.message}</p>
-              <Button type="button" variant="outline" onClick={run}>
-                Try again
-              </Button>
-            </div>
+            <p className="py-6 text-center text-sm text-danger" data-testid="goal-plan-error">
+              {suggest.error.message}
+            </p>
           )}
 
           {goalDraft && (
@@ -295,6 +359,15 @@ export function GoalPlanDialog({
                       }}
                       className="text-sm"
                     />
+                    {row.contacts.length > 0 && (
+                      <ContactList
+                        contacts={row.contacts}
+                        disabled={saved}
+                        onRemove={(k) => {
+                          patch(row.key, { contacts: row.contacts.filter((_, n) => n !== k) });
+                        }}
+                      />
+                    )}
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
                       <label className="flex items-center gap-1.5">
                         Effort
@@ -363,15 +436,6 @@ export function GoalPlanDialog({
         </div>
 
         <div className="flex flex-wrap gap-2 border-t pt-3">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={run}
-            disabled={suggest.isPending || apply.isPending}
-          >
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Regenerate
-          </Button>
           <div className="flex-1" />
           <Button
             type="button"
@@ -397,5 +461,120 @@ export function GoalPlanDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function OptionBox({
+  checked,
+  disabled,
+  onChange,
+  title,
+  detail,
+  testId,
+}: {
+  checked: boolean;
+  disabled: boolean;
+  onChange: (next: boolean) => void;
+  title: string;
+  detail: string;
+  testId: string;
+}) {
+  return (
+    <label
+      className={cn(
+        'flex cursor-pointer items-start gap-2.5 rounded-md border bg-background p-3 text-sm',
+        checked && 'border-primary bg-primary/5',
+      )}
+    >
+      <input
+        type="checkbox"
+        className="mt-0.5"
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => {
+          onChange(e.target.checked);
+        }}
+        data-testid={testId}
+      />
+      <span>
+        <span className="font-medium">{title}</span>
+        <span className="block text-xs text-muted-foreground">{detail}</span>
+      </span>
+    </label>
+  );
+}
+
+/** Who and where for one suggestion: found by web search, so each shows its source. */
+function ContactList({
+  contacts,
+  disabled,
+  onRemove,
+}: {
+  contacts: GoalPlanContact[];
+  disabled: boolean;
+  onRemove: (index: number) => void;
+}) {
+  return (
+    <div className="space-y-1.5 rounded-md bg-muted/40 p-2.5" data-testid="goal-plan-contacts">
+      <p className="text-xs font-medium">
+        Who and where{' '}
+        <span className="font-normal text-muted-foreground">(check before relying on it)</span>
+      </p>
+      <ul className="space-y-1.5">
+        {contacts.map((c, k) => (
+          <li key={`${c.name}-${k}`} className="flex items-start gap-2 text-xs">
+            <span className="min-w-0 flex-1">
+              <span className="font-medium">{c.name}</span>
+              {c.purpose && <span className="text-muted-foreground">: {c.purpose}</span>}
+              <span className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
+                {c.phone && (
+                  <a className="underline" href={`tel:${c.phone.replace(/[^+\d]/g, '')}`}>
+                    {c.phone}
+                  </a>
+                )}
+                {c.email && (
+                  <a className="underline" href={`mailto:${c.email}`}>
+                    {c.email}
+                  </a>
+                )}
+                {c.website && (
+                  <a
+                    className="underline"
+                    href={c.website}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                  >
+                    Website
+                  </a>
+                )}
+                {c.address && <span>{c.address}</span>}
+                {c.source && (
+                  <a
+                    className="text-muted-foreground underline"
+                    href={c.source}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                  >
+                    Source
+                  </a>
+                )}
+              </span>
+            </span>
+            {!disabled && (
+              <button
+                type="button"
+                aria-label={`Remove ${c.name}`}
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  onRemove(k);
+                }}
+              >
+                ×
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

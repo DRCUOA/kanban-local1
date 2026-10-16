@@ -518,6 +518,12 @@ describe('Task routes', () => {
       expect(res.body.error).toMatch(/Goal/);
     });
 
+    it('refuses options that are not true or false', async () => {
+      mockStorage.getTaskById.mockResolvedValue(fakeTask({ type: 'goal' }));
+      const res = await request(app).post('/api/tasks/1/goal-plan').send({ how: 'yes' });
+      expect(res.status).toBe(400);
+    });
+
     it('answers 400 for a task that does not exist', async () => {
       mockStorage.getTaskById.mockResolvedValue(undefined);
       const res = await request(app).post('/api/tasks/9/goal-plan');

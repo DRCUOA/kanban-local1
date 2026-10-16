@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildGoalPlanInstructions,
+  cleanContact,
+  contactsToMarkdown,
   CURATED_OPENAI_MODELS,
   DEFAULT_GOAL_PLAN_MODEL,
   isPlanningModel,
@@ -17,6 +20,7 @@ const sub = (key: string, dependsOn: string[] = [], over = {}) => ({
   description: 'd',
   effort: 2,
   dependsOn,
+  contacts: [],
   ...over,
 });
 const plan = (subtasks: GoalPlanSuggestion['subtasks']): GoalPlanSuggestion => ({
@@ -126,5 +130,51 @@ describe('isPlanningModel', () => {
   it('every curated model passes, and the default is curated', () => {
     expect(CURATED_OPENAI_MODELS.every((m) => isPlanningModel(m.id))).toBe(true);
     expect(CURATED_OPENAI_MODELS.map((m) => m.id)).toContain(DEFAULT_GOAL_PLAN_MODEL);
+  });
+});
+
+describe('options', () => {
+  it('adds the how and the who-and-where instructions only when ticked', () => {
+    const none = buildGoalPlanInstructions({ how: false, whoWhere: false });
+    expect(none).not.toContain('HELP ME ON THE HOW');
+    expect(none).toContain('Leave "contacts" empty');
+    const how = buildGoalPlanInstructions({ how: true, whoWhere: false });
+    expect(how).toContain('boil some water to 100°C');
+    expect(how).not.toContain('WHO AND WHERE');
+    const both = buildGoalPlanInstructions({ how: true, whoWhere: true });
+    expect(both).toContain('HELP ME ON THE HOW');
+    expect(both).toContain('HELP ME ON THE WHO AND WHERE');
+    expect(both).toContain('Never invent or guess a detail');
+  });
+});
+
+describe('contacts', () => {
+  const contact = {
+    name: ' Waikato District Council ',
+    purpose: 'Building consent',
+    phone: '0800 492 452',
+    email: ' ',
+    website: 'https://www.waikatodistrict.govt.nz/',
+    address: null,
+    source: 'javascript:alert(1)',
+  };
+  it('cleans blanks and keeps only real http links', () => {
+    expect(cleanContact(contact)).toEqual({
+      name: 'Waikato District Council',
+      purpose: 'Building consent',
+      phone: '0800 492 452',
+      email: null,
+      website: 'https://www.waikatodistrict.govt.nz/',
+      address: null,
+      source: null,
+    });
+  });
+  it('writes a Markdown section to save with the task', () => {
+    const md = contactsToMarkdown([cleanContact(contact)]);
+    expect(md).toContain('**Who and where**');
+    expect(md).toContain(
+      '- **Waikato District Council**: Building consent. phone 0800 492 452, [website](https://www.waikatodistrict.govt.nz/)',
+    );
+    expect(contactsToMarkdown([])).toBe('');
   });
 });
