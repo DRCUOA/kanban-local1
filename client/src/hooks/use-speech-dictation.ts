@@ -180,6 +180,28 @@ export function useSpeechDictation({
     else start();
   }, [start, stop]);
 
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        stop();
+      }
+    };
+
+    const handleWindowBlur = () => {
+      stop();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('pagehide', handleWindowBlur);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('pagehide', handleWindowBlur);
+    };
+  }, [stop]);
+
   // A recogniser left running after unmount keeps the mic indicator lit.
   useEffect(
     () => () => {
