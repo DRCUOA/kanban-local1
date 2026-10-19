@@ -205,15 +205,14 @@ export default function Dashboard(_props: DashboardProps) {
               invisible. One quiet line shows what narrows the board, and the
               warning pills scroll sideways in a single row instead of wrapping. */}
             <div className="space-y-1.5 px-3 pt-2 lg:hidden" data-testid="phone-filter-strip">
-              <ActiveFilters
-                filters={activeFilters.filter((f) => f.narrowing)}
-                className="justify-start"
-              />
+              {/* Both rows sit about the centre; the pills scroll from the
+                  left only once they are wider than the screen. */}
+              <ActiveFilters filters={activeFilters.filter((f) => f.narrowing)} />
               <div className="-mx-3 overflow-x-auto px-3 pb-1">
                 <TaskWarnings
                   tasks={tasks}
                   activeKind={warningFilter}
-                  className="w-max flex-nowrap"
+                  className="mx-auto w-max flex-nowrap"
                   onToggleKind={(kind) => {
                     setWarningFilter((current) => (current === kind ? null : kind));
                   }}

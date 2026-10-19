@@ -123,5 +123,18 @@ describe('DashboardBottomNav', () => {
       render(<DashboardBottomNav goalsHref={null} moreActions={moreActions} />);
       expect(screen.queryByTestId('nav-goals')).toBeNull();
     });
+
+    it('keeps one row on the smallest phones, spread evenly about the centre', () => {
+      render(<DashboardBottomNav goalsHref="/projects/1" moreActions={moreActions} />);
+      const row = screen.getByTestId('nav-filing').parentElement?.parentElement;
+      expect(row?.className).toContain('flex-nowrap');
+      expect(row?.className).toContain('justify-evenly');
+      // Five of these plus Add fit 320px; they widen with the screen.
+      for (const id of ['nav-filing', 'nav-goals', 'nav-bin']) {
+        expect(screen.getByTestId(id).className).toContain('min-w-[3.5rem]');
+        expect(screen.getByTestId(id).className).toContain('lg:min-w-[4.25rem]');
+      }
+      expect(screen.getByTestId('button-more-options').className).toContain('min-w-[3.5rem]');
+    });
   });
 });

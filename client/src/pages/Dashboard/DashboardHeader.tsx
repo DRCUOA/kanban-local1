@@ -75,7 +75,11 @@ export function DashboardHeader({
 
   return (
     <header className="sticky top-0 z-50 neo-container rounded-none px-3 py-2 lg:px-4 lg:py-3">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      {/* Wraps only on a phone, and only for the search field's own row. From
+          lg it is one line at any width: the search field flexes, and the
+          title, project and goal labels truncate before anything is pushed
+          to a second line. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 lg:flex-nowrap">
         {/* The bar. On a phone it is one non-wrapping line: the logo, the
             selector (or the app name) taking all the width between, and the
             search toggle. From lg the wrapper dissolves (`contents`) and its
@@ -96,7 +100,7 @@ export function DashboardHeader({
               the app name stays for screen readers and comes back at lg. */}
           <div
             className={cn(
-              'min-w-0 flex-1 text-center lg:order-2 lg:flex-none lg:text-left',
+              'min-w-0 flex-1 text-center lg:order-2 lg:flex-initial lg:text-left',
               hasProjects && 'sr-only lg:not-sr-only',
             )}
           >
@@ -114,13 +118,13 @@ export function DashboardHeader({
 
           {/* Hidden until a project exists. Fills the phone bar; sized to its
               name from lg. */}
-          <ProjectSelector className="min-w-0 flex-1 lg:order-4 lg:flex-none" />
+          <ProjectSelector className="min-w-0 flex-1 lg:order-4 lg:flex-initial" />
           {onGoalFilterChange && (
             <GoalFilterSelect
               goals={goals}
               value={goalFilter}
               onChange={onGoalFilterChange}
-              className="hidden lg:order-4 lg:flex"
+              className="hidden min-w-0 lg:order-4 lg:flex"
             />
           )}
 
@@ -171,7 +175,9 @@ export function DashboardHeader({
           className={cn(
             'relative basis-full',
             searchVisible ? 'block' : 'hidden lg:block',
-            'lg:order-3 lg:ml-auto lg:basis-auto lg:w-[26rem] lg:max-w-[40vw]',
+            // Flexes between a usable floor and its full width so the row
+            // never has to wrap.
+            'lg:order-3 lg:ml-auto lg:flex-1 lg:basis-0 lg:min-w-[8rem] lg:max-w-[26rem]',
           )}
         >
           <Search

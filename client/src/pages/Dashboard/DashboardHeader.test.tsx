@@ -104,7 +104,27 @@ describe('DashboardHeader', () => {
     renderWithProjects(<DashboardHeader {...defaults} />, [project]);
     const selector = screen.getByTestId('project-selector-trigger');
     expect(selector.parentElement?.className).toContain('flex-1');
-    expect(selector.parentElement?.className).toContain('lg:flex-none');
+    expect(selector.parentElement?.className).toContain('lg:flex-initial');
+  });
+
+  it('never wraps the wide row: the search field flexes and the labels shrink instead', () => {
+    renderWithProjects(<DashboardHeader {...defaults} />, [project]);
+    const row = screen.getByRole('banner').firstElementChild;
+    expect(row?.className).toContain('lg:flex-nowrap');
+
+    const field = screen.getByRole('search');
+    for (const cls of ['lg:flex-1', 'lg:min-w-[8rem]', 'lg:max-w-[26rem]']) {
+      expect(field.className).toContain(cls);
+    }
+    expect(field.className).not.toContain('lg:w-[26rem]');
+
+    // Shrinkable, never fixed: the title block and the selector give way.
+    const title = screen.getByRole('heading', { level: 1 });
+    expect(title.parentElement?.className).toContain('lg:flex-initial');
+    expect(title.parentElement?.className).toContain('min-w-0');
+    expect(screen.getByTestId('project-selector-trigger').parentElement?.className).toContain(
+      'min-w-0',
+    );
   });
 
   it('offers no Goals button without a scoped project', () => {

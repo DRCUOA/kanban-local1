@@ -113,12 +113,13 @@ describe('ProjectSelector', () => {
     expect(value.setScope).toHaveBeenCalledWith('all');
   });
 
-  it('fills its wrapper on a phone and is sized to its name from lg', () => {
+  it('always fills its wrapper: the whole phone bar, its capped name from lg', () => {
     renderSelector();
     const trigger = screen.getByTestId('project-selector-trigger');
     expect(trigger.className).toContain('w-full');
     expect(trigger.className).toContain('max-w-none');
-    expect(trigger.className).toContain('lg:w-auto');
+    // Never content-sized: a button would run out of a wrapper shrunk to fit.
+    expect(trigger.className).not.toContain('lg:w-auto');
     expect(trigger.className).toContain('lg:max-w-[12rem]');
     // The name takes the slack so the chevron stays at the trailing edge.
     expect(screen.getByText('All projects', { selector: 'button > span' }).className).toContain(

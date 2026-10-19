@@ -41,7 +41,9 @@ export function DashboardBottomNav({ goalsHref = null, moreActions }: DashboardB
 
   return (
     <nav className="mobile-bottom-nav">
-      <div className="flex items-center justify-around px-2 py-2">
+      {/* One row, never wrapping: the buttons are sized to fit five across a
+          320px screen, and they spread evenly about the centre. */}
+      <div className="flex flex-nowrap items-center justify-evenly px-2 py-2 lg:justify-around">
         <div className="relative" ref={setFiling}>
           <button
             type="button"

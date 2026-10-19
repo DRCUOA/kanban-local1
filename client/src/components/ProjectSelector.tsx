@@ -52,9 +52,10 @@ export function ProjectSelector({ className }: { className?: string }) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Project: ${label}`}
-        // Fills whatever its wrapper gives it (the whole phone bar); from lg
-        // it is sized to its name, capped.
-        className="flex h-11 w-full max-w-none items-center gap-2 rounded-md px-3 text-sm font-medium neo-raised transition-all active:scale-95 lg:w-auto lg:max-w-[12rem]"
+        // Always as wide as its wrapper (the whole phone bar; its own name,
+        // capped, from lg). A button sizes to its content otherwise, and
+        // would run out of a wrapper that has been shrunk to fit the row.
+        className="flex h-11 w-full max-w-none items-center gap-2 rounded-md px-3 text-sm font-medium neo-raised transition-all active:scale-95 lg:max-w-[12rem]"
         onClick={() => {
           setOpen(!open);
         }}
