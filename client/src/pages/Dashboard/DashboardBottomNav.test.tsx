@@ -66,4 +66,62 @@ describe('DashboardBottomNav', () => {
 
     expect(navigate).toHaveBeenCalledWith('/bin');
   });
+
+  describe('on a phone, Goals and More sit in the bar as well', () => {
+    const moreActions = {
+      viewMode: 'summary' as const,
+      focusMode: false,
+      boardLayout: 'vertical' as const,
+      onSetViewMode: vi.fn(),
+      onToggleFocusMode: vi.fn(),
+      onToggleBoardLayout: vi.fn(),
+      onArchive: vi.fn(),
+      onAdmin: vi.fn(),
+      onShareBoard: vi.fn(),
+      onExport: vi.fn(),
+      onImport: vi.fn(),
+    };
+
+    it('orders them Filing, Goals, Add, More, Bin, and hides the two from lg', () => {
+      render(<DashboardBottomNav goalsHref="/projects/1" moreActions={moreActions} />);
+
+      const goals = screen.getByTestId('nav-goals');
+      const more = screen.getByTestId('nav-more');
+      expect(goals.className).toContain('lg:hidden');
+      expect(more.className).toContain('lg:hidden');
+
+      const follows = (a: Element, b: Element) =>
+        Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const add = screen.getByTestId('create-task-stub');
+      expect(follows(screen.getByTestId('nav-filing'), goals)).toBe(true);
+      expect(follows(goals, add)).toBe(true);
+      expect(follows(add, more)).toBe(true);
+      expect(follows(more, screen.getByTestId('nav-bin'))).toBe(true);
+      // Labelled like its neighbours, not a bare icon.
+      expect(screen.getByText('More')).toBeDefined();
+      expect(screen.getByText('Goals')).toBeDefined();
+    });
+
+    it('Goals opens the project goals view', () => {
+      navigate.mockClear();
+      render(<DashboardBottomNav goalsHref="/projects/1" moreActions={moreActions} />);
+
+      fireEvent.click(screen.getByTestId('nav-goals'));
+      expect(navigate).toHaveBeenCalledWith('/projects/1');
+    });
+
+    it('More opens the same menu the header has on wide screens', () => {
+      render(<DashboardBottomNav moreActions={moreActions} />);
+      expect(screen.queryByText('Detail')).toBeNull();
+
+      fireEvent.click(screen.getByLabelText('More options'));
+      expect(screen.getByText('Detail')).toBeDefined();
+      expect(screen.getByText('Admin')).toBeDefined();
+    });
+
+    it('offers no Goals button for "All projects"', () => {
+      render(<DashboardBottomNav goalsHref={null} moreActions={moreActions} />);
+      expect(screen.queryByTestId('nav-goals')).toBeNull();
+    });
+  });
 });

@@ -73,27 +73,43 @@ describe('DashboardHeader', () => {
     expect(screen.getByText('Admin')).toBeDefined();
   });
 
-  it('is one bar on a phone: logo at the start, the title centred, the icons at the end', () => {
+  it('is one bar on a phone: the logo, then the title filling the row, then the search toggle', () => {
     render(<DashboardHeader {...defaults} />);
     const bar = screen.getByTestId('app-bar');
     // Never wraps on a phone; dissolves into the wide layout from lg.
     expect(bar.className).not.toContain('flex-wrap');
     expect(bar.className).toContain('lg:contents');
 
+    // The logo and the actions are fixed-size; whatever sits between them
+    // (the app name here, the project selector once one exists) grows.
+    expect(bar.firstElementChild?.className).toContain('flex-none');
     const title = screen.getByRole('heading', { level: 1 });
+    expect(title.parentElement?.className).toContain('flex-1');
     expect(title.parentElement?.className).toContain('text-center');
     expect(title.parentElement?.className).toContain('lg:text-left');
 
-    // The leading and trailing groups share the leftover width equally, which
-    // is what keeps the title centred between them.
     const actions = screen.getByTestId('app-bar-actions');
-    expect(actions.className).toContain('flex-1');
-    expect(actions.className).toContain('basis-0');
-    expect(actions.className).toContain('justify-end');
+    expect(actions.className).toContain('flex-none');
     expect(actions.contains(screen.getByTestId('button-search-toggle'))).toBe(true);
-    expect(actions.contains(screen.getByLabelText('More options'))).toBe(true);
-    expect(bar.firstElementChild?.className).toContain('flex-1');
-    expect(bar.firstElementChild?.className).toContain('basis-0');
+  });
+
+  it('keeps Goals and More for wide screens only: on a phone they live in the bottom nav', () => {
+    render(<DashboardHeader {...defaults} goalsHref="/projects/1" />);
+    const wide = screen.getByTestId('app-bar-wide-actions');
+    expect(wide.className).toContain('hidden');
+    expect(wide.className).toContain('lg:flex');
+    expect(wide.contains(screen.getByTestId('button-project-goals'))).toBe(true);
+    expect(wide.contains(screen.getByLabelText('More options'))).toBe(true);
+    // The selector fills the phone bar.
+    renderWithProjects(<DashboardHeader {...defaults} />, [project]);
+    const selector = screen.getByTestId('project-selector-trigger');
+    expect(selector.parentElement?.className).toContain('flex-1');
+    expect(selector.parentElement?.className).toContain('lg:flex-none');
+  });
+
+  it('offers no Goals button without a scoped project', () => {
+    render(<DashboardHeader {...defaults} />);
+    expect(screen.queryByTestId('button-project-goals')).toBeNull();
   });
 
   it('on a phone the app name gives way to the project selector once a project exists', () => {

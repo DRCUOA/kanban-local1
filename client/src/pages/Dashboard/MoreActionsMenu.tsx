@@ -21,8 +21,14 @@ import { DEFAULT_OWNER_COLOR } from '@shared/constants';
 import { OWNER_FILTER_ALL, OWNER_FILTER_NONE, type OwnerFilter } from './owner-view';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
+import { NAV_BUTTON_CLASS } from './nav-button';
 
 export interface MoreActionsMenuProps {
+  /**
+   * How the trigger renders: a bare icon in the header (`icon`, the default),
+   * or icon-over-label like its neighbours in the bottom nav (`nav`).
+   */
+  variant?: 'icon' | 'nav';
   viewMode: 'detail' | 'summary';
   /**
    * Which owner the board is restricted to (EPIC-06 OWN-R32). Optional so a
@@ -58,11 +64,13 @@ export interface MoreActionsMenuProps {
 
 /**
  * Everything that changes how the board is *viewed*, plus the board-level
- * actions. It lives in the header now: the bottom bar is reserved for the three
- * places a task can go (Filing, Add, Bin). The panel opens centred on a phone
- * and hangs from the button from the tablet breakpoint (see MenuPanel).
+ * actions. From the tablet breakpoint it lives in the header; on a phone it
+ * sits in the bottom nav, so the header row is the project selector's. The
+ * panel opens centred on a phone and hangs from the button from the tablet
+ * breakpoint (see MenuPanel).
  */
 export function MoreActionsMenu({
+  variant = 'icon',
   viewMode,
   ownerFilter = OWNER_FILTER_ALL,
   onSetOwnerFilter,
@@ -105,13 +113,18 @@ export function MoreActionsMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="More options"
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md transition-all active:scale-90"
+        className={
+          variant === 'nav'
+            ? NAV_BUTTON_CLASS
+            : 'flex h-11 w-11 shrink-0 items-center justify-center rounded-md transition-all active:scale-90'
+        }
         onClick={() => {
           setOpen(!open);
         }}
+        data-testid="button-more-options"
       >
-        <Settings className="h-5 w-5" />
-        <span className="sr-only">More</span>
+        <Settings className="h-5 w-5 shrink-0" />
+        <span className={variant === 'nav' ? 'text-[10px] font-medium' : 'sr-only'}>More</span>
       </button>
 
       <MenuPanel

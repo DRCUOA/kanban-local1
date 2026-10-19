@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Archive, CheckCircle2, FolderInput, Trash2 } from 'lucide-react';
+import { Archive, CheckCircle2, FolderInput, Target, Trash2 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { CreateTaskDialog } from '@/components/CreateTaskDialog';
 import { MenuPanel } from '@/components/MenuPanel';
@@ -9,25 +9,35 @@ import { filingTargets } from '@/lib/filing-targets';
 import { ROUTES } from '@shared/constants';
 import { useStages } from '@/hooks/use-stages';
 import { cn } from '@/lib/utils';
+import { MoreActionsMenu, type MoreActionsMenuProps } from './MoreActionsMenu';
+import { NAV_BUTTON_CLASS } from './nav-button';
+
+export interface DashboardBottomNavProps {
+  /** The goals view of the scoped project. Absent for "All projects". */
+  goalsHref?: string | null;
+  /**
+   * When given, More sits in this bar on a phone, between Add and Bin; from
+   * the tablet breakpoint the header keeps it and the bar hides its copy.
+   */
+  moreActions?: MoreActionsMenuProps;
+}
 
 /**
- * Three targets, all of them destinations for a task: Filing on the left, Add
- * in the middle, Bin on the right. The view toggles that used to sit here now
- * live in the header's More menu, and the board's done/archive band is gone —
- * Filing is where a finished task goes, by tap or by drag.
+ * The three places a task can go — Filing on the left, Add in the middle, Bin
+ * on the right — and, on a phone, the two buttons that left the header so the
+ * project selector could have its row: Goals between Filing and Add, More
+ * between Add and Bin. The view toggles live in More; the board's done/archive
+ * band is gone, and Filing is where a finished task goes, by tap or by drag.
  *
  * Each of Filing and Bin wraps an empty slot the board portals its drop target
  * into (see nav-drop-slots), which is why both buttons are positioned.
  */
-export function DashboardBottomNav() {
+export function DashboardBottomNav({ goalsHref = null, moreActions }: DashboardBottomNavProps) {
   const [, navigate] = useLocation();
   const { data: stages = [] } = useStages();
   const { setFiling, setBin } = useNavDropSlots();
   const [filingOpen, setFilingOpen] = useState(false);
   const targets = filingTargets(stages);
-
-  const navBtn =
-    'flex flex-col items-center gap-1 py-2 px-3 min-w-[4.25rem] rounded-md text-fg-secondary transition-[color,box-shadow,background-color,transform] duration-200 hover:text-foreground active:scale-90';
 
   return (
     <nav className="mobile-bottom-nav">
@@ -35,7 +45,7 @@ export function DashboardBottomNav() {
         <div className="relative" ref={setFiling}>
           <button
             type="button"
-            className={navBtn}
+            className={NAV_BUTTON_CLASS}
             aria-haspopup="menu"
             aria-expanded={filingOpen}
             onClick={() => {
@@ -81,12 +91,33 @@ export function DashboardBottomNav() {
           </MenuPanel>
         </div>
 
+        {goalsHref !== null && (
+          <button
+            type="button"
+            className={cn(NAV_BUTTON_CLASS, 'lg:hidden')}
+            aria-label="Project goals"
+            onClick={() => {
+              navigate(goalsHref);
+            }}
+            data-testid="nav-goals"
+          >
+            <Target className="h-5 w-5 shrink-0" aria-hidden />
+            <span className="text-[10px] font-medium">Goals</span>
+          </button>
+        )}
+
         <CreateTaskDialog iconOnly />
+
+        {moreActions && (
+          <div className="lg:hidden" data-testid="nav-more">
+            <MoreActionsMenu {...moreActions} variant="nav" />
+          </div>
+        )}
 
         <div className="relative" ref={setBin}>
           <button
             type="button"
-            className={cn(navBtn, 'hover:text-destructive')}
+            className={cn(NAV_BUTTON_CLASS, 'hover:text-destructive')}
             onClick={() => {
               navigate(ROUTES.BIN);
             }}
@@ -98,8 +129,8 @@ export function DashboardBottomNav() {
         </div>
       </div>
 
-      {/* Under the three drop targets, not among them: a credit that sat in
-          the row would be a fourth thing to aim at during a drag. */}
+      {/* Under the drop targets, not among them: a credit that sat in the row
+          would be one more thing to aim at during a drag. */}
       <BuiltByTk className="border-t border-border-subtle py-1 text-[9px]" />
     </nav>
   );
