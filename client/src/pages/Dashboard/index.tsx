@@ -6,7 +6,6 @@ import { useTasks, useArchivedTasks } from '@/hooks/use-tasks';
 import { EditTaskDialog } from '@/components/EditTaskDialog';
 import { ShareDialog } from '@/components/ShareDialog';
 import { TaskHistoryModal } from '@/components/TaskHistoryModal';
-import { StageHeaders } from '@/components/StageHeaders';
 import { TaskWarnings } from '@/components/TaskWarnings';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { useBoardLayout } from '@/hooks/use-board-layout';
@@ -220,21 +219,24 @@ export default function Dashboard(_props: DashboardProps) {
               </div>
             </div>
 
-            {/* From the tablet breakpoint the chips and pills cost no board space. */}
-            <div className="hidden px-3 pt-2 lg:block">
-              {/* Warnings ride in the chip row (right-aligned, wrapping under the
-                chips when narrow) instead of stacking as banners above the board. */}
-              <StageHeaders tasks={tasks} center={<ActiveFilters filters={activeFilters} />}>
-                {/* Counted against the whole board, so a pill's number does not
-                    change under the filter it is applying. */}
-                <TaskWarnings
-                  tasks={tasks}
-                  activeKind={warningFilter}
-                  onToggleKind={(kind) => {
-                    setWarningFilter((current) => (current === kind ? null : kind));
-                  }}
-                />
-              </StageHeaders>
+            {/* From the tablet breakpoint the filters and the warning icons
+                share one row above the board. The stage-count chips that used
+                to lead it are gone: each column names its stage and count. */}
+            <div
+              className="hidden items-center gap-3 px-3 pt-2 lg:flex"
+              data-testid="wide-filter-strip"
+            >
+              <ActiveFilters filters={activeFilters} className="min-w-0 flex-1 justify-start" />
+              {/* Counted against the whole board, so a count does not change
+                  under the filter it is applying. */}
+              <TaskWarnings
+                tasks={tasks}
+                activeKind={warningFilter}
+                className="ml-auto flex-nowrap"
+                onToggleKind={(kind) => {
+                  setWarningFilter((current) => (current === kind ? null : kind));
+                }}
+              />
             </div>
           </>
         )}
