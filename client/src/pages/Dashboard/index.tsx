@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-empty-function, @typescript-eslint/no-misused-promises -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { useEffect, useMemo, useState } from 'react';
 import { TASK_TYPE, projectViewPath } from '@shared/constants';
-import { PROJECT_SCOPE_NONE } from '@shared/project-scope';
 import { useTasks, useArchivedTasks } from '@/hooks/use-tasks';
 import { EditTaskDialog } from '@/components/EditTaskDialog';
 import { ShareDialog } from '@/components/ShareDialog';
@@ -142,14 +141,10 @@ export default function Dashboard(_props: DashboardProps) {
     );
   }
 
-  // The goals view of whatever project the board is scoped to; not offered
-  // for "All projects". The header offers it from lg, the bottom nav on a phone.
-  const goalsHref =
-    typeof scope === 'number'
-      ? projectViewPath(scope)
-      : scope === PROJECT_SCOPE_NONE
-        ? projectViewPath('none')
-        : null;
+  // The goals view of whatever the board is scoped to — one project, "No
+  // project" or every project — so the button is always there. The header
+  // offers it from lg, the bottom nav on a phone.
+  const goalsHref = projectViewPath(scope);
 
   const moreActions = {
     goals,

@@ -127,9 +127,9 @@ describe('DashboardHeader', () => {
     );
   });
 
-  it('offers no Goals button without a scoped project', () => {
-    render(<DashboardHeader {...defaults} />);
-    expect(screen.queryByTestId('button-project-goals')).toBeNull();
+  it('offers Goals under "All projects" too, pointing at the view across every project', () => {
+    render(<DashboardHeader {...defaults} goalsHref="/projects/all" />);
+    expect(screen.getByTestId('button-project-goals')).toBeDefined();
   });
 
   it('on a phone the app name gives way to the project selector once a project exists', () => {

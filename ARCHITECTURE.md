@@ -341,7 +341,7 @@ Reports: a **critical path** weights each task (effort or duration) and finds th
 
 #### Project and goal views
 
-`/projects/:projectId` (`none` for tasks with no project) lists the project's goals with progress and days left; `/goals/:goalId` shows one goal's building-blocks in dependency order, with a critical path and a Gantt chart on demand. The board header's target button opens the view for the scoped project.
+`/projects/:projectId` (`none` for tasks with no project, `all` for every project's goals together, each card then naming its project) lists the goals with progress and days left; `/goals/:goalId` shows one goal's building-blocks in dependency order, with a critical path and a Gantt chart on demand. The board's Goals button (in the header from `lg`, in the bottom nav on a phone) opens the view for whatever the board is scoped to, so it is always there.
 
 Scheduling is `shared/schedule.ts` (critical path method: forward and backward pass, slack) fed by `shared/goal-view.ts`. A task has no duration of its own, so **effort counts as days** (no effort = 1 day, finished tasks = 0) and the plan starts today. Only dependencies between the goal's own tasks are used. Nothing is stored: the schedule is derived each time, so it cannot go stale when a task moves.
 

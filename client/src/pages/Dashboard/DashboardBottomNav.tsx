@@ -13,8 +13,11 @@ import { MoreActionsMenu, type MoreActionsMenuProps } from './MoreActionsMenu';
 import { NAV_BUTTON_CLASS } from './nav-button';
 
 export interface DashboardBottomNavProps {
-  /** The goals view of the scoped project. Absent for "All projects". */
-  goalsHref?: string | null;
+  /**
+   * The goals view of the board's scope: one project, "No project" or every
+   * project. The board always passes one, so the button is always there.
+   */
+  goalsHref?: string;
   /**
    * When given, More sits in this bar on a phone, between Add and Bin; from
    * the tablet breakpoint the header keeps it and the bar hides its copy.
@@ -32,7 +35,7 @@ export interface DashboardBottomNavProps {
  * Each of Filing and Bin wraps an empty slot the board portals its drop target
  * into (see nav-drop-slots), which is why both buttons are positioned.
  */
-export function DashboardBottomNav({ goalsHref = null, moreActions }: DashboardBottomNavProps) {
+export function DashboardBottomNav({ goalsHref, moreActions }: DashboardBottomNavProps) {
   const [, navigate] = useLocation();
   const { data: stages = [] } = useStages();
   const { setFiling, setBin } = useNavDropSlots();
@@ -93,7 +96,7 @@ export function DashboardBottomNav({ goalsHref = null, moreActions }: DashboardB
           </MenuPanel>
         </div>
 
-        {goalsHref !== null && (
+        {goalsHref !== undefined && (
           <button
             type="button"
             className={cn(NAV_BUTTON_CLASS, 'lg:hidden')}

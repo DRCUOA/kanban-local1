@@ -21,8 +21,8 @@ export interface DashboardHeaderProps extends MoreActionsMenuProps {
   goals?: Task[];
   goalFilter?: number | null;
   onGoalFilterChange?: (next: number | null) => void;
-  /** The goals view of the scoped project. Absent for "All projects". */
-  goalsHref?: string | null;
+  /** The goals view of the board's scope: one project, "No project" or every project. */
+  goalsHref?: string;
 }
 
 /**
@@ -45,7 +45,7 @@ export function DashboardHeader({
   goals = [],
   goalFilter = null,
   onGoalFilterChange,
-  goalsHref = null,
+  goalsHref,
   ...moreActions
 }: DashboardHeaderProps) {
   const { projects } = useProjectScope();
@@ -145,7 +145,7 @@ export function DashboardHeader({
             </button>
             {/* On a phone these two live in the bottom nav instead. */}
             <div className="hidden items-center gap-1 lg:flex" data-testid="app-bar-wide-actions">
-              {goalsHref !== null && (
+              {goalsHref !== undefined && (
                 <button
                   type="button"
                   aria-label="Project goals"
