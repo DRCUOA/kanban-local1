@@ -200,6 +200,10 @@ export function RichTextEditor({
 
   if (!editor) return null;
 
+  const handleEditorBlur = () => {
+    dictation.stop();
+  };
+
   const handleMicClick = () => {
     if (!dictation.supported) {
       // macOS Dictation types into whatever is focused, so hand it the editor.
@@ -288,6 +292,7 @@ export function RichTextEditor({
     <div
       className={cn('rich-editor neo-input rounded-md bg-card text-base', className)}
       data-testid={testId}
+      onBlur={handleEditorBlur}
     >
       <div className="flex flex-wrap items-center gap-0.5 px-2 pt-2">
         <ToolbarButton

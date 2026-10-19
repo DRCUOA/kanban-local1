@@ -22,16 +22,21 @@ export interface VoiceInputProps extends React.ComponentProps<'input'> {
  * feedback and are never written to the field.
  */
 export const VoiceInput = React.forwardRef<HTMLInputElement, VoiceInputProps>(
-  ({ onDictate, fieldLabel, micTestId, className, ...props }, forwardedRef) => {
+  ({ onDictate, fieldLabel, micTestId, className, onBlur, ...props }, forwardedRef) => {
     const { toast } = useToast();
     const inputRef = React.useRef<HTMLInputElement | null>(null);
 
-    const { supported, listening, interim, toggle } = useSpeechDictation({
+    const { supported, listening, interim, stop, toggle } = useSpeechDictation({
       onFinal: onDictate,
       onError: (message) => {
         toast({ title: 'Dictation', description: message, variant: 'destructive' });
       },
     });
+
+    const handleBlur: React.FocusEventHandler<HTMLInputElement> = (event) => {
+      stop();
+      onBlur?.(event);
+    };
 
     const setRefs = (node: HTMLInputElement | null) => {
       inputRef.current = node;
@@ -53,7 +58,7 @@ export const VoiceInput = React.forwardRef<HTMLInputElement, VoiceInputProps>(
     return (
       <div className="w-full">
         <div className="relative w-full">
-          <Input ref={setRefs} className={cn('pr-12', className)} {...props} />
+          <Input ref={setRefs} className={cn('pr-12', className)} {...props} onBlur={handleBlur} />
           <DictationButton
             listening={listening}
             supported={supported}
