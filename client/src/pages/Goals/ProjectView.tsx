@@ -2,7 +2,7 @@ import { useRoute, useLocation } from 'wouter';
 import { format } from 'date-fns';
 import { Target } from 'lucide-react';
 import { ROUTES, goalViewPath } from '@shared/constants';
-import { PROJECT_SCOPE_NONE } from '@shared/project-scope';
+import { PROJECT_SCOPE_ALL, PROJECT_SCOPE_NONE, parseProjectScope } from '@shared/project-scope';
 import {
   blocksOfGoal,
   goalProgress,
@@ -13,6 +13,7 @@ import {
 import { stageKind } from '@shared/stage-state';
 import { STAGE_KIND_LABEL } from '@shared/constants';
 import { PageHeader } from '@/components/PageHeader';
+import { ProjectChip } from '@/components/ProjectChip';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Badge } from '@/components/ui/badge';
 import { useProjectScope } from '@/hooks/use-project-scope';
@@ -23,29 +24,27 @@ import { PageLoading, PageMessage } from './PageState';
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /**
- * Every goal in one project, each with how far along it is and how many days
- * of dependent work are left. Choosing a goal opens its own view.
+ * Every goal in one project — or, at `/projects/all`, in every project, each
+ * card then naming its own — with how far along it is and how many days of
+ * dependent work are left. Choosing a goal opens its own view.
  */
 export default function ProjectView() {
   const [, navigate] = useLocation();
   const [, params] = useRoute(ROUTES.PROJECT_VIEW);
   const { projectById } = useProjectScope();
 
-  const raw = params?.projectId;
-  const parsed = raw === 'none' ? null : Number(raw);
-  const valid = parsed === null || (Number.isInteger(parsed) && parsed > 0);
-  const projectId = valid ? parsed : null;
-  const project = projectId === null ? null : projectById(projectId);
-  const scope = projectId ?? PROJECT_SCOPE_NONE;
+  // The route takes the same tokens as the board's selector: a project id,
+  // `none` for the tasks with no project, `all` for every project.
+  const scope = parseProjectScope(params?.projectId);
 
-  const { data: tasks = [], isLoading, error } = useTasks(scope);
+  const { data: tasks = [], isLoading, error } = useTasks(scope ?? PROJECT_SCOPE_NONE);
   const { data: stages = [] } = useStages();
   const { data: edges = [] } = useTaskDependencies();
   const back = () => {
     navigate(ROUTES.DASHBOARD);
   };
 
-  if (!valid) {
+  if (scope === null) {
     return (
       <PageMessage title="Project not found" actionLabel="Back to the board" onAction={back} />
     );
@@ -62,9 +61,16 @@ export default function ProjectView() {
     );
   }
 
-  const name = project?.name ?? 'No project';
-  const goals = goalsInProject(tasks, projectId);
-  const loose = unassignedBlocks(tasks, projectId);
+  const everyProject = scope === PROJECT_SCOPE_ALL;
+  const name = everyProject
+    ? 'All projects'
+    : scope === PROJECT_SCOPE_NONE
+      ? 'No project'
+      : (projectById(scope)?.name ?? 'No project');
+  const goals = goalsInProject(tasks, scope);
+  const loose = unassignedBlocks(tasks, scope);
+  // "in this project" reads wrong across every project.
+  const here = everyProject ? '' : ' in this project';
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -82,10 +88,11 @@ export default function ProjectView() {
       <main className="flex-1 overflow-y-auto px-3 py-4">
         {goals.length === 0 ? (
           <div className="mx-auto max-w-md space-y-2 py-16 text-center" data-testid="no-goals">
-            <p className="font-semibold">No goals in this project yet</p>
+            <p className="font-semibold">No goals{here} yet</p>
             <p className="text-sm text-muted-foreground">
-              Create a task, set its type to Goal and put it in this project. Building-blocks then
-              pick it as their goal.
+              {everyProject
+                ? 'Create a task and set its type to Goal. Building-blocks then pick it as their goal.'
+                : 'Create a task, set its type to Goal and put it in this project. Building-blocks then pick it as their goal.'}
             </p>
           </div>
         ) : (
@@ -97,6 +104,10 @@ export default function ProjectView() {
               const stage = stages.find((s) => s.id === goal.stageId);
               const pct =
                 progress.total === 0 ? 0 : Math.round((progress.done / progress.total) * 100);
+              // Across every project a card has to say which one it is from;
+              // under one project the header already does.
+              const project =
+                everyProject && goal.projectId != null ? projectById(goal.projectId) : null;
               return (
                 <li key={goal.id}>
                   <button
@@ -109,9 +120,14 @@ export default function ProjectView() {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <span className="font-semibold leading-tight">{goal.title}</span>
-                      <Badge variant="secondary" className="shrink-0 text-[10px]">
-                        #{goal.id}
-                      </Badge>
+                      <span className="flex shrink-0 items-center gap-1">
+                        {project && (
+                          <ProjectChip project={project} testId={`goal-project-${goal.id}`} />
+                        )}
+                        <Badge variant="secondary" className="shrink-0 text-[10px]">
+                          #{goal.id}
+                        </Badge>
+                      </span>
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">
                       {stage ? `${stage.name.trim()} (${STAGE_KIND_LABEL[stageKind(stage)]})` : ''}
@@ -150,8 +166,8 @@ export default function ProjectView() {
             className="mx-auto mt-6 max-w-5xl text-xs text-muted-foreground"
             data-testid="loose-blocks"
           >
-            {plural(loose.length, 'building-block')} in this project{' '}
-            {loose.length === 1 ? 'has' : 'have'} no goal yet.
+            {plural(loose.length, 'building-block')}
+            {here} {loose.length === 1 ? 'has' : 'have'} no goal yet.
           </p>
         )}
       </main>

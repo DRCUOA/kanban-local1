@@ -1,4 +1,5 @@
 import { TASK_TYPE } from './constants';
+import { PROJECT_SCOPE_ALL, PROJECT_SCOPE_NONE, type ProjectScope } from './project-scope';
 import { computeSchedule, type Schedule } from './schedule';
 import { isClosedTaskByStage } from './stage-state';
 import type { Stage, Task } from './schema';
@@ -6,6 +7,15 @@ import type { TaskDependencyEdge } from './task-dependencies';
 
 /** A task still on the board: not archived, not in the Bin. */
 const isLive = (t: Task): boolean => !t.archived && t.deletedAt == null;
+
+/**
+ * Whether a task falls in a scope, read the way the board reads it: every
+ * task under `'all'`, the tasks with no project under `'none'`, otherwise the
+ * tasks of that one project.
+ */
+const inScope = (t: Task, scope: ProjectScope): boolean =>
+  scope === PROJECT_SCOPE_ALL ||
+  (t.projectId ?? null) === (scope === PROJECT_SCOPE_NONE ? null : scope);
 
 /**
  * How long a task is taken to need, in days, for scheduling. A task has no
@@ -18,10 +28,13 @@ export function taskDurationDays(task: Task, stages: Stage[]): number {
   return task.effort != null && task.effort > 0 ? task.effort : 1;
 }
 
-/** Live goals in one project (`null` = tasks with no project), oldest first. */
-export function goalsInProject(tasks: Task[], projectId: number | null): Task[] {
+/**
+ * Live goals in a scope — one project, the tasks with no project (`'none'`)
+ * or every project (`'all'`) — oldest first.
+ */
+export function goalsInProject(tasks: Task[], scope: ProjectScope): Task[] {
   return tasks
-    .filter((t) => isLive(t) && t.type === TASK_TYPE.GOAL && (t.projectId ?? null) === projectId)
+    .filter((t) => isLive(t) && t.type === TASK_TYPE.GOAL && inScope(t, scope))
     .sort((a, b) => a.id - b.id);
 }
 
@@ -32,14 +45,11 @@ export function blocksOfGoal(tasks: Task[], goalId: number): Task[] {
   );
 }
 
-/** Live building-blocks in a project that have no goal yet. */
-export function unassignedBlocks(tasks: Task[], projectId: number | null): Task[] {
+/** Live building-blocks in a scope (as for `goalsInProject`) that have no goal yet. */
+export function unassignedBlocks(tasks: Task[], scope: ProjectScope): Task[] {
   return tasks.filter(
     (t) =>
-      isLive(t) &&
-      t.type === TASK_TYPE.BUILDING_BLOCK &&
-      t.goalTaskId == null &&
-      (t.projectId ?? null) === projectId,
+      isLive(t) && t.type === TASK_TYPE.BUILDING_BLOCK && t.goalTaskId == null && inScope(t, scope),
   );
 }
 

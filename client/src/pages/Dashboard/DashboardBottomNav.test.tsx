@@ -119,9 +119,12 @@ describe('DashboardBottomNav', () => {
       expect(screen.getByText('Admin')).toBeDefined();
     });
 
-    it('offers no Goals button for "All projects"', () => {
-      render(<DashboardBottomNav goalsHref={null} moreActions={moreActions} />);
-      expect(screen.queryByTestId('nav-goals')).toBeNull();
+    it('keeps Goals under "All projects": the view across every project', () => {
+      navigate.mockClear();
+      render(<DashboardBottomNav goalsHref="/projects/all" moreActions={moreActions} />);
+
+      fireEvent.click(screen.getByTestId('nav-goals'));
+      expect(navigate).toHaveBeenCalledWith('/projects/all');
     });
 
     it('keeps one row on the smallest phones, spread evenly about the centre', () => {

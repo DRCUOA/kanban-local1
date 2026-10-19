@@ -44,18 +44,23 @@ describe('selecting goals and blocks', () => {
   const g1 = task({ id: 100, type: 'goal', projectId: 7 });
   const g2 = task({ id: 101, type: 'goal', projectId: 8 });
   const gBin = task({ id: 102, type: 'goal', projectId: 7, deletedAt: new Date() });
+  const gNone = task({ id: 103, type: 'goal' });
   const b1 = task({ id: 200, type: 'building-block', projectId: 7, goalTaskId: 100 });
   const b2 = task({ id: 201, type: 'building-block', projectId: 7 });
   const bArchived = task({ id: 202, type: 'building-block', goalTaskId: 100, archived: true });
-  const all = [g1, g2, gBin, b1, b2, bArchived];
+  const bNone = task({ id: 203, type: 'building-block' });
+  const all = [g1, g2, gBin, gNone, b1, b2, bArchived, bNone];
 
-  it('lists a project’s live goals only', () => {
+  it('lists the live goals of one project, of no project, or of every project', () => {
     expect(goalsInProject(all, 7).map((t) => t.id)).toEqual([100]);
-    expect(goalsInProject(all, null)).toEqual([]);
+    expect(goalsInProject(all, 'none').map((t) => t.id)).toEqual([103]);
+    expect(goalsInProject(all, 'all').map((t) => t.id)).toEqual([100, 101, 103]);
   });
-  it('finds a goal’s live blocks and a project’s unassigned ones', () => {
+  it('finds a goal’s live blocks and a scope’s unassigned ones', () => {
     expect(blocksOfGoal(all, 100).map((t) => t.id)).toEqual([200]);
     expect(unassignedBlocks(all, 7).map((t) => t.id)).toEqual([201]);
+    expect(unassignedBlocks(all, 'none').map((t) => t.id)).toEqual([203]);
+    expect(unassignedBlocks(all, 'all').map((t) => t.id)).toEqual([201, 203]);
   });
   it('counts finished blocks', () => {
     const done = task({ type: 'building-block', stageId: 2 });

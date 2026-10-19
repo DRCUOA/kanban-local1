@@ -217,7 +217,8 @@ export const ROUTES = {
   CONSOLE: '/console',
 } as const;
 
-export const projectViewPath = (projectId: number | 'none'): string =>
+/** The goals view of one project, of the tasks with no project (`'none'`), or of every project (`'all'`). */
+export const projectViewPath = (projectId: number | 'none' | 'all'): string =>
   ROUTES.PROJECT_VIEW.replace(':projectId', String(projectId));
 
 export const goalViewPath = (goalId: number): string =>
