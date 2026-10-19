@@ -5,8 +5,8 @@ import {
   STALE_AFTER_DAYS,
   type BoardWarningKind,
 } from '@shared/board-warnings';
-import { Badge } from '@/components/ui/badge';
-import { AlertCircle, Clock } from 'lucide-react';
+import { Clock, Hourglass, Layers, TriangleAlert } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useStages } from '@/hooks/use-stages';
 
@@ -23,22 +23,23 @@ type WarningTone = 'info' | 'warning' | 'destructive';
 
 interface WarningPill {
   tone: WarningTone;
-  icon: typeof AlertCircle;
+  /** Each kind has its own glyph: as icons alone they must tell apart. */
+  icon: typeof Clock;
   title: string;
-  /** Full sentence — the pill shows only title + count, this is its tooltip. */
+  /** Full sentence, with the count — the hover text and accessible name. */
   message: (count: number) => string;
 }
 
 const PILLS: Record<BoardWarningKind, WarningPill> = {
   'in-progress': {
     tone: 'info',
-    icon: AlertCircle,
+    icon: Layers,
     title: 'Many in progress',
     message: (count) => `${count} tasks in progress. Focus on fewer.`,
   },
   'high-priority': {
     tone: 'warning',
-    icon: AlertCircle,
+    icon: TriangleAlert,
     title: 'High-priority waiting',
     message: (count) => `${count} high-priority in backlog.`,
   },
@@ -50,7 +51,7 @@ const PILLS: Record<BoardWarningKind, WarningPill> = {
   },
   stale: {
     tone: 'info',
-    icon: AlertCircle,
+    icon: Hourglass,
     title: 'Stale tasks',
     message: (count) => `${count} not updated in ${STALE_AFTER_DAYS}+ days.`,
   },
@@ -75,16 +76,16 @@ const TONE_ACTIVE_CLASS: Record<WarningTone, string> = {
 };
 
 /**
- * Board-level warnings as compact pills — icon, title, count — meant to sit in
- * the stage-chip row so they cost no vertical space on a wide viewport. The
- * full sentence is the pill's tooltip and accessible name. Colours match the
- * task-border accents these warnings share (overdue red, high-priority gold,
- * info blue).
+ * Board-level warnings as icons, in the tone the matching card borders use
+ * (overdue red, high-priority gold, info blue). The name, the count and the
+ * full sentence are the icon's hover text and its accessible name.
  *
- * A pill is also the filter for what it counts: pressing it shows only those
- * tasks, pressing it again shows everything. Counts are taken from the whole
- * board, not from what is currently shown, so they stay put while filtering
- * and you can move from one pill to the next.
+ * An icon is also the filter for what it counts: pressing it shows only those
+ * tasks, pressing it again shows everything. The pressed icon opens to name
+ * what it is filtering — which is also how a phone, with no hover, gets the
+ * text. Counts are taken from the whole board, not from what is currently
+ * shown, so they stay put while filtering and you can move from one to the
+ * next.
  */
 export function TaskWarnings({
   tasks,
@@ -100,54 +101,63 @@ export function TaskWarnings({
   if (kinds.length === 0) return null;
 
   return (
-    <ul
-      aria-label="Board warnings"
-      data-testid="task-warnings"
-      // Right-aligned at the end of the chip row; when the pills have wrapped
-      // under the chips on a narrow viewport they read better as a left-aligned
-      // list than as ragged right-aligned rows.
-      className={cn('flex flex-wrap items-center gap-1.5 lg:justify-end', className)}
-    >
-      {kinds.map((kind) => {
-        const pill = PILLS[kind];
-        const count = counts[kind] ?? 0;
-        const Icon = pill.icon;
-        const isActive = activeKind === kind;
-        const message = pill.message(count);
+    <TooltipProvider delayDuration={200}>
+      <ul
+        aria-label="Board warnings"
+        data-testid="task-warnings"
+        className={cn('flex flex-wrap items-center gap-1.5 lg:justify-end', className)}
+      >
+        {kinds.map((kind) => {
+          const pill = PILLS[kind];
+          const count = counts[kind] ?? 0;
+          const Icon = pill.icon;
+          const isActive = activeKind === kind;
+          const label = `${pill.title}: ${pill.message(count)}`;
 
-        return (
-          <li key={kind} className="flex-shrink-0">
-            <button
-              type="button"
-              title={message}
-              aria-pressed={isActive}
-              aria-label={`${pill.title}: ${message} ${
-                isActive
-                  ? 'Showing only these. Press to show every task.'
-                  : 'Press to show only these.'
-              }`}
-              onClick={() => onToggleKind?.(kind)}
-              data-testid={`task-warning-${kind}`}
-              className={cn(
-                'flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 transition-all active:scale-95 lg:min-h-0',
-                isActive ? TONE_ACTIVE_CLASS[pill.tone] : 'neo-raised',
-                TONE_CLASS[pill.tone],
-              )}
-            >
-              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              <span className="whitespace-nowrap font-display text-[11px] font-bold uppercase tracking-wider">
-                {pill.title}
-              </span>
-              <Badge
-                variant="secondary"
-                className="font-mono text-[10px] neo-pressed rounded-md px-1.5 py-0 min-h-0 min-w-0 h-5"
-              >
-                {count}
-              </Badge>
-            </button>
-          </li>
-        );
-      })}
-    </ul>
+          return (
+            <li key={kind} className="flex-shrink-0">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-pressed={isActive}
+                    aria-label={`${label} ${
+                      isActive
+                        ? 'Showing only these. Press to show every task.'
+                        : 'Press to show only these.'
+                    }`}
+                    onClick={() => onToggleKind?.(kind)}
+                    data-testid={`task-warning-${kind}`}
+                    className={cn(
+                      // A round icon until pressed; then it widens to carry
+                      // its name and count.
+                      'flex h-11 items-center justify-center gap-1.5 rounded-full transition-all active:scale-95 lg:h-9',
+                      isActive
+                        ? cn('px-3', TONE_ACTIVE_CLASS[pill.tone])
+                        : 'w-11 neo-raised lg:w-9',
+                      TONE_CLASS[pill.tone],
+                    )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                    {isActive && (
+                      <span
+                        className="whitespace-nowrap font-display text-[11px] font-bold uppercase tracking-wider"
+                        data-testid={`task-warning-${kind}-label`}
+                      >
+                        {pill.title}
+                        <span className="ml-1.5 font-mono font-semibold opacity-80">{count}</span>
+                      </span>
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="px-3 py-1.5 text-xs">
+                  {label}
+                </TooltipContent>
+              </Tooltip>
+            </li>
+          );
+        })}
+      </ul>
+    </TooltipProvider>
   );
 }

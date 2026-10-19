@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-empty-function, @typescript-eslint/no-misused-promises -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { useEffect, useMemo, useState } from 'react';
-import { TASK_TYPE } from '@shared/constants';
+import { TASK_TYPE, projectViewPath } from '@shared/constants';
+import { PROJECT_SCOPE_NONE } from '@shared/project-scope';
 import { useTasks, useArchivedTasks } from '@/hooks/use-tasks';
 import { EditTaskDialog } from '@/components/EditTaskDialog';
 import { ShareDialog } from '@/components/ShareDialog';
 import { TaskHistoryModal } from '@/components/TaskHistoryModal';
-import { StageHeaders } from '@/components/StageHeaders';
 import { TaskWarnings } from '@/components/TaskWarnings';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { useBoardLayout } from '@/hooks/use-board-layout';
@@ -142,7 +142,19 @@ export default function Dashboard(_props: DashboardProps) {
     );
   }
 
+  // The goals view of whatever project the board is scoped to; not offered
+  // for "All projects". The header offers it from lg, the bottom nav on a phone.
+  const goalsHref =
+    typeof scope === 'number'
+      ? projectViewPath(scope)
+      : scope === PROJECT_SCOPE_NONE
+        ? projectViewPath('none')
+        : null;
+
   const moreActions = {
+    goals,
+    goalFilter,
+    onGoalFilterChange: setGoalFilter,
     viewMode,
     focusMode,
     boardLayout,
@@ -181,9 +193,7 @@ export default function Dashboard(_props: DashboardProps) {
           onClearSearch={() => {
             setSearchQuery('');
           }}
-          goals={goals}
-          goalFilter={goalFilter}
-          onGoalFilterChange={setGoalFilter}
+          goalsHref={goalsHref}
           {...moreActions}
         />
 
@@ -194,15 +204,14 @@ export default function Dashboard(_props: DashboardProps) {
               invisible. One quiet line shows what narrows the board, and the
               warning pills scroll sideways in a single row instead of wrapping. */}
             <div className="space-y-1.5 px-3 pt-2 lg:hidden" data-testid="phone-filter-strip">
-              <ActiveFilters
-                filters={activeFilters.filter((f) => f.narrowing)}
-                className="justify-start"
-              />
+              {/* Both rows sit about the centre; the pills scroll from the
+                  left only once they are wider than the screen. */}
+              <ActiveFilters filters={activeFilters.filter((f) => f.narrowing)} />
               <div className="-mx-3 overflow-x-auto px-3 pb-1">
                 <TaskWarnings
                   tasks={tasks}
                   activeKind={warningFilter}
-                  className="w-max flex-nowrap"
+                  className="mx-auto w-max flex-nowrap"
                   onToggleKind={(kind) => {
                     setWarningFilter((current) => (current === kind ? null : kind));
                   }}
@@ -210,21 +219,24 @@ export default function Dashboard(_props: DashboardProps) {
               </div>
             </div>
 
-            {/* From the tablet breakpoint the chips and pills cost no board space. */}
-            <div className="hidden px-3 pt-2 lg:block">
-              {/* Warnings ride in the chip row (right-aligned, wrapping under the
-                chips when narrow) instead of stacking as banners above the board. */}
-              <StageHeaders tasks={tasks} center={<ActiveFilters filters={activeFilters} />}>
-                {/* Counted against the whole board, so a pill's number does not
-                    change under the filter it is applying. */}
-                <TaskWarnings
-                  tasks={tasks}
-                  activeKind={warningFilter}
-                  onToggleKind={(kind) => {
-                    setWarningFilter((current) => (current === kind ? null : kind));
-                  }}
-                />
-              </StageHeaders>
+            {/* From the tablet breakpoint the filters and the warning icons
+                share one row above the board. The stage-count chips that used
+                to lead it are gone: each column names its stage and count. */}
+            <div
+              className="hidden items-center gap-3 px-3 pt-2 lg:flex"
+              data-testid="wide-filter-strip"
+            >
+              <ActiveFilters filters={activeFilters} className="min-w-0 flex-1 justify-start" />
+              {/* Counted against the whole board, so a count does not change
+                  under the filter it is applying. */}
+              <TaskWarnings
+                tasks={tasks}
+                activeKind={warningFilter}
+                className="ml-auto flex-nowrap"
+                onToggleKind={(kind) => {
+                  setWarningFilter((current) => (current === kind ? null : kind));
+                }}
+              />
             </div>
           </>
         )}
@@ -242,7 +254,9 @@ export default function Dashboard(_props: DashboardProps) {
           onTaskClick={handleTaskClick}
         />
 
-        <DashboardBottomNav />
+        {/* On a phone the nav also carries Goals and More, which left the
+            header so the project selector could have its row. */}
+        <DashboardBottomNav goalsHref={goalsHref} moreActions={moreActions} />
 
         <ShareDialog
           source={{ type: 'board', tasks, stages }}

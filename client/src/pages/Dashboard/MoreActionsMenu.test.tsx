@@ -28,6 +28,17 @@ describe('MoreActionsMenu', () => {
     expect(screen.getByLabelText('More options')).toBeDefined();
   });
 
+  it('as a nav item it shows its label like its neighbours; as an icon the label is for screen readers', () => {
+    const { unmount } = render(<MoreActionsMenu {...defaults} variant="nav" />);
+    const label = screen.getByText('More');
+    expect(label.className).not.toContain('sr-only');
+    expect(screen.getByTestId('button-more-options').className).toContain('flex-col');
+    unmount();
+
+    render(<MoreActionsMenu {...defaults} />);
+    expect(screen.getByText('More').className).toContain('sr-only');
+  });
+
   it('does not show menu items initially', () => {
     render(<MoreActionsMenu {...defaults} />);
     expect(screen.queryByText('Archive')).toBeNull();

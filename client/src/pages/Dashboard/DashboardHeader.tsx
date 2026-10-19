@@ -2,8 +2,6 @@ import { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { Search, Target, X } from 'lucide-react';
 import { useLocation } from 'wouter';
-import { projectViewPath } from '@shared/constants';
-import { PROJECT_SCOPE_NONE } from '@shared/project-scope';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { AppLogo } from '@/components/AppLogo';
@@ -23,19 +21,22 @@ export interface DashboardHeaderProps extends MoreActionsMenuProps {
   goals?: Task[];
   goalFilter?: number | null;
   onGoalFilterChange?: (next: number | null) => void;
+  /** The goals view of the scoped project. Absent for "All projects". */
+  goalsHref?: string | null;
 }
 
 /**
- * App header. On a phone it is the same one-row bar as every other page: the
- * logo at the start, the title centred — the project selector once a project
- * exists, the app name until then — and the search toggle and More at the
- * end. The row never wraps; a long project name truncates instead. The search
- * field opens under the row on demand and stays open while a query is active,
- * so a filter is never hidden.
+ * App header. On a phone it is one row: the logo, then the project selector
+ * filling the rest of the bar — it is the board's title and its first filter —
+ * and the search toggle at the end. Goals and More are not here on a phone:
+ * they sit in the bottom nav, which is what gives the selector its room. Until
+ * a project exists the app name takes the selector's place. The row never
+ * wraps. The search field opens under the row on demand and stays open while
+ * a query is active, so a filter is never hidden.
  *
  * From the tablet breakpoint (`lg`) there is room for everything at once:
  * title and tagline beside the logo, the always-visible search field
- * right-aligned in the title row, then the selector and More.
+ * right-aligned in the title row, then the selector, Goals and More.
  */
 export function DashboardHeader({
   searchQuery,
@@ -44,13 +45,11 @@ export function DashboardHeader({
   goals = [],
   goalFilter = null,
   onGoalFilterChange,
+  goalsHref = null,
   ...moreActions
 }: DashboardHeaderProps) {
-  const { projects, scope } = useProjectScope();
+  const { projects } = useProjectScope();
   const [, navigate] = useLocation();
-  // The goals view of whatever project the board is scoped to; not offered for "All projects".
-  const goalsTarget =
-    typeof scope === 'number' ? scope : scope === PROJECT_SCOPE_NONE ? 'none' : null;
   const hasProjects = projects.length > 0;
   const hasQuery = searchQuery.length > 0;
   const [searchOpen, setSearchOpen] = useState(false);
@@ -76,17 +75,21 @@ export function DashboardHeader({
 
   return (
     <header className="sticky top-0 z-50 neo-container rounded-none px-3 py-2 lg:px-4 lg:py-3">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        {/* The bar. On a phone it is one non-wrapping line whose leading and
-            trailing groups share the leftover width equally, centring the
-            title between them. From lg the wrapper dissolves (`contents`) and
-            its children join the outer row, where the order classes put the
-            title beside the logo and the selector beside More. */}
+      {/* Wraps only on a phone, and only for the search field's own row. From
+          lg it is one line at any width: the search field flexes, and the
+          title, project and goal labels truncate before anything is pushed
+          to a second line. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 lg:flex-nowrap">
+        {/* The bar. On a phone it is one non-wrapping line: the logo, the
+            selector (or the app name) taking all the width between, and the
+            search toggle. From lg the wrapper dissolves (`contents`) and its
+            children join the outer row, where the order classes put the title
+            beside the logo and the selector beside Goals and More. */}
         <div
           className="flex min-w-0 basis-full items-center gap-2 lg:contents"
           data-testid="app-bar"
         >
-          <div className="flex min-w-0 flex-1 basis-0 items-center lg:order-1 lg:flex-none">
+          <div className="flex flex-none items-center lg:order-1">
             {/* A bare mark on a phone; the raised tile from lg. */}
             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center lg:neo-raised lg:rounded-lg">
               <AppLogo className="h-7 w-7 text-primary lg:h-6 lg:w-6" />
@@ -97,7 +100,7 @@ export function DashboardHeader({
               the app name stays for screen readers and comes back at lg. */}
           <div
             className={cn(
-              'min-w-0 text-center lg:order-2 lg:text-left',
+              'min-w-0 flex-1 text-center lg:order-2 lg:flex-initial lg:text-left',
               hasProjects && 'sr-only lg:not-sr-only',
             )}
           >
@@ -113,19 +116,20 @@ export function DashboardHeader({
             <BuiltByTk align="start" className="hidden px-0 py-0 leading-tight lg:flex" />
           </div>
 
-          {/* Hidden until a project exists. */}
-          <ProjectSelector className="min-w-0 lg:order-4" />
+          {/* Hidden until a project exists. Fills the phone bar; sized to its
+              name from lg. */}
+          <ProjectSelector className="min-w-0 flex-1 lg:order-4 lg:flex-initial" />
           {onGoalFilterChange && (
             <GoalFilterSelect
               goals={goals}
               value={goalFilter}
               onChange={onGoalFilterChange}
-              className="hidden lg:order-4 lg:flex"
+              className="hidden min-w-0 lg:order-4 lg:flex"
             />
           )}
 
           <div
-            className="flex min-w-0 flex-1 basis-0 items-center justify-end gap-1 lg:order-5 lg:flex-none"
+            className="flex flex-none items-center gap-1 lg:order-5"
             data-testid="app-bar-actions"
           >
             <button
@@ -139,26 +143,29 @@ export function DashboardHeader({
             >
               <Search className="h-5 w-5" aria-hidden />
             </button>
-            {goalsTarget !== null && (
-              <button
-                type="button"
-                aria-label="Project goals"
-                title="Project goals"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md transition-all active:scale-90"
-                onClick={() => {
-                  navigate(projectViewPath(goalsTarget));
-                }}
-                data-testid="button-project-goals"
-              >
-                <Target className="h-5 w-5" aria-hidden />
-              </button>
-            )}
-            <MoreActionsMenu
-              {...moreActions}
-              goals={goals}
-              goalFilter={goalFilter}
-              onGoalFilterChange={onGoalFilterChange}
-            />
+            {/* On a phone these two live in the bottom nav instead. */}
+            <div className="hidden items-center gap-1 lg:flex" data-testid="app-bar-wide-actions">
+              {goalsHref !== null && (
+                <button
+                  type="button"
+                  aria-label="Project goals"
+                  title="Project goals"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md transition-all active:scale-90"
+                  onClick={() => {
+                    navigate(goalsHref);
+                  }}
+                  data-testid="button-project-goals"
+                >
+                  <Target className="h-5 w-5" aria-hidden />
+                </button>
+              )}
+              <MoreActionsMenu
+                {...moreActions}
+                goals={goals}
+                goalFilter={goalFilter}
+                onGoalFilterChange={onGoalFilterChange}
+              />
+            </div>
           </div>
         </div>
 
@@ -168,7 +175,9 @@ export function DashboardHeader({
           className={cn(
             'relative basis-full',
             searchVisible ? 'block' : 'hidden lg:block',
-            'lg:order-3 lg:ml-auto lg:basis-auto lg:w-[26rem] lg:max-w-[40vw]',
+            // Flexes between a usable floor and its full width so the row
+            // never has to wrap.
+            'lg:order-3 lg:ml-auto lg:flex-1 lg:basis-0 lg:min-w-[8rem] lg:max-w-[26rem]',
           )}
         >
           <Search

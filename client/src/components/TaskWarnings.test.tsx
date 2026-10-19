@@ -4,7 +4,6 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import type { Task } from '@shared/schema';
 import { TaskWarnings } from './TaskWarnings';
-import { StageHeaders } from './StageHeaders';
 
 vi.mock('@/hooks/use-stages', () => ({
   useStages: () => ({
@@ -60,13 +59,13 @@ const makeTask = (overrides: Partial<Task> = {}): Task =>
     ...overrides,
   }) as Task;
 
-describe('TaskWarnings (compact pills)', () => {
+describe('TaskWarnings (icons)', () => {
   it('renders nothing when there is nothing to warn about', () => {
     const { container } = render(<TaskWarnings tasks={[makeTask()]} />);
     expect(container.firstChild).toBeNull();
   });
 
-  it('renders one pill per warning with the count, and the full sentence as tooltip', () => {
+  it('renders one icon per warning, named with its count for a screen reader; no text shows until pressed', () => {
     const longAgo = new Date(2020, 0, 1);
     const tasks = [
       makeTask({ id: 1, priority: 'high' }),
@@ -84,25 +83,44 @@ describe('TaskWarnings (compact pills)', () => {
     expect(list.getAttribute('aria-label')).toBe('Board warnings');
     expect(list.querySelectorAll('li')).toHaveLength(4);
 
-    const inProgress = screen.getByTestId('task-warning-in-progress');
-    expect(inProgress.textContent).toContain('Many in progress');
-    expect(inProgress.textContent).toContain('4');
-    expect(inProgress.getAttribute('title')).toBe('4 tasks in progress. Focus on fewer.');
+    const expected: [string, string][] = [
+      ['in-progress', 'Many in progress: 4 tasks in progress. Focus on fewer.'],
+      ['high-priority', 'High-priority waiting: 2 high-priority in backlog.'],
+      ['overdue', 'Overdue: 1 task overdue.'],
+      ['stale', 'Stale tasks: 1 not updated in 14+ days.'],
+    ];
+    for (const [kind, label] of expected) {
+      const pill = screen.getByTestId(`task-warning-${kind}`);
+      expect(pill.getAttribute('aria-label')).toContain(label);
+      // An icon alone: no visible text, no native title doubling the tooltip.
+      expect(pill.textContent).toBe('');
+      expect(pill.getAttribute('title')).toBeNull();
+      expect(pill.querySelector('svg')).not.toBeNull();
+    }
+    expect(screen.getByTestId('task-warning-overdue').className).toContain('text-danger');
+  });
 
-    const highPriority = screen.getByTestId('task-warning-high-priority');
-    expect(highPriority.textContent).toContain('High-priority waiting');
-    expect(highPriority.textContent).toContain('2');
-    expect(highPriority.getAttribute('title')).toBe('2 high-priority in backlog.');
+  it('tells each kind apart by its glyph, not only its colour', () => {
+    const tasks = [
+      makeTask({ id: 3, updatedAt: new Date(2020, 0, 1) }), // stale: info tone
+      makeTask({ id: 4, stageId: 2 }),
+      makeTask({ id: 5, stageId: 2 }),
+      makeTask({ id: 6, stageId: 2 }),
+      makeTask({ id: 7, stageId: 2 }), // many in progress: info tone too
+    ];
+    render(<TaskWarnings tasks={tasks} />);
+    const stale = screen.getByTestId('task-warning-stale').querySelector('svg');
+    const inProgress = screen.getByTestId('task-warning-in-progress').querySelector('svg');
+    expect(stale?.innerHTML).not.toBe(inProgress?.innerHTML);
+  });
 
-    const overdue = screen.getByTestId('task-warning-overdue');
-    expect(overdue.textContent).toContain('Overdue');
-    expect(overdue.textContent).toContain('1');
-    expect(overdue.getAttribute('title')).toBe('1 task overdue.');
-    expect(overdue.className).toContain('text-danger');
+  it('says its name and count on hover or focus', async () => {
+    render(<TaskWarnings tasks={[makeTask({ id: 2, dueDate: new Date(2000, 0, 1) })]} />);
 
-    const stale = screen.getByTestId('task-warning-stale');
-    expect(stale.textContent).toContain('Stale tasks');
-    expect(stale.getAttribute('title')).toBe('1 not updated in 14+ days.');
+    fireEvent.focus(screen.getByTestId('task-warning-overdue'));
+
+    const tip = await screen.findByRole('tooltip');
+    expect(tip.textContent).toContain('Overdue: 1 task overdue.');
   });
 
   it('does not count closed tasks as overdue, even with a past due date left set', () => {
@@ -127,7 +145,7 @@ describe('TaskWarnings (compact pills)', () => {
       makeTask({ id: 7, stageId: 2 }),
     ];
 
-    it('reports the pill pressed', () => {
+    it('reports the icon pressed', () => {
       const onToggleKind = vi.fn();
       render(<TaskWarnings tasks={manyInProgress} onToggleKind={onToggleKind} />);
 
@@ -136,7 +154,7 @@ describe('TaskWarnings (compact pills)', () => {
       expect(onToggleKind).toHaveBeenCalledWith('in-progress');
     });
 
-    it('reports the active pill too, so pressing it again clears the filter', () => {
+    it('reports the active icon too, so pressing it again clears the filter', () => {
       const onToggleKind = vi.fn();
       render(
         <TaskWarnings
@@ -151,7 +169,7 @@ describe('TaskWarnings (compact pills)', () => {
       expect(onToggleKind).toHaveBeenCalledWith('in-progress');
     });
 
-    it('shows which pill is filtering, in its own tone and to a screen reader', () => {
+    it('opens the pressed icon to show its name and count — how a phone, with no hover, reads it', () => {
       const tasks = [...manyInProgress, makeTask({ id: 1, priority: 'high' })];
       render(<TaskWarnings tasks={tasks} activeKind="high-priority" />);
 
@@ -159,22 +177,30 @@ describe('TaskWarnings (compact pills)', () => {
       expect(active.getAttribute('aria-pressed')).toBe('true');
       expect(active.className).toContain('bg-warning/15');
       expect(active.getAttribute('aria-label')).toContain('Showing only these');
+      const label = screen.getByTestId('task-warning-high-priority-label');
+      expect(label.textContent).toContain('High-priority waiting');
+      expect(label.textContent).toContain('1');
 
       const inactive = screen.getByTestId('task-warning-in-progress');
       expect(inactive.getAttribute('aria-pressed')).toBe('false');
       expect(inactive.className).toContain('neo-raised');
       expect(inactive.getAttribute('aria-label')).toContain('Press to show only these');
+      expect(screen.queryByTestId('task-warning-in-progress-label')).toBeNull();
     });
 
     it('counts the whole board, so a count does not move under its own filter', () => {
-      // The caller passes every task whatever the filter is; a pill reading
-      // "Overdue 6" over a board showing five would be worse than no pill.
+      // The caller passes every task whatever the filter is; an icon saying
+      // "4 in progress" over a board showing five would be worse than none.
       const tasks = [...manyInProgress, makeTask({ id: 1, priority: 'high' })];
       const { rerender } = render(<TaskWarnings tasks={tasks} />);
-      expect(screen.getByTestId('task-warning-in-progress').textContent).toContain('4');
+      expect(screen.getByTestId('task-warning-in-progress').getAttribute('aria-label')).toContain(
+        '4 tasks in progress',
+      );
 
       rerender(<TaskWarnings tasks={tasks} activeKind="high-priority" />);
-      expect(screen.getByTestId('task-warning-in-progress').textContent).toContain('4');
+      expect(screen.getByTestId('task-warning-in-progress').getAttribute('aria-label')).toContain(
+        '4 tasks in progress',
+      );
     });
 
     it('is a button, so it is reachable by keyboard', () => {
@@ -182,22 +208,5 @@ describe('TaskWarnings (compact pills)', () => {
 
       expect(screen.getByTestId('task-warning-in-progress').tagName).toBe('BUTTON');
     });
-  });
-
-  it('rides in the stage-chip row, after the chips', () => {
-    const tasks = [makeTask({ id: 1, priority: 'high' }), makeTask({ id: 2, stageId: 3 })];
-    render(
-      <StageHeaders tasks={tasks}>
-        <TaskWarnings tasks={tasks} />
-      </StageHeaders>,
-    );
-    const chips = screen.getByTestId('stage-chips');
-    const warnings = screen.getByTestId('task-warnings');
-    expect(chips.textContent).toContain('Backlog');
-    expect(chips.textContent).toContain('Done');
-    expect(chips.parentElement).toBe(warnings.parentElement?.parentElement);
-    expect(
-      Boolean(chips.compareDocumentPosition(warnings) & Node.DOCUMENT_POSITION_FOLLOWING),
-    ).toBe(true);
   });
 });

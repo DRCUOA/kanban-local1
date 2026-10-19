@@ -52,7 +52,10 @@ export function ProjectSelector({ className }: { className?: string }) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Project: ${label}`}
-        className="flex h-11 max-w-[12rem] items-center gap-2 rounded-md px-3 text-sm font-medium neo-raised transition-all active:scale-95"
+        // Always as wide as its wrapper (the whole phone bar; its own name,
+        // capped, from lg). A button sizes to its content otherwise, and
+        // would run out of a wrapper that has been shrunk to fit the row.
+        className="flex h-11 w-full max-w-none items-center gap-2 rounded-md px-3 text-sm font-medium neo-raised transition-all active:scale-95 lg:max-w-[12rem]"
         onClick={() => {
           setOpen(!open);
         }}
@@ -67,7 +70,7 @@ export function ProjectSelector({ className }: { className?: string }) {
         ) : (
           <FolderKanban className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
         )}
-        <span className="truncate">{label}</span>
+        <span className="min-w-0 flex-1 truncate text-left">{label}</span>
         <ChevronDown className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
       </button>
 

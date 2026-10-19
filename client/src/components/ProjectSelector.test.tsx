@@ -112,4 +112,18 @@ describe('ProjectSelector', () => {
     fireEvent.click(screen.getByTestId('project-selector-item-all'));
     expect(value.setScope).toHaveBeenCalledWith('all');
   });
+
+  it('always fills its wrapper: the whole phone bar, its capped name from lg', () => {
+    renderSelector();
+    const trigger = screen.getByTestId('project-selector-trigger');
+    expect(trigger.className).toContain('w-full');
+    expect(trigger.className).toContain('max-w-none');
+    // Never content-sized: a button would run out of a wrapper shrunk to fit.
+    expect(trigger.className).not.toContain('lg:w-auto');
+    expect(trigger.className).toContain('lg:max-w-[12rem]');
+    // The name takes the slack so the chevron stays at the trailing edge.
+    expect(screen.getByText('All projects', { selector: 'button > span' }).className).toContain(
+      'flex-1',
+    );
+  });
 });

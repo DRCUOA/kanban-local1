@@ -101,7 +101,6 @@ App
 │               │   │   └── MoreActionsMenu
 │               │   ├── DashboardContent
 │               │   │   └── KanbanBoard
-│               │   │       ├── StageHeaders
 │               │   │       ├── KanbanColumnContent
 │               │   │       │   ├── TaskColumn
 │               │   │       │   │   ├── TaskCard / TaskCardSummary
@@ -400,7 +399,6 @@ kanban-local1/
 │       │   ├── KanbanBoard.tsx
 │       │   ├── KanbanColumnContent.tsx
 │       │   ├── KanbanDragOverlay.tsx
-│       │   ├── StageHeaders.tsx
 │       │   ├── TaskCard.tsx
 │       │   ├── TaskCardSummary.tsx
 │       │   ├── TaskColumn.tsx
