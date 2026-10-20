@@ -398,9 +398,12 @@
     color: hsl(var(--fg-muted));
   }
 
-  /* Bottom nav: a surface with a top hairline, no lift. */
+  /* Bottom nav: a surface with a top hairline, no lift. The last child of the
+     board's viewport-height shell rather than fixed over it, so the board
+     above takes exactly the height the nav leaves, whatever the nav's own
+     height turns out to be (its credit line, a safe-area inset). */
   .mobile-bottom-nav {
-    @apply fixed bottom-0 left-0 right-0 z-50;
+    @apply relative z-50 shrink-0;
     background: hsl(var(--bg-surface));
     padding-bottom: env(safe-area-inset-bottom);
     border-top: 1px solid hsl(var(--border-subtle));
