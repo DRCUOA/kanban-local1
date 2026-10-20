@@ -5,8 +5,9 @@ import {
   INBOUND_PROCESSING_STATUS,
   type InboundEmailProcessingRow,
 } from '@shared/schema';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { LEASE_MS, MAX_ATTEMPTS, PROVIDER_GMAIL } from '../gmail/constants';
+import { PROVIDER_INBOX } from '../inbox/constants';
 
 export async function getWatchCursor(mailbox: string) {
   const rows = await db
@@ -20,7 +21,8 @@ export async function commitCursorAndInboundRows(params: {
   mailbox: string;
   newHistoryId: string;
   upserts: {
-    gmailMessageId: string;
+    /** The Gmail message id: the key of a Gmail row. */
+    messageKey: string;
     historyIdSeen: string;
     normalizedSubject?: string | null;
     recipient?: string | null;
@@ -33,14 +35,14 @@ export async function commitCursorAndInboundRows(params: {
         .insert(inboundEmailProcessing)
         .values({
           provider: PROVIDER_GMAIL,
-          gmailMessageId: u.gmailMessageId,
+          messageKey: u.messageKey,
           processingStatus: INBOUND_PROCESSING_STATUS.PENDING,
           historyIdSeen: u.historyIdSeen,
           normalizedSubject: u.normalizedSubject ?? null,
           recipient: u.recipient ?? null,
         })
         .onConflictDoUpdate({
-          target: [inboundEmailProcessing.provider, inboundEmailProcessing.gmailMessageId],
+          target: [inboundEmailProcessing.provider, inboundEmailProcessing.messageKey],
           set: {
             updatedAt: new Date(),
           },
@@ -61,6 +63,56 @@ export async function commitCursorAndInboundRows(params: {
         },
       });
   });
+}
+
+/** What POST /api/inbox hands the queue: the message itself, keyed so a redelivery is a no-op. */
+export interface InboxEnqueue {
+  messageKey: string;
+  rfcMessageId: string | null;
+  sender: string | null;
+  recipient: string | null;
+  subject: string;
+  text: string;
+}
+
+/**
+ * Queues an inbox message for the worker, or finds the row a redelivery of
+ * it already has. The insert and the lookup are two statements rather than
+ * one upsert so a duplicate changes nothing about the row being worked.
+ */
+export async function enqueueInboundMessage(
+  message: InboxEnqueue,
+): Promise<{ id: number; duplicate: boolean }> {
+  const inserted = await db
+    .insert(inboundEmailProcessing)
+    .values({
+      provider: PROVIDER_INBOX,
+      messageKey: message.messageKey,
+      rfcMessageId: message.rfcMessageId,
+      sender: message.sender,
+      recipient: message.recipient,
+      subject: message.subject,
+      bodyText: message.text,
+      normalizedSubject: message.subject,
+      processingStatus: INBOUND_PROCESSING_STATUS.PENDING,
+    })
+    .onConflictDoNothing({
+      target: [inboundEmailProcessing.provider, inboundEmailProcessing.messageKey],
+    })
+    .returning({ id: inboundEmailProcessing.id });
+  const row = inserted[0];
+  if (row) return { id: row.id, duplicate: false };
+  const [existing] = await db
+    .select({ id: inboundEmailProcessing.id })
+    .from(inboundEmailProcessing)
+    .where(
+      and(
+        eq(inboundEmailProcessing.provider, PROVIDER_INBOX),
+        eq(inboundEmailProcessing.messageKey, message.messageKey),
+      ),
+    );
+  if (!existing) throw new Error('Inbox message was neither queued nor found');
+  return { id: existing.id, duplicate: true };
 }
 
 export async function getInboundById(id: number): Promise<InboundEmailProcessingRow | undefined> {

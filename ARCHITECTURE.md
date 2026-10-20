@@ -198,7 +198,7 @@ interface ApiErrorResponse {
 
 ## Database Schema
 
-The board tables defined in `shared/schema.ts` (the Gmail pipeline adds `gmail_watch_cursor` and `inbound_email_processing`):
+The board tables defined in `shared/schema.ts` (the inbound mail pipeline adds `inbound_email_processing`, the queue that both `POST /api/inbox` and the Gmail pipeline feed, and the Gmail pipeline `gmail_watch_cursor`; see `INBOX_SETUP.md`):
 
 ### projects
 
@@ -356,12 +356,12 @@ The task form's **Make this a goal** button sends a saved `goal` task (title, de
 
 ### access_devices
 
-Access control (migration `0022`, `server/access`), after stageboard-pilot's access codes and developer console, without its parties and idle sign-out. Every browser gets an HttpOnly, SameSite=Lax key cookie (Secure in production). A person types an **access code** once per browser; it binds to the first browser that uses it, and that browser is trusted for **90 days** from admission (typing it again renews). Every `/api` request needs an admitted, unrevoked, in-date browser except `/api/health`, `/api/access/*`, the Gmail webhook (Google's signed token) and `GET /api/export` with a live read-only **export token** (`Authorization: Bearer`, for the briefing agent). Cross-site changes are refused. The **developer console** (`/console`, API at `/console/api`) issues codes and tokens (shown once) and revokes them; it answers only with `DEVELOPER_SECRET` in `x-developer-secret`, compared in constant time, and otherwise answers exactly like an address that does not exist. Codes, tokens and browser keys are stored only as HMAC-SHA-256 digests under `CODE_HASH_KEY` and found by constant-time comparison against every row. Admission is rate-limited (10 per 15 minutes per address), as is the console (60). Production refuses to start without `CODE_HASH_KEY` and `DEVELOPER_SECRET`.
+Access control (migration `0022`, `server/access`), after stageboard-pilot's access codes and developer console, without its parties and idle sign-out. Every browser gets an HttpOnly, SameSite=Lax key cookie (Secure in production). A person types an **access code** once per browser; it binds to the first browser that uses it, and that browser is trusted for **90 days** from admission (typing it again renews). Every `/api` request needs an admitted, unrevoked, in-date browser except `/api/health`, `/api/access/*`, the Gmail webhook (Google's signed token), `GET /api/export` with a live read-only **export token** (`Authorization: Bearer`, for the briefing agent) and `POST /api/inbox` with a live write-only **inbox token** (for whatever forwards mail to the board; `INBOX_SETUP.md`). A token opens its one route and nothing else, and each kind is hashed under its own purpose, so one can never pass for the other. Cross-site changes are refused. The **developer console** (`/console`, API at `/console/api`) issues codes and both kinds of token (shown once) and revokes them; it answers only with `DEVELOPER_SECRET` in `x-developer-secret`, compared in constant time, and otherwise answers exactly like an address that does not exist. Codes, tokens and browser keys are stored only as HMAC-SHA-256 digests under `CODE_HASH_KEY` and found by constant-time comparison against every row. Admission is rate-limited (10 per 15 minutes per address), as is the console (60). Production refuses to start without `CODE_HASH_KEY` and `DEVELOPER_SECRET`.
 
 | Column | Type | Notes |
 |---|---|---|
 | id | serial PK | |
-| kind | text | `device` or `export-token` |
+| kind | text | `device`, `export-token` or `inbox-token` |
 | label | text | 1–60 characters |
 | code_hash | text unique | HMAC digest of the code or token |
 | issued_at / admitted_at / first_seen_at / last_seen_at | timestamp | Trust runs 90 days from `admitted_at` |

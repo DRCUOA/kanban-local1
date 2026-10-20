@@ -80,7 +80,7 @@ export async function searchHowToOnWeb(input: {
   query: string;
   traceContext?: {
     inboundRowId?: number;
-    gmailMessageId?: string;
+    messageKey?: string;
     historyIdSeen?: string;
     normalizedBodyHash?: string;
   };
@@ -94,7 +94,7 @@ export async function searchHowToOnWeb(input: {
 
   logGmailInboundTrace('langgraph.web_search_started', {
     inbound_row_id: input.traceContext?.inboundRowId,
-    gmail_message_id: input.traceContext?.gmailMessageId,
+    message_key: input.traceContext?.messageKey,
     history_id_seen: input.traceContext?.historyIdSeen,
     normalized_body_hash: input.traceContext?.normalizedBodyHash,
     web_search_model: model,
@@ -140,7 +140,7 @@ export async function searchHowToOnWeb(input: {
     if (!summary) {
       logGmailInboundTrace('langgraph.web_search_empty', {
         inbound_row_id: input.traceContext?.inboundRowId,
-        gmail_message_id: input.traceContext?.gmailMessageId,
+        message_key: input.traceContext?.messageKey,
         history_id_seen: input.traceContext?.historyIdSeen,
         normalized_body_hash: input.traceContext?.normalizedBodyHash,
       });
@@ -150,7 +150,7 @@ export async function searchHowToOnWeb(input: {
     const sources = parseSources(response.output);
     logGmailInboundTrace('langgraph.web_search_completed', {
       inbound_row_id: input.traceContext?.inboundRowId,
-      gmail_message_id: input.traceContext?.gmailMessageId,
+      message_key: input.traceContext?.messageKey,
       history_id_seen: input.traceContext?.historyIdSeen,
       normalized_body_hash: input.traceContext?.normalizedBodyHash,
       web_search_model: model,
@@ -166,7 +166,7 @@ export async function searchHowToOnWeb(input: {
   } catch (error) {
     logGmailInboundTrace('langgraph.web_search_failed', {
       inbound_row_id: input.traceContext?.inboundRowId,
-      gmail_message_id: input.traceContext?.gmailMessageId,
+      message_key: input.traceContext?.messageKey,
       history_id_seen: input.traceContext?.historyIdSeen,
       normalized_body_hash: input.traceContext?.normalizedBodyHash,
       web_search_model: model,

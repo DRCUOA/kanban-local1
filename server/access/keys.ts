@@ -8,7 +8,7 @@ import { createHmac, randomBytes, randomInt, timingSafeEqual } from 'crypto';
  * how long that takes never depends on how much of a stored digest matched.
  */
 
-type Purpose = 'access-code' | 'browser-key' | 'export-token';
+type Purpose = 'access-code' | 'browser-key' | 'export-token' | 'inbox-token';
 
 /** Capitals and digits without I, O, 0 and 1: the ones people misread. 5 bits per character. */
 export const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -28,6 +28,9 @@ export const hashBrowserKey = (hashKey: string, key: string): string =>
   keyedDigest(hashKey, 'browser-key', key);
 export const hashExportToken = (hashKey: string, token: string): string =>
   keyedDigest(hashKey, 'export-token', token.trim());
+/** Its own purpose, so an inbox token's digest can never match an export token's row, or the reverse. */
+export const hashInboxToken = (hashKey: string, token: string): string =>
+  keyedDigest(hashKey, 'inbox-token', token.trim());
 
 /** Two hex digests, equal or not, in constant time. */
 export function sameDigest(a: string, b: string): boolean {
@@ -56,7 +59,7 @@ export function newAccessCode(): string {
   return `KB-${group()}-${group()}-${group()}`;
 }
 
-/** A browser key or export token: 256 random bits. */
+/** A browser key, an export token or an inbox token: 256 random bits. */
 export function newSecretToken(prefix = ''): string {
   return `${prefix}${randomBytes(32).toString('base64url')}`;
 }

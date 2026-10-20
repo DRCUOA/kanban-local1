@@ -263,16 +263,26 @@ export const INBOUND_PROCESSING_STATUS = {
 export type InboundProcessingStatus =
   (typeof INBOUND_PROCESSING_STATUS)[keyof typeof INBOUND_PROCESSING_STATUS];
 
-/** Inbound email → task pipeline state (provider + gmail_message_id is unique). */
+/**
+ * Inbound mail → task pipeline state: one row per message, keyed per provider
+ * (`provider` + `message_key` is unique). The key is the Gmail message id for
+ * a row the Gmail pipeline found, and the RFC Message-ID or a content digest
+ * for one that arrived at POST /api/inbox (server/inbox). An inbox row carries
+ * the message itself (`sender`, `subject`, `bodyText`); a Gmail row is fetched
+ * again from Gmail when it is worked.
+ */
 export const inboundEmailProcessing = pgTable(
   'inbound_email_processing',
   {
     id: serial('id').primaryKey(),
     provider: text('provider').notNull().default('gmail'),
-    gmailMessageId: text('gmail_message_id').notNull(),
+    messageKey: text('message_key').notNull(),
     rfcMessageId: text('rfc_message_id'),
     historyIdSeen: text('history_id_seen'),
     recipient: text('recipient'),
+    sender: text('sender'),
+    subject: text('subject'),
+    bodyText: text('body_text'),
     normalizedSubject: text('normalized_subject'),
     normalizedBodyHash: text('normalized_body_hash'),
     processingStatus: text('processing_status').notNull(),
@@ -288,7 +298,8 @@ export const inboundEmailProcessing = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
-  (t) => [unique('inbound_provider_gmail_msg').on(t.provider, t.gmailMessageId)],
+  // The constraint keeps its original name across the column's rename (0023).
+  (t) => [unique('inbound_provider_gmail_msg').on(t.provider, t.messageKey)],
 );
 
 export type InboundEmailProcessingRow = typeof inboundEmailProcessing.$inferSelect;
