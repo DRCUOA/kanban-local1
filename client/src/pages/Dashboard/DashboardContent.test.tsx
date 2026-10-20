@@ -80,4 +80,20 @@ describe('DashboardContent', () => {
     render(<DashboardContent {...defaults} focusMode={false} />);
     expect(screen.queryByText('Focus Mode Active')).toBeNull();
   });
+
+  it('gives the scrolling vertical layout a long run-off, and the horizontal one only a gutter', () => {
+    const task = makeTask();
+    const { unmount } = render(<DashboardContent {...defaults} filteredTasks={[task]} />);
+    // Room for the last card to scroll clear of the toolbar and toasts that
+    // float above the nav.
+    expect(screen.getByTestId('board-main').className).toContain('pb-28');
+    unmount();
+
+    render(<DashboardContent {...defaults} filteredTasks={[task]} boardLayout="horizontal" />);
+    // The columns scroll inside themselves, so they run down to the nav.
+    const main = screen.getByTestId('board-main');
+    expect(main.className).toContain('pb-3');
+    expect(main.className).not.toContain('pb-28');
+    expect(main.className).toContain('overflow-y-auto');
+  });
 });

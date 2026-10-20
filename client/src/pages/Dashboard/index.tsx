@@ -176,12 +176,13 @@ export default function Dashboard(_props: DashboardProps) {
 
   return (
     // App shell: pin to the viewport (dvh keeps mobile browser chrome honest)
-    // so the board owns the space between header and bottom nav and scrolls
-    // inside <main> instead of running under the nav.
+    // with the header at the top and the nav at the bottom, both in the flow,
+    // so <main> is exactly the space between them and scrolls inside itself
+    // instead of running under the nav.
     // NavDropSlotsProvider spans header→nav so the board can portal its Filing
     // and Bin drop targets onto the nav buttons without leaving its DndContext.
     <NavDropSlotsProvider>
-      <div className="h-dvh overflow-hidden bg-background flex flex-col pb-bottom-nav">
+      <div className="flex h-dvh flex-col overflow-hidden bg-background">
         <DashboardHeader
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}

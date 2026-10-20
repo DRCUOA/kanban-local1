@@ -3,6 +3,7 @@ import { type Task } from '@shared/schema';
 import { KanbanBoard } from '@/components/KanbanBoard';
 import { CreateTaskDialog } from '@/components/CreateTaskDialog';
 import { LayoutDashboard } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export interface DashboardContentProps {
   filteredTasks: Task[];
@@ -28,7 +29,17 @@ export function DashboardContent({
   onTaskClick,
 }: DashboardContentProps) {
   return (
-    <main className="flex flex-1 flex-col overflow-y-auto pb-28">
+    // Vertical is a page that scrolls: a long run-off at its end lets the last
+    // card clear the selection toolbar and toasts that float above the nav.
+    // Horizontal fills the viewport and scrolls inside its columns, so they
+    // run down to the nav with only the gutter the sides have.
+    <main
+      className={cn(
+        'flex flex-1 flex-col overflow-y-auto',
+        boardLayout === 'horizontal' ? 'pb-3' : 'pb-28',
+      )}
+      data-testid="board-main"
+    >
       <div className="flex-1 flex flex-col min-h-0 px-3 pt-2">
         {focusMode && (
           <div className="mb-3 p-3 neo-container rounded-md border-l-4 border-l-primary flex-shrink-0">

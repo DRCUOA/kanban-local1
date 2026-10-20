@@ -121,6 +121,22 @@ function previewedId(): string | null {
   return screen.getByTestId('task-preview-pane').getAttribute('data-preview-task-id');
 }
 
+describe('KanbanBoard layout: the row fills its height', () => {
+  it('horizontal takes every pixel it is given; vertical keeps a run-off under its last band', () => {
+    const { unmount } = render(
+      <KanbanBoard tasks={tasks} onTaskClick={vi.fn()} boardLayout="horizontal" />,
+    );
+    const horizontal = screen.getByTestId('kanban-board-root');
+    expect(horizontal.className).toContain('flex-1');
+    expect(horizontal.className).toContain('min-h-0');
+    expect(horizontal.className).not.toContain('pb-4');
+    unmount();
+
+    render(<KanbanBoard tasks={tasks} onTaskClick={vi.fn()} boardLayout="vertical" />);
+    expect(screen.getByTestId('kanban-board-root').className).toContain('pb-4');
+  });
+});
+
 describe('KanbanBoard layout: done stage is off the board', () => {
   it.each(['vertical', 'horizontal'] as const)(
     'in the %s layout the done stage and archive strip are gone, filed behind the nav instead',

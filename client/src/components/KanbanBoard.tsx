@@ -405,11 +405,11 @@ export function KanbanBoard({
           onFocus={handleBoardFocus}
           data-testid="kanban-board-root"
           className={cn(
-            'flex pb-4',
+            'flex',
             // Horizontal fills the viewport height so columns scroll internally
             // and lays the stage area and the preview pane side by side;
             // vertical keeps its natural height and lets the page scroll.
-            isHorizontal ? 'min-h-0 flex-1 flex-row' : 'flex-col',
+            isHorizontal ? 'min-h-0 flex-1 flex-row' : 'flex-col pb-4',
           )}
         >
           {/* Stage area: the working columns, then the done strip(s), then the

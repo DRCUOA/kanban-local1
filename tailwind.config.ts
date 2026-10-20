@@ -24,7 +24,6 @@ export default {
         'safe-top': 'env(safe-area-inset-top)',
         'safe-left': 'env(safe-area-inset-left)',
         'safe-right': 'env(safe-area-inset-right)',
-        'bottom-nav': '5rem', // Height of bottom nav bar
       },
       colors: {
         /* ----- Shadcn aliases (mapped to semantic tokens in index.css) ----- */
