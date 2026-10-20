@@ -55,7 +55,7 @@ export interface EmailTaskGraphDeps {
     query: string;
     traceContext?: {
       inboundRowId?: number;
-      gmailMessageId?: string;
+      messageKey?: string;
       historyIdSeen?: string;
       normalizedBodyHash?: string;
     };
@@ -172,7 +172,7 @@ export async function invokeEmailTaskGraph(
     body: string;
     traceContext?: {
       inboundRowId?: number;
-      gmailMessageId?: string;
+      messageKey?: string;
       historyIdSeen?: string;
       normalizedBodyHash?: string;
     };
@@ -197,7 +197,7 @@ export async function invokeEmailTaskGraph(
     .addNode('classifyIntent', async (state: typeof EmailState.State) => {
       logGmailInboundTrace('langgraph.classify_started', {
         inbound_row_id: input.traceContext?.inboundRowId,
-        gmail_message_id: input.traceContext?.gmailMessageId,
+        message_key: input.traceContext?.messageKey,
         history_id_seen: input.traceContext?.historyIdSeen,
         normalized_body_hash: input.traceContext?.normalizedBodyHash,
       });
@@ -216,7 +216,7 @@ export async function invokeEmailTaskGraph(
 
       logGmailInboundTrace('langgraph.classify_completed', {
         inbound_row_id: input.traceContext?.inboundRowId,
-        gmail_message_id: input.traceContext?.gmailMessageId,
+        message_key: input.traceContext?.messageKey,
         history_id_seen: input.traceContext?.historyIdSeen,
         normalized_body_hash: input.traceContext?.normalizedBodyHash,
         is_how_to: intent.isHowTo,
@@ -229,7 +229,7 @@ export async function invokeEmailTaskGraph(
     .addNode('parallelHeavyWork', async (state: typeof EmailState.State) => {
       logGmailInboundTrace('langgraph.parallel_heavy_work_started', {
         inbound_row_id: input.traceContext?.inboundRowId,
-        gmail_message_id: input.traceContext?.gmailMessageId,
+        message_key: input.traceContext?.messageKey,
         history_id_seen: input.traceContext?.historyIdSeen,
         normalized_body_hash: input.traceContext?.normalizedBodyHash,
         run_search: Boolean(state.intent?.isHowTo && state.intent.searchQuery),
@@ -269,7 +269,7 @@ export async function invokeEmailTaskGraph(
       if (searchResult.status === 'rejected') {
         logGmailInboundTrace('langgraph.parallel_search_rejected', {
           inbound_row_id: input.traceContext?.inboundRowId,
-          gmail_message_id: input.traceContext?.gmailMessageId,
+          message_key: input.traceContext?.messageKey,
           history_id_seen: input.traceContext?.historyIdSeen,
           normalized_body_hash: input.traceContext?.normalizedBodyHash,
           ...getErrorTraceFields(searchResult.reason),
@@ -279,7 +279,7 @@ export async function invokeEmailTaskGraph(
       if (epicResult.status === 'rejected') {
         logGmailInboundTrace('langgraph.parallel_epic_rejected', {
           inbound_row_id: input.traceContext?.inboundRowId,
-          gmail_message_id: input.traceContext?.gmailMessageId,
+          message_key: input.traceContext?.messageKey,
           history_id_seen: input.traceContext?.historyIdSeen,
           normalized_body_hash: input.traceContext?.normalizedBodyHash,
           ...getErrorTraceFields(epicResult.reason),
@@ -288,7 +288,7 @@ export async function invokeEmailTaskGraph(
 
       logGmailInboundTrace('langgraph.parallel_heavy_work_completed', {
         inbound_row_id: input.traceContext?.inboundRowId,
-        gmail_message_id: input.traceContext?.gmailMessageId,
+        message_key: input.traceContext?.messageKey,
         history_id_seen: input.traceContext?.historyIdSeen,
         normalized_body_hash: input.traceContext?.normalizedBodyHash,
         used_web_search: Boolean(searchContext),
@@ -341,7 +341,7 @@ export async function invokeEmailTaskGraph(
   const app = graph.compile();
   logGmailInboundTrace('langgraph.invoke_started', {
     inbound_row_id: input.traceContext?.inboundRowId,
-    gmail_message_id: input.traceContext?.gmailMessageId,
+    message_key: input.traceContext?.messageKey,
     history_id_seen: input.traceContext?.historyIdSeen,
     normalized_body_hash: input.traceContext?.normalizedBodyHash,
     model: modelName,
@@ -363,7 +363,7 @@ export async function invokeEmailTaskGraph(
     }
     logGmailInboundTrace('langgraph.invoke_completed', {
       inbound_row_id: input.traceContext?.inboundRowId,
-      gmail_message_id: input.traceContext?.gmailMessageId,
+      message_key: input.traceContext?.messageKey,
       history_id_seen: input.traceContext?.historyIdSeen,
       normalized_body_hash: input.traceContext?.normalizedBodyHash,
       extracted_parent_title_present: Boolean(out.result.parentTask.title),
@@ -378,7 +378,7 @@ export async function invokeEmailTaskGraph(
   } catch (error) {
     logGmailInboundTrace('langgraph.invoke_failed', {
       inbound_row_id: input.traceContext?.inboundRowId,
-      gmail_message_id: input.traceContext?.gmailMessageId,
+      message_key: input.traceContext?.messageKey,
       history_id_seen: input.traceContext?.historyIdSeen,
       normalized_body_hash: input.traceContext?.normalizedBodyHash,
       model: modelName,

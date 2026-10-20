@@ -1,8 +1,23 @@
-import { INBOUND_PROCESSING_STATUS } from '@shared/schema';
+import {
+  INBOUND_PROCESSING_STATUS,
+  type InboundEmailProcessingRow,
+  type InsertTask,
+  type Stage,
+} from '@shared/schema';
 import { TASK_PRIORITY } from '@shared/constants';
+import { logger } from '@shared/logger';
 import { getGmailApi } from '../gmail/gmail-client';
 import { hashBody, normalizeGmailMessageParts } from '../gmail/normalize-email';
 import { MAX_ATTEMPTS } from '../gmail/constants';
+import { getErrorTraceFields, logGmailInboundTrace } from '../gmail/inbound-trace';
+import { PROVIDER_INBOX } from '../inbox/constants';
+import {
+  applySubjectDirectives,
+  extractionMode,
+  firstLineOf,
+  parseSubjectDirectives,
+  plainExtraction,
+} from '../inbox/extraction';
 import {
   claimNextPendingRow,
   getInboundById,
@@ -11,12 +26,9 @@ import {
   markInboundPendingRetry,
   reconcileExpiredLeases,
 } from '../inbound-email/repository';
-import { invokeEmailTaskGraph } from '../langgraph/email-task-graph';
+import { invokeEmailTaskGraph, type EmailTaskExtraction } from '../langgraph/email-task-graph';
 import { resolveStageId } from '../langgraph/stage-resolve';
 import { createEmailTasks, storage } from '../storage';
-import { logger } from '@shared/logger';
-import type { InsertTask, Stage } from '@shared/schema';
-import { getErrorTraceFields, logGmailInboundTrace } from '../gmail/inbound-trace';
 
 function getHeader(
   headers: { name?: string | null; value?: string | null }[] | undefined,
@@ -74,6 +86,76 @@ function buildTaskInsert(input: {
   };
 }
 
+/** The message as the extraction reads it, however it arrived. */
+interface LoadedMessage {
+  subject: string;
+  bodyText: string;
+  rfcId: string | null;
+  bodySource: 'plain_body' | 'snippet_fallback' | 'stored';
+}
+
+/**
+ * A Gmail row holds only the message id, so the message is fetched again from
+ * Gmail; GMAIL_TRIGGER_RECIPIENT may then rule it out (null).
+ */
+async function loadGmailMessage(fresh: InboundEmailProcessingRow): Promise<LoadedMessage | null> {
+  const gmail = getGmailApi();
+  const msg = await gmail.users.messages.get({
+    userId: 'me',
+    id: fresh.messageKey,
+    format: 'full',
+  });
+  const payload = msg.data.payload;
+  const snippet = msg.data.snippet ?? '';
+  const headers = payload?.headers ?? [];
+  const subject = getHeader(headers, 'Subject');
+  const to = getHeader(headers, 'To');
+  const rfcId = getHeader(headers, 'Message-ID') || null;
+
+  logGmailInboundTrace('worker.gmail_message_fetched', {
+    inbound_row_id: fresh.id,
+    message_key: fresh.messageKey,
+    history_id_seen: fresh.historyIdSeen,
+    attempt_count: fresh.attemptCount,
+    rfc_message_id: rfcId,
+    has_payload: Boolean(payload),
+    snippet_length: snippet.length,
+    subject_length: subject.length,
+    to_header_present: Boolean(to),
+  });
+
+  const filter = process.env.GMAIL_TRIGGER_RECIPIENT;
+  if (!recipientMatches(filter, to)) {
+    logGmailInboundTrace('worker.recipient_skipped', {
+      inbound_row_id: fresh.id,
+      message_key: fresh.messageKey,
+      history_id_seen: fresh.historyIdSeen,
+      recipient_filter: filter ?? null,
+      to_header: to || null,
+    });
+    logger.info('Inbound email skipped: recipient filter', { id: fresh.id, to });
+    return null;
+  }
+
+  const norm = normalizeGmailMessageParts(payload, snippet);
+  return {
+    subject,
+    bodyText: norm.plainBody || norm.snippetFallback,
+    rfcId,
+    bodySource: norm.plainBody ? 'plain_body' : 'snippet_fallback',
+  };
+}
+
+/** An inbox row carries the message itself (server/inbox); there is nowhere else to fetch it from. */
+function loadInboxMessage(fresh: InboundEmailProcessingRow): LoadedMessage {
+  return {
+    subject: (fresh.subject ?? '').trim(),
+    bodyText: (fresh.bodyText ?? '').trim(),
+    rfcId: fresh.rfcMessageId,
+    bodySource: 'stored',
+  };
+}
+
 export async function processOneInboundRow(): Promise<void> {
   await reconcileExpiredLeases();
   const row = await claimNextPendingRow();
@@ -84,7 +166,8 @@ export async function processOneInboundRow(): Promise<void> {
 
   logGmailInboundTrace('worker.row_claimed', {
     inbound_row_id: row.id,
-    gmail_message_id: row.gmailMessageId,
+    provider: row.provider,
+    message_key: row.messageKey,
     attempt_count: row.attemptCount,
     history_id_seen: row.historyIdSeen,
   });
@@ -93,83 +176,61 @@ export async function processOneInboundRow(): Promise<void> {
   if (fresh?.processingStatus !== INBOUND_PROCESSING_STATUS.PROCESSING) {
     logGmailInboundTrace('worker.row_not_processing', {
       inbound_row_id: row.id,
-      gmail_message_id: row.gmailMessageId,
+      message_key: row.messageKey,
       observed_processing_status: fresh?.processingStatus ?? null,
     });
     return;
   }
 
   try {
-    const gmail = getGmailApi();
-    const msg = await gmail.users.messages.get({
-      userId: 'me',
-      id: fresh.gmailMessageId,
-      format: 'full',
-    });
-    const payload = msg.data.payload;
-    const snippet = msg.data.snippet ?? '';
-    const headers = payload?.headers ?? [];
-    const subject = getHeader(headers, 'Subject') || '(no subject)';
-    const to = getHeader(headers, 'To');
-    const rfcId = getHeader(headers, 'Message-ID') || null;
-
-    logGmailInboundTrace('worker.gmail_message_fetched', {
-      inbound_row_id: fresh.id,
-      gmail_message_id: fresh.gmailMessageId,
-      history_id_seen: fresh.historyIdSeen,
-      attempt_count: fresh.attemptCount,
-      rfc_message_id: rfcId,
-      has_payload: Boolean(payload),
-      snippet_length: snippet.length,
-      subject_length: subject.length,
-      to_header_present: Boolean(to),
-    });
-
-    const filter = process.env.GMAIL_TRIGGER_RECIPIENT;
-    if (!recipientMatches(filter, to)) {
-      logGmailInboundTrace('worker.recipient_skipped', {
-        inbound_row_id: fresh.id,
-        gmail_message_id: fresh.gmailMessageId,
-        history_id_seen: fresh.historyIdSeen,
-        recipient_filter: filter ?? null,
-        to_header: to || null,
-      });
-      logger.info('Inbound email skipped: recipient filter', { id: fresh.id, to });
+    const message =
+      fresh.provider === PROVIDER_INBOX ? loadInboxMessage(fresh) : await loadGmailMessage(fresh);
+    if (message === null) {
       await markInboundCompleted(fresh.id, null, []);
       return;
     }
 
-    const norm = normalizeGmailMessageParts(payload, snippet);
-    const bodyText = norm.plainBody || norm.snippetFallback;
-    const bodyHash = hashBody(bodyText);
+    const bodyHash = hashBody(message.bodyText);
+    // `!high` and `@stage` in the subject hold in either mode; the model only
+    // ever sees the subject without them.
+    const directives = parseSubjectDirectives(message.subject);
+    const fallbackTitle = directives.title || firstLineOf(message.bodyText) || '(no subject)';
+    const mode = extractionMode();
 
     logGmailInboundTrace('worker.extraction_started', {
       inbound_row_id: fresh.id,
-      gmail_message_id: fresh.gmailMessageId,
+      message_key: fresh.messageKey,
       history_id_seen: fresh.historyIdSeen,
       normalized_body_hash: bodyHash,
-      body_length: bodyText.length,
-      body_source: norm.plainBody ? 'plain_body' : 'snippet_fallback',
+      body_length: message.bodyText.length,
+      body_source: message.bodySource,
+      extraction_mode: mode,
+      directive_priority: directives.priority,
+      directive_stage: directives.stageName,
     });
 
     const stagesPromise = storage.getStages();
-    const extractionPromise = invokeEmailTaskGraph({
-      subject,
-      body: bodyText,
-      traceContext: {
-        inboundRowId: fresh.id,
-        gmailMessageId: fresh.gmailMessageId,
-        historyIdSeen: fresh.historyIdSeen ?? undefined,
-        normalizedBodyHash: bodyHash,
-      },
-    });
+    const extractionPromise: Promise<EmailTaskExtraction> =
+      mode === 'plain'
+        ? Promise.resolve(plainExtraction(message.subject, message.bodyText))
+        : invokeEmailTaskGraph({
+            subject: directives.title,
+            body: message.bodyText,
+            traceContext: {
+              inboundRowId: fresh.id,
+              messageKey: fresh.messageKey,
+              historyIdSeen: fresh.historyIdSeen ?? undefined,
+              normalizedBodyHash: bodyHash,
+            },
+          }).then((extracted) => applySubjectDirectives(extracted, directives));
     const [stages, extraction] = await Promise.all([stagesPromise, extractionPromise]);
 
     logGmailInboundTrace('worker.extraction_completed', {
       inbound_row_id: fresh.id,
-      gmail_message_id: fresh.gmailMessageId,
+      message_key: fresh.messageKey,
       history_id_seen: fresh.historyIdSeen,
       normalized_body_hash: bodyHash,
+      extraction_mode: mode,
       extracted_parent_title_present: Boolean(extraction.parentTask.title),
       extracted_parent_priority: extraction.parentTask.priority ?? null,
       extracted_parent_target_stage_name: extraction.parentTask.targetStageName ?? null,
@@ -181,7 +242,7 @@ export async function processOneInboundRow(): Promise<void> {
 
     const parentTask = buildTaskInsert({
       draft: extraction.parentTask,
-      fallbackTitle: subject,
+      fallbackTitle,
       fallbackStageName: null,
       stages,
     });
@@ -196,7 +257,7 @@ export async function processOneInboundRow(): Promise<void> {
 
     logGmailInboundTrace('worker.stage_resolved', {
       inbound_row_id: fresh.id,
-      gmail_message_id: fresh.gmailMessageId,
+      message_key: fresh.messageKey,
       history_id_seen: fresh.historyIdSeen,
       requested_stage_name: parentTask.requestedStageName ?? null,
       resolved_stage_id: parentTask.resolvedStageId,
@@ -212,7 +273,7 @@ export async function processOneInboundRow(): Promise<void> {
 
     logGmailInboundTrace('worker.task_group_created', {
       inbound_row_id: fresh.id,
-      gmail_message_id: fresh.gmailMessageId,
+      message_key: fresh.messageKey,
       history_id_seen: fresh.historyIdSeen,
       created_task_id: created.parent.id,
       created_task_ids: createdTaskIds,
@@ -224,7 +285,7 @@ export async function processOneInboundRow(): Promise<void> {
 
     logGmailInboundTrace('worker.completed', {
       inbound_row_id: fresh.id,
-      gmail_message_id: fresh.gmailMessageId,
+      message_key: fresh.messageKey,
       history_id_seen: fresh.historyIdSeen,
       created_task_id: created.parent.id,
       created_task_ids: createdTaskIds,
@@ -234,19 +295,21 @@ export async function processOneInboundRow(): Promise<void> {
 
     logger.info('Inbound email processed', {
       inbound_row_id: fresh.id,
-      gmail_message_id: fresh.gmailMessageId,
+      provider: fresh.provider,
+      message_key: fresh.messageKey,
       attempt_count: fresh.attemptCount,
+      extraction_mode: mode,
       final_outcome: 'completed',
       created_task_id: created.parent.id,
       created_task_ids: createdTaskIds,
-      rfc_message_id: rfcId,
+      rfc_message_id: message.rfcId,
       normalized_body_hash: bodyHash,
     });
   } catch (e) {
     const err = e instanceof Error ? e.message : String(e);
     logGmailInboundTrace('worker.error', {
       inbound_row_id: row.id,
-      gmail_message_id: row.gmailMessageId,
+      message_key: row.messageKey,
       history_id_seen: row.historyIdSeen,
       attempt_count: row.attemptCount,
       ...getErrorTraceFields(e),
@@ -258,14 +321,14 @@ export async function processOneInboundRow(): Promise<void> {
       await markInboundFailed(row.id, err);
       logGmailInboundTrace('worker.failed_max_attempts', {
         inbound_row_id: row.id,
-        gmail_message_id: row.gmailMessageId,
+        message_key: row.messageKey,
         history_id_seen: row.historyIdSeen,
         attempt_count: attempts,
         final_outcome: 'failed',
       });
       logger.info('Inbound email failed (max attempts)', {
         inbound_row_id: row.id,
-        gmail_message_id: row.gmailMessageId,
+        message_key: row.messageKey,
         attempt_count: attempts,
         final_outcome: 'failed',
       });
@@ -273,7 +336,7 @@ export async function processOneInboundRow(): Promise<void> {
       await markInboundPendingRetry(row.id, err);
       logGmailInboundTrace('worker.retry_scheduled', {
         inbound_row_id: row.id,
-        gmail_message_id: row.gmailMessageId,
+        message_key: row.messageKey,
         history_id_seen: row.historyIdSeen,
         attempt_count: attempts,
         final_outcome: 'pending_retry',
@@ -282,6 +345,10 @@ export async function processOneInboundRow(): Promise<void> {
   }
 }
 
+/**
+ * Polls the queue, which both the Gmail pipeline and POST /api/inbox feed.
+ * GMAIL_INBOUND_WORKER_DISABLED stops it, and with it the inbox.
+ */
 export function startInboundEmailWorker(): void {
   if (process.env.GMAIL_INBOUND_WORKER_DISABLED === 'true') {
     logger.warn('GMAIL_INBOUND_WORKER_DISABLED: inbound email worker not started');
@@ -291,6 +358,7 @@ export function startInboundEmailWorker(): void {
   logGmailInboundTrace('worker.started', {
     poll_interval_ms: interval,
     worker_disabled: false,
+    extraction_mode: extractionMode(),
   });
   setInterval(() => {
     void processOneInboundRow().catch((e: unknown) => {

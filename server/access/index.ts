@@ -7,9 +7,11 @@ import {
   ACCESS_REQUIRED,
   ACCESS_TRUST_DAYS,
   DEVELOPER_SECRET_HEADER,
+  type AccessKind,
   type AccessStatus,
   type ConsoleDevice,
 } from '@shared/access';
+import { api } from '@shared/routes';
 import { logger } from '@shared/logger';
 import { db } from '../db';
 import {
@@ -18,6 +20,7 @@ import {
   hashAccessCode,
   hashBrowserKey,
   hashExportToken,
+  hashInboxToken,
   newAccessCode,
   newSecretToken,
   sameDigest,
@@ -37,13 +40,15 @@ import {
  *    other-browser code gets one and the same answer.
  *  - Every /api request needs an admitted, unrevoked, in-date browser, except
  *    the health check, the access endpoints themselves, the Gmail webhook
- *    (Google signs it; it has its own check) and GET /api/export with a live
- *    read-only export token (the briefing agent has no browser).
+ *    (Google signs it; it has its own check), GET /api/export with a live
+ *    read-only export token (the briefing agent has no browser) and POST
+ *    /api/inbox with a live inbox token (nor has a mail forwarder). A token
+ *    opens its one route and nothing else.
  *  - A change from another site is refused before it is read.
- *  - The developer console (/console/api) issues codes and export tokens and
- *    revokes them. It answers only with DEVELOPER_SECRET in a header, compared
- *    in constant time; with any other it answers exactly like an address that
- *    does not exist.
+ *  - The developer console (/console/api) issues codes, export tokens and
+ *    inbox tokens and revokes them. It answers only with DEVELOPER_SECRET in
+ *    a header, compared in constant time; with any other it answers exactly
+ *    like an address that does not exist.
  *  - Codes and tokens are shown once and stored only as HMAC digests under
  *    CODE_HASH_KEY.
  */
@@ -105,12 +110,7 @@ export interface AccessStore {
   byBrowserKey(digest: string): Promise<AccessDevice | undefined>;
   admit(id: number, browserKeyHash: string, at: Date): Promise<void>;
   touch(id: number, at: Date): Promise<void>;
-  insert(row: {
-    kind: 'device' | 'export-token';
-    label: string;
-    codeHash: string;
-    at: Date;
-  }): Promise<boolean>;
+  insert(row: { kind: AccessKind; label: string; codeHash: string; at: Date }): Promise<boolean>;
   revoke(id: number, at: Date): Promise<AccessDevice | undefined>;
 }
 
@@ -182,6 +182,17 @@ export function fromAnotherSite(req: Request): boolean {
   } catch {
     return true;
   }
+}
+
+/**
+ * The kind of token that opens this request, if a token can: an export token
+ * reads the export, an inbox token posts to the inbox. Null for every other
+ * route, which only an admitted browser reaches.
+ */
+export function tokenKindFor(method: string, path: string): 'export-token' | 'inbox-token' | null {
+  if (method === 'GET' && path === api.export.get.path) return 'export-token';
+  if (method === 'POST' && path === api.inbox.ingest.path) return 'inbox-token';
+  return null;
 }
 
 const TOUCH_EVERY_MS = 5 * 60_000;
@@ -275,12 +286,20 @@ export function createAccess(options: {
       return;
     }
     void (async () => {
-      // The briefing agent: a read-only token, and only for the export.
+      // A bearer token opens one route and nothing else: an export token the
+      // export (the briefing agent, read-only), an inbox token the inbox (a
+      // mail forwarder, write-only). Each kind has its own digest, so one can
+      // never pass for the other.
       const auth = req.headers.authorization;
-      if (req.method === 'GET' && path === '/api/export' && auth?.startsWith('Bearer ')) {
-        const digest = hashExportToken(config.hashKey, auth.slice(7));
+      const wanted = tokenKindFor(req.method, path);
+      if (wanted !== null && auth?.startsWith('Bearer ')) {
+        const secret = auth.slice(7);
+        const digest =
+          wanted === 'export-token'
+            ? hashExportToken(config.hashKey, secret)
+            : hashInboxToken(config.hashKey, secret);
         const token = findByDigest(await store.all(), digest);
-        if (token?.kind === 'export-token' && token.revokedAt === null) {
+        if (token?.kind === wanted && token.revokedAt === null) {
           if (!token.lastSeenAt || now().getTime() - token.lastSeenAt.getTime() > TOUCH_EVERY_MS) {
             await store.touch(token.id, now());
           }
@@ -378,7 +397,7 @@ export function createAccess(options: {
 
   const toConsole = (row: AccessDevice): ConsoleDevice => ({
     id: row.id,
-    kind: row.kind === 'export-token' ? 'export-token' : 'device',
+    kind: row.kind === 'export-token' || row.kind === 'inbox-token' ? row.kind : 'device',
     label: row.label,
     status: row.revokedAt
       ? 'revoked'
@@ -412,9 +431,19 @@ export function createAccess(options: {
     return length >= 1 && length <= 60 ? label : null;
   };
 
+  // A code is typed by a person; a token is pasted by a machine, and its
+  // prefix says which kind it is when it turns up in a config file.
+  const secretFor = (kind: AccessKind): string =>
+    kind === 'device' ? newAccessCode() : newSecretToken(kind === 'export-token' ? 'kbx_' : 'kbi_');
+  const digestFor = (kind: AccessKind, secret: string): string =>
+    kind === 'device'
+      ? hashAccessCode(config.hashKey, secret)
+      : kind === 'export-token'
+        ? hashExportToken(config.hashKey, secret)
+        : hashInboxToken(config.hashKey, secret);
+
   const issue =
-    (kind: 'device' | 'export-token') =>
-    (req: Request, res: Response, next: (e?: unknown) => void) => {
+    (kind: AccessKind) => (req: Request, res: Response, next: (e?: unknown) => void) => {
       void (async () => {
         const label = labelOf(req.body);
         if (!label) {
@@ -422,11 +451,8 @@ export function createAccess(options: {
           return;
         }
         for (let draw = 0; draw < 5; draw++) {
-          const secret = kind === 'device' ? newAccessCode() : newSecretToken('kbx_');
-          const codeHash =
-            kind === 'device'
-              ? hashAccessCode(config.hashKey, secret)
-              : hashExportToken(config.hashKey, secret);
+          const secret = secretFor(kind);
+          const codeHash = digestFor(kind, secret);
           if (await store.insert({ kind, label, codeHash, at: now() })) {
             logger.info(`access: ${kind} issued`, { label });
             // Shown once: only its digest is kept.
@@ -439,6 +465,7 @@ export function createAccess(options: {
     };
   consoleRouter.post('/devices', issue('device'));
   consoleRouter.post('/tokens', issue('export-token'));
+  consoleRouter.post('/inbox-tokens', issue('inbox-token'));
 
   consoleRouter.post('/devices/:id/revoke', (req, res, next) => {
     void (async () => {

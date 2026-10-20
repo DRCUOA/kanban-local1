@@ -51,15 +51,18 @@ The app serves both API and client on **port 5000** (`http://localhost:5000`).
 | `DEVELOPER_SECRET` | **Production** | 16+ random characters. Opens the developer console at `/console`, where access codes and export tokens are issued and revoked. Production refuses to start without it |
 | `PORT` | No | Server port (default: `5000`) |
 | `NODE_ENV` | No | `development` or `production` |
-| `GMAIL_INBOUND_WORKER_DISABLED` | No | Set to `true` in production if you are not using the Gmail inbound pipeline (avoids background polling) |
-| `GMAIL_INBOUND_TRACE` | No | Set to `true` temporarily to emit stage-by-stage Gmail inbound trace logs in production |
+| `INBOX_ALLOWED_SENDERS` | No | Addresses and domains mail posted to `POST /api/inbox` may come from (`rich@example.com, @work.test`); empty allows every sender. See [INBOX_SETUP.md](INBOX_SETUP.md) |
+| `INBOX_EXTRACTION` | No | `plain` (subject → title, text → description) or `llm` (the OpenAI extraction, needs `OPENAI_API_KEY`) for every inbound message; unset, `llm` when a key is set, else `plain` |
+| `GMAIL_INBOUND_WORKER_DISABLED` | No | Set to `true` in production if you use neither the inbox nor the Gmail pipeline (avoids background polling) |
+| `GMAIL_INBOUND_TRACE` | No | Set to `true` temporarily to emit stage-by-stage inbound trace logs in production |
+| Inbox (mail → tasks, no provider) | No | [INBOX_SETUP.md](INBOX_SETUP.md): an inbox token, `POST /api/inbox`, and a Cloudflare email worker |
 | Gmail / Pub/Sub / OpenAI | No | Plain steps: [GMAIL_SETUP_SIMPLE.md](GMAIL_SETUP_SIMPLE.md); technical detail: [GMAIL_PUBSUB_SETUP.md](GMAIL_PUBSUB_SETUP.md) |
 
 ### Production on Railway
 
 The repo includes [`railway.json`](railway.json) (Dockerfile builder, health check on `/api/health`). Provision a **PostgreSQL** plugin in the same Railway project and set **`DATABASE_URL`** from the database service (reference the variable Railway provides). Set **`NODE_ENV=production`**. Railway injects **`PORT`** automatically; the server reads it.
 
-**Access (before the first deploy with it):** set `CODE_HASH_KEY` and `DEVELOPER_SECRET` on the service. After deploying, open `/console`, enter the developer secret, issue an **access code** per browser you use (shown once), and enter it on the board's access-code screen; each browser stays trusted for 90 days. Issue an **export token** for the briefing agent and have it send `Authorization: Bearer <token>` to `GET /api/export` (the only route a token opens). Revoke either from the console. `/api/health` and the Gmail Pub/Sub webhook stay open (the webhook checks Google's signed token).
+**Access (before the first deploy with it):** set `CODE_HASH_KEY` and `DEVELOPER_SECRET` on the service. After deploying, open `/console`, enter the developer secret, issue an **access code** per browser you use (shown once), and enter it on the board's access-code screen; each browser stays trusted for 90 days. Issue an **export token** for the briefing agent and have it send `Authorization: Bearer <token>` to `GET /api/export`, and an **inbox token** for whatever forwards mail to `POST /api/inbox` ([INBOX_SETUP.md](INBOX_SETUP.md)); each token opens its one route and nothing else. Revoke any of them from the console. `/api/health` and the Gmail Pub/Sub webhook stay open (the webhook checks Google's signed token).
 
 On **deploy**, the production server runs SQL migrations from `migrations/` before starting (using Drizzle’s migrator). You can also run `npm run db:migrate` locally or in CI when `DATABASE_URL` points at your database (uses `drizzle-kit migrate`).
 
@@ -150,6 +153,11 @@ All routes are defined declaratively in `shared/routes.ts` and registered in `se
 | GET | `/api/export?includeAttachments=true` | Embed each attachment's bytes (base64) in `attachments[].data`, making the file a complete backup an import can restore files from. Off by default: the bundle always lists attachments (`id`, `taskId`, `filename`, `mimeType`, `byteSize`, `url`) but the metadata alone keeps it small |
 
 Every response carries `Cache-Control: no-store, no-cache, must-revalidate` (plus `CDN-Cache-Control: no-store`) — the board changes all day, so nothing in front of the route may hold a snapshot. A CDN that ignores those headers needs a cache-bypass rule for `/api/export*`.
+
+### Inbox
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/inbox` | A message for the board, queued for the inbound worker and answered at once (`202 { id, duplicate }`). Body: a raw email (`message/rfc822`), a note (`text/plain`, first line the subject) or JSON (`subject`, `text`, `from`, `to`, `messageId`, all optional but one of the first two). Opened by an inbox token (`Authorization: Bearer`); senders may be limited by `INBOX_ALLOWED_SENDERS`. See [INBOX_SETUP.md](INBOX_SETUP.md) |
 
 ### Attachments
 | Method | Path | Description |

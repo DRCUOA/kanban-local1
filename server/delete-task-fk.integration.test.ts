@@ -24,9 +24,7 @@ describe('Task deletion with inbound_email_processing FK reference', () => {
 
   afterEach(async () => {
     for (const msgId of testMessageIds) {
-      await db
-        .delete(inboundEmailProcessing)
-        .where(eq(inboundEmailProcessing.gmailMessageId, msgId));
+      await db.delete(inboundEmailProcessing).where(eq(inboundEmailProcessing.messageKey, msgId));
     }
     await db.delete(tasks).where(eq(tasks.stageId, stageId));
     await db.delete(stages).where(eq(stages.id, stageId));
@@ -40,7 +38,7 @@ describe('Task deletion with inbound_email_processing FK reference', () => {
 
     await db.insert(inboundEmailProcessing).values({
       provider: 'gmail',
-      gmailMessageId: msgId,
+      messageKey: msgId,
       processingStatus: INBOUND_PROCESSING_STATUS.COMPLETED,
       createdTaskId: task.id,
       createdTaskIds: [task.id],
@@ -55,7 +53,7 @@ describe('Task deletion with inbound_email_processing FK reference', () => {
     const [row] = await db
       .select()
       .from(inboundEmailProcessing)
-      .where(eq(inboundEmailProcessing.gmailMessageId, msgId));
+      .where(eq(inboundEmailProcessing.messageKey, msgId));
     expect(row).toBeDefined();
     expect(row!.createdTaskId).toBeNull();
   });
@@ -73,7 +71,7 @@ describe('Task deletion with inbound_email_processing FK reference', () => {
 
     await db.insert(inboundEmailProcessing).values({
       provider: 'gmail',
-      gmailMessageId: msgId,
+      messageKey: msgId,
       processingStatus: INBOUND_PROCESSING_STATUS.COMPLETED,
       createdTaskId: parent.id,
       createdTaskIds: [parent.id, child.id],
@@ -85,7 +83,7 @@ describe('Task deletion with inbound_email_processing FK reference', () => {
     const [row] = await db
       .select()
       .from(inboundEmailProcessing)
-      .where(eq(inboundEmailProcessing.gmailMessageId, msgId));
+      .where(eq(inboundEmailProcessing.messageKey, msgId));
     expect(row).toBeDefined();
     expect(row!.createdTaskId).toBeNull();
     expect(row!.createdTaskIds).not.toContain(parent.id);

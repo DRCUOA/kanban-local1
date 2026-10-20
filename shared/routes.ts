@@ -17,6 +17,7 @@ import {
   type TaskDependency,
 } from './schema';
 import { exportQuerySchema, taskExportBundleSchema } from './export';
+import { inboxJsonSchema, type InboxReceipt } from './inbox';
 import { taskListQuerySchema } from './project-scope';
 import { bulkUpdateRequestSchema, type BulkUpdateResult } from './bulk-edit';
 import {
@@ -275,6 +276,28 @@ export const api = {
       responses: {
         204: z.void(),
         404: z.object({ error: z.string(), status: z.number() }),
+      },
+    },
+  },
+  inbox: {
+    /**
+     * Mail for the board, from whatever receives it for the domain (shared/
+     * inbox.ts, INBOX_SETUP.md). The body is the raw email (`message/rfc822`),
+     * a note (`text/plain`, first line the subject) or `inboxJsonSchema`.
+     * Opened by an inbox token (`Authorization: Bearer`), queued for the
+     * inbound worker and acknowledged at once; a redelivery answers with the
+     * row it already has (`duplicate: true`).
+     */
+    ingest: {
+      method: 'POST' as const,
+      path: '/api/inbox',
+      input: inboxJsonSchema,
+      responses: {
+        202: z.custom<InboxReceipt>(),
+        400: z.object({ error: z.string(), status: z.number() }),
+        403: z.object({ error: z.string(), status: z.number() }),
+        413: z.object({ error: z.string(), status: z.number() }),
+        415: z.object({ error: z.string(), status: z.number() }),
       },
     },
   },

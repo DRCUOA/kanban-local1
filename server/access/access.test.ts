@@ -88,6 +88,7 @@ beforeEach(() => {
   app.post('/api/tasks', (_req, res) => res.status(201).json({ id: 2 }));
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
   app.post('/api/webhooks/gmail-pubsub', (_req, res) => res.status(204).end());
+  app.post('/api/inbox', (_req, res) => res.status(202).json({ id: 1, duplicate: false }));
 });
 
 /** A browser: keeps its cookie between requests. */
@@ -201,6 +202,56 @@ describe('the export token', () => {
     const b = browser();
     await b.get('/api/access/status');
     expect((await b.post('/api/access/admit').send({ code: token })).status).toBe(403);
+  });
+
+  it('does not open the inbox', async () => {
+    const bearer = `Bearer ${await issueToken()}`;
+    const res = await request(app).post('/api/inbox').set('Authorization', bearer).send({});
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('the inbox token', () => {
+  const issueInboxToken = async () =>
+    (
+      await request(app)
+        .post('/console/api/inbox-tokens')
+        .set('x-developer-secret', SECRET)
+        .send({ label: 'Cloudflare mail' })
+    ).body.token as string;
+
+  it('opens POST /api/inbox only, until revoked', async () => {
+    const token = await issueInboxToken();
+    expect(token).toMatch(/^kbi_/);
+    const bearer = `Bearer ${token}`;
+    const post = () => request(app).post('/api/inbox').set('Authorization', bearer).send({});
+    expect((await post()).status).toBe(202);
+    expect((await request(app).get('/api/export').set('Authorization', bearer)).status).toBe(401);
+    expect((await request(app).get('/api/tasks').set('Authorization', bearer)).status).toBe(401);
+    expect(
+      (await request(app).post('/api/tasks').set('Authorization', bearer).send({})).status,
+    ).toBe(401);
+    expect((await request(app).post('/api/inbox').send({})).status).toBe(401);
+    expect(
+      (await request(app).post('/api/inbox').set('Authorization', 'Bearer kbi_wrong').send({}))
+        .status,
+    ).toBe(401);
+    await request(app)
+      .post('/console/api/devices/1/revoke')
+      .set('x-developer-secret', SECRET)
+      .send({ confirm: true });
+    expect((await post()).status).toBe(401);
+  });
+
+  it('is listed by the console as an inbox token, live from the start', async () => {
+    await issueInboxToken();
+    const list = await request(app).get('/console/api/devices').set('x-developer-secret', SECRET);
+    expect(list.body.devices[0]).toMatchObject({
+      label: 'Cloudflare mail',
+      kind: 'inbox-token',
+      status: 'live',
+      trustedUntil: null,
+    });
   });
 });
 

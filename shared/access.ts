@@ -11,9 +11,16 @@ export interface AccessStatus {
   admitted: boolean;
 }
 
+/**
+ * What the developer console issues: an access code that admits a browser, a
+ * read-only export token (GET /api/export), a write-only inbox token (POST
+ * /api/inbox).
+ */
+export type AccessKind = 'device' | 'export-token' | 'inbox-token';
+
 export interface ConsoleDevice {
   id: number;
-  kind: 'device' | 'export-token';
+  kind: AccessKind;
   label: string;
   status: 'live' | 'revoked' | 'not-used';
   issuedAt: string;

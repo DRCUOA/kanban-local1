@@ -9,8 +9,9 @@ import { useToast } from '@/hooks/use-toast';
 
 /**
  * The developer console (after stageboard-pilot's): issue an access code per
- * device, issue a read-only export token for the briefing agent, list and
- * revoke them. The page itself holds nothing; every request carries the
+ * device, a read-only export token for the briefing agent, a write-only inbox
+ * token for whatever forwards mail to the board (INBOX_SETUP.md), and list
+ * and revoke them. The page itself holds nothing; every request carries the
  * developer secret, which is kept in this tab's session storage only and
  * dropped with the tab. A wrong secret gets the same answer as a page that
  * does not exist.
@@ -49,6 +50,23 @@ async function consoleFetch<T>(secret: string, path: string, body?: unknown): Pr
 
 const when = (iso: string | null) => (iso ? format(new Date(iso), 'd MMM yyyy, HH:mm') : '—');
 
+type IssueKind = 'code' | 'token' | 'inbox';
+const ISSUE_PATH: Record<IssueKind, string> = {
+  code: '/devices',
+  token: '/tokens',
+  inbox: '/inbox-tokens',
+};
+const ISSUE_NAME: Record<IssueKind, string> = {
+  code: 'Access code',
+  token: 'Export token',
+  inbox: 'Inbox token',
+};
+const KIND_NAME: Record<ConsoleDevice['kind'], string> = {
+  device: 'Device',
+  'export-token': 'Export token',
+  'inbox-token': 'Inbox token',
+};
+
 export default function DeveloperConsole() {
   const { toast } = useToast();
   const [secret, setSecret] = useState<string | null>(recall);
@@ -56,7 +74,7 @@ export default function DeveloperConsole() {
   const [devices, setDevices] = useState<ConsoleDevice[] | null>(null);
   const [label, setLabel] = useState('');
   const [issued, setIssued] = useState<{
-    kind: 'code' | 'token';
+    kind: IssueKind;
     label: string;
     value: string;
   } | null>(null);
@@ -84,14 +102,12 @@ export default function DeveloperConsole() {
     // Only on first open; later loads are explicit.
   }, []);
 
-  const issue = async (kind: 'code' | 'token') => {
+  const issue = async (kind: IssueKind) => {
     if (!secret) return;
     try {
-      const out = await consoleFetch<{ code?: string; token?: string }>(
-        secret,
-        kind === 'code' ? '/devices' : '/tokens',
-        { label },
-      );
+      const out = await consoleFetch<{ code?: string; token?: string }>(secret, ISSUE_PATH[kind], {
+        label,
+      });
       setIssued({ kind, label: label.trim(), value: out.code ?? out.token ?? '' });
       setLabel('');
       await load(secret);
@@ -173,7 +189,7 @@ export default function DeveloperConsole() {
         <div className="flex flex-wrap gap-2">
           <Input
             aria-label="Label"
-            placeholder="Label, e.g. Rich iPhone or Briefing agent"
+            placeholder="Label, e.g. Rich iPhone, Briefing agent or Cloudflare mail"
             value={label}
             maxLength={60}
             onChange={(e) => {
@@ -191,10 +207,18 @@ export default function DeveloperConsole() {
           >
             Export token
           </Button>
+          <Button
+            variant="outline"
+            disabled={label.trim() === ''}
+            onClick={() => void issue('inbox')}
+          >
+            Inbox token
+          </Button>
         </div>
         <p className="text-[11px] text-muted-foreground">
           An access code admits one browser for 90 days. An export token lets a script read GET
-          /api/export only (send it as <code>Authorization: Bearer …</code>).
+          /api/export only; an inbox token lets a mail forwarder or a script post to POST /api/inbox
+          only. Both are sent as <code>Authorization: Bearer …</code>.
         </p>
         {issued && (
           <div
@@ -202,8 +226,7 @@ export default function DeveloperConsole() {
             role="status"
           >
             <p className="text-sm font-medium">
-              {issued.kind === 'code' ? 'Access code' : 'Export token'} for “{issued.label}”. Shown
-              once: copy it now.
+              {ISSUE_NAME[issued.kind]} for “{issued.label}”. Shown once: copy it now.
             </p>
             <div className="flex items-center gap-2">
               <code className="flex-1 break-all rounded bg-background px-2 py-1.5 font-mono text-sm">
@@ -248,7 +271,7 @@ export default function DeveloperConsole() {
                 {devices.map((d) => (
                   <tr key={d.id} className="border-t">
                     <td className="py-2 pr-3 font-medium">{d.label}</td>
-                    <td className="py-2 pr-3">{d.kind === 'device' ? 'Device' : 'Export token'}</td>
+                    <td className="py-2 pr-3">{KIND_NAME[d.kind]}</td>
                     <td className="py-2 pr-3">
                       {d.status === 'not-used'
                         ? 'Not used yet'

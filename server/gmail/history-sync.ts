@@ -148,7 +148,7 @@ export async function syncAfterPubSubNotification(params: {
       reason: 'missing_cursor',
     });
     const rec = await recoveryListMessageIds(labelId);
-    const upserts = rec.ids.map((id) => ({ gmailMessageId: id, historyIdSeen }));
+    const upserts = rec.ids.map((id) => ({ messageKey: id, historyIdSeen }));
     const newCursor = rec.latestHistoryId || notificationHistoryId;
     logGmailInboundTrace('sync.recovery_collected', {
       trace_id: traceContext?.traceId,
@@ -218,7 +218,7 @@ export async function syncAfterPubSubNotification(params: {
       });
     }
     const upserts = messageIds.map((id) => ({
-      gmailMessageId: id,
+      messageKey: id,
       historyIdSeen: latestHistoryId,
     }));
     await commitCursorAndInboundRows({
@@ -249,7 +249,7 @@ export async function syncAfterPubSubNotification(params: {
         ...getErrorTraceFields(e),
       });
       const rec = await recoveryListMessageIds(labelId);
-      const upserts = rec.ids.map((id) => ({ gmailMessageId: id, historyIdSeen }));
+      const upserts = rec.ids.map((id) => ({ messageKey: id, historyIdSeen }));
       const newCursor = rec.latestHistoryId || notificationHistoryId;
       logGmailInboundTrace('sync.recovery_collected', {
         trace_id: traceContext?.traceId,
