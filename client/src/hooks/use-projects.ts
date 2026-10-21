@@ -5,7 +5,7 @@ import { apiDelete, apiGet, apiPatch, apiPost } from '@/lib/api';
 
 /**
  * Every project, active ones first, each with its live task count. One query
- * shared by the header selector, the task forms, the cards and Admin.
+ * shared by the landing page, the task forms, the cards and Admin.
  */
 export function useProjects() {
   return useQuery({

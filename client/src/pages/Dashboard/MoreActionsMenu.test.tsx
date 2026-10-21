@@ -57,6 +57,18 @@ describe('MoreActionsMenu', () => {
     expect(screen.getByText('Import Tasks')).toBeDefined();
   });
 
+  it('holds no filters: whose work and which goal are the landing page’s, sorting stays', () => {
+    const onToggleSortByOwner = vi.fn();
+    render(<MoreActionsMenu {...defaults} onToggleSortByOwner={onToggleSortByOwner} />);
+    openMenu();
+
+    expect(screen.queryByText('Everyone')).toBeNull();
+    expect(screen.queryByText('Unassigned')).toBeNull();
+    expect(screen.queryByText('All goals')).toBeNull();
+    fireEvent.click(screen.getByTestId('owner-sort-toggle'));
+    expect(onToggleSortByOwner).toHaveBeenCalledOnce();
+  });
+
   it('carries the view toggles the bottom bar gave up', () => {
     render(<MoreActionsMenu {...defaults} />);
 
