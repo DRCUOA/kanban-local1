@@ -879,7 +879,9 @@ export class DatabaseStorage implements IStorage {
       filename: String(row.filename),
       mimeType: String(row.mime_type),
       byteSize: Number(row.byte_size),
-      createdAt: new Date(row.created_at as string | Date),
+      // A raw query hands back the column's text, which carries no zone; read
+      // it as UTC the way a typed select does, not in Node's local zone.
+      createdAt: new Date(`${String(row.created_at)}+0000`),
     };
   }
 
