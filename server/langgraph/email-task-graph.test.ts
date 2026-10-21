@@ -68,6 +68,17 @@ describe('invokeEmailTaskGraph', () => {
   });
 
   it('runs search and epic decomposition in parallel', async () => {
+    // Parallel means both slow steps are in flight at once. Count that rather
+    // than timing the run, which a loaded machine stretches past any bound.
+    let inFlight = 0;
+    let peakInFlight = 0;
+    async function slowStep<T>(value: T): Promise<T> {
+      inFlight++;
+      peakInFlight = Math.max(peakInFlight, inFlight);
+      await delay(90);
+      inFlight--;
+      return value;
+    }
     const structuredInvoke = vi
       .fn()
       .mockResolvedValueOnce({
@@ -75,9 +86,8 @@ describe('invokeEmailTaskGraph', () => {
         isEpic: true,
         searchQuery: 'how to roll out sso integration',
       })
-      .mockImplementationOnce(async () => {
-        await delay(90);
-        return {
+      .mockImplementationOnce(() =>
+        slowStep({
           childTasks: [
             {
               title: 'Audit SSO requirements',
@@ -92,8 +102,8 @@ describe('invokeEmailTaskGraph', () => {
               targetStageName: 'In Progress',
             },
           ],
-        };
-      })
+        }),
+      )
       .mockResolvedValueOnce(
         makeExtraction({
           parentTask: {
@@ -109,17 +119,15 @@ describe('invokeEmailTaskGraph', () => {
           },
         }),
       );
-    const searchHowTo = vi.fn(async () => {
-      await delay(90);
-      return {
+    const searchHowTo = vi.fn(() =>
+      slowStep({
         query: 'how to roll out sso integration',
         summary:
           'Rollouts usually require provider setup, callback wiring, testing, and migration planning.',
         sources: [{ title: 'OpenAI', url: 'https://openai.com' }],
-      };
-    });
+      }),
+    );
 
-    const startedAt = Date.now();
     const result = await invokeEmailTaskGraph(
       {
         subject: 'This is an EPIC: SSO rollout',
@@ -130,9 +138,8 @@ describe('invokeEmailTaskGraph', () => {
         searchHowTo,
       },
     );
-    const elapsedMs = Date.now() - startedAt;
 
-    expect(elapsedMs).toBeLessThan(160);
+    expect(peakInFlight).toBe(2);
     expect(result.flags.isEpic).toBe(true);
     expect(result.flags.usedWebSearch).toBe(true);
     expect(result.searchContext?.query).toBe('how to roll out sso integration');
