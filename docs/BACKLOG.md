@@ -4,6 +4,7 @@
 **Last consolidated:** 14 Aug 2026, from board tasks #151–#162 + EPIC-01/03/04
 **Amended:** 12 Oct 2026 — **B-11** added (EPIC-06, owner as an entity); B-01 Q3, B-04, B-05 and B-10 updated where it changes them
 **Amended:** 13 Oct 2026 — **B-05** part-done: EPIC-03 stories 1 and 2 landed (state collapse), ahead of B-01's audit
+**Amended:** 21 Oct 2026 — **B-11 shipped** (PR #131, 12 Oct). B-04 and B-07 updated where shipped work changes them. New section *Shipped outside the backlog, 12–21 Oct* records eight pieces of work that shipped without a backlog item (one of them partly EPIC-05); each PR is in `docs/CHANGE-CONTROL.md`. Nothing reordered: that is the weekly review's call
 **Convention:** items carry a stable `B-xx` id for tracking; board task ids and epic
 docs are cross-referenced so nothing exists in two places with two meanings.
 
@@ -59,6 +60,9 @@ Owner sort is **excluded** here — `owner` vs swimlane-tag is exactly the ambig
 EPIC-03 removes; sorting on it now would sort wrong.
 _12 Oct 2026: the owner sort now has a home — **B-11** / EPIC-06 story OWN-08 — and
 no longer waits on B-05._
+_21 Oct 2026: the owner sort shipped with B-11 (More menu, PR #131). Soonest-due-first
+has been the board's fixed default order since 15 Aug (`db0ec74`), but there is still no
+effort sort and no way to choose a sort; that is what remains of this item._
 
 **B-05 — EPIC-03: One authoritative state per task** · 2–3 sprints (~29 pts)
 The big rock. Refine with B-01's report in hand, then implement.
@@ -92,6 +96,12 @@ rows so lane membership is derived from assignment instead of from a tag string.
 Spec: `docs/epics/EPIC-06-owner-as-entity.md`. Decisions are locked; it needs
 refinement against the seven open questions, then build.
 
+_21 Oct 2026: **shipped** in PR #131 on 12 Oct: the `owners` table, `tasks.owner_id`,
+person lanes bound to owners, the Admin Owners card and the owner filter and sort
+(migration `0013`, with `owner_backfill_report`). OWN-10, dropping the trigger-kept
+`tasks.owner` mirror, is left for a later release. The epic doc's status line still
+reads "Spec"._
+
 Why it does **not** wait on B-01: the audit's job is to re-validate EPIC-03's
 findings against current data, and this item did exactly that for the assignment
 finding — measured against the live dev board on 12 Oct 2026 (16 tasks, `Rich` ×9,
@@ -108,6 +118,12 @@ waits: it needs a *viewed/interacted* timestamp (a new fact — `updatedAt` only
 tracks mutations), which shouldn't be added mid-model-flux; and it's a sibling of
 EPIC-04's awareness thesis — design them together so the board has one coherent
 "what's new/what's touched" language, not two competing ones.
+_21 Oct 2026: the first reason has partly gone. `tasks.viewed_at` exists (migration
+`0024`, PR #159): stamped by `POST /api/tasks/:id/viewed` when the task dialog opens,
+and used by the landing page's "New tasks" row. Only tasks made from mail start
+unseen; existing rows and every other way in count as seen, so it is a "nobody has
+opened it" fact, not a general last-viewed time. The marker design, and its
+co-design with EPIC-04, has not started._
 
 **B-08 — EPIC-01: Project scoping** · 2 sprints (~21 pts) · **Shipped 26 Sep 2026**
 Pulled forward on the product owner's request, ahead of B-01: a project is a set
@@ -176,6 +192,23 @@ described in EPIC-04 — people for whom tool complexity is already the barrier 
 hidden interface reads as "not for me." Any implementation must be an accelerator
 layered over visible buttons, never the only route to a capability.
 
+### Shipped outside the backlog, 12–21 Oct 2026
+
+Recorded so the next weekly review can decide what each becomes: a backlog item
+closed after the fact, an epic amendment, or nothing. Per-PR detail, schema and
+deploy actions are in `docs/CHANGE-CONTROL.md`.
+
+| Work | PRs | Bearing on this backlog |
+|---|---|---|
+| Goals, building-blocks and dependencies (task type, goal link, predecessor/successor edges, same-project rules) | #136–#139, #141, #147 | EPIC-05's relation, built ahead of its B-01 gate at the owner's direction. Its status line still reads "Draft" |
+| Project and goal views, critical path, Gantt, plan write-up | #143, #148, #156 | EPIC-05 §6 lists critical path, slack and Gantt as **non-goals**; the epic was not amended |
+| "Make this a goal" AI planner | #144, #145, #151 | None. Adds `app_settings` (`0021`) |
+| Access gate, export tokens, developer console | #146, #149 | None. Production needs `CODE_HASH_KEY` and `DEVELOPER_SECRET` |
+| Drag-select and bulk edit, goal filter, active-filter strip | #140, #150 | None |
+| Inbox, `POST /api/inbox` | #158 | None. Renames the Gmail queue's key (`0023`) |
+| Landing page and `tasks.viewed_at` | #159 | Supplies B-07's missing fact (above) |
+| Phone UI passes and restyle | #131, #152, #155, #157 | None |
+
 ## Dependency spine (why this order)
 
 ```plantuml
@@ -193,7 +226,7 @@ rectangle "**B-06 · Next**\nAttachments UX\ndrag-drop + paste\n(board #161)" as
 rectangle "**B-08 · Later**\nEPIC-01\nProject layer\n(board #153)" as B08 #FFFFFF
 rectangle "**B-09 · Later**\nEPIC-04\nCatch-up Replay build" as B09 #FFFFFF
 rectangle "**B-07 · Later**\nFreshness markers\n(board #158)" as B07 #FFFFFF
-rectangle "**B-11 · Next**\nEPIC-06\nOwner as an entity\n(spec 12 Oct)" as B11 #C5E1A5
+rectangle "**B-11 · Shipped**\nEPIC-06\nOwner as an entity\n(PR #131, 12 Oct)" as B11 #C5E1A5
 
 package "Independent — schedule in slack" #E8F5E9 {
   rectangle "**B-02 · Now**\nDescription link fix\n(board #151)" as B02

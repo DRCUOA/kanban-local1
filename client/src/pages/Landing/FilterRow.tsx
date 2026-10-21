@@ -9,8 +9,6 @@ export interface FilterRowProps {
   /** Phone only: whether the row's choices are showing. From lg they always are. */
   open: boolean;
   onToggle: () => void;
-  /** A line of explanation after the choices. */
-  hint?: ReactNode;
   testId: string;
   children: ReactNode;
 }
@@ -21,15 +19,7 @@ export interface FilterRowProps {
  * closes, its header naming what is chosen so a closed row still says what it
  * does.
  */
-export function FilterRow({
-  label,
-  summary,
-  open,
-  onToggle,
-  hint,
-  testId,
-  children,
-}: FilterRowProps) {
+export function FilterRow({ label, summary, open, onToggle, testId, children }: FilterRowProps) {
   const bodyId = useId();
   return (
     <section
@@ -78,9 +68,6 @@ export function FilterRow({
       >
         <div className="flex flex-col py-1 lg:flex-row lg:flex-wrap lg:items-center lg:gap-2.5 lg:py-0">
           {children}
-          {hint && (
-            <p className="px-4 pb-3 pt-1 text-xs text-muted-foreground lg:px-1 lg:py-0">{hint}</p>
-          )}
         </div>
       </div>
     </section>
@@ -98,8 +85,6 @@ export interface FilterOptionProps {
   count?: number;
   /** The project's or owner's colour dot. */
   color?: string | null;
-  /** Shown in place of the count: the NEW TASKS badge. */
-  badge?: ReactNode;
   testId: string;
 }
 
@@ -117,7 +102,6 @@ export function FilterOption({
   onChange,
   count,
   color,
-  badge,
   testId,
 }: FilterOptionProps) {
   return (
@@ -151,12 +135,11 @@ export function FilterOption({
           />
         )}
         <span className={cn('truncate', checked ? 'font-semibold' : 'font-medium')}>{label}</span>
-        {badge ??
-          (count !== undefined && (
-            <span className="shrink-0 text-xs text-muted-foreground" aria-label={`${count} tasks`}>
-              {count}
-            </span>
-          ))}
+        {count !== undefined && (
+          <span className="shrink-0 text-xs text-muted-foreground" aria-label={`${count} tasks`}>
+            {count}
+          </span>
+        )}
       </span>
       <span
         aria-hidden

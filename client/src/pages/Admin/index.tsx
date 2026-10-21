@@ -7,6 +7,7 @@ import { useOwners } from '@/hooks/use-owners';
 import { BuiltByTk } from '@/components/BuiltByTk';
 import { AdminHeader } from './AdminHeader';
 import { ProjectSection } from './ProjectSection';
+import { GoalSection } from './GoalSection';
 import { OwnerSection } from './OwnerSection';
 import { StageSection } from './StageSection';
 import { SubStageSection } from './SubStageSection';
@@ -31,6 +32,7 @@ export default function Admin(_props: AdminProps) {
 
       <div className="flex-1 overflow-y-auto scroll-container px-3 py-4 space-y-4">
         <ProjectSection projects={projects} isLoading={isLoadingProjects} />
+        <GoalSection stages={stages} />
         <OwnerSection owners={owners} isLoading={isLoadingOwners} />
         <StageSection stages={stages} isLoading={isLoading} />
         <SubStageSection stages={stages} subStages={subStages} />

@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import type { Task } from '@shared/schema';
 import { PROJECT_SCOPE_ALL, PROJECT_SCOPE_NONE, type ProjectScope } from '@shared/project-scope';
 import {
   EMPTY_BOARD_FILTERS,
@@ -147,4 +148,19 @@ export function BoardFiltersProvider({ children }: { children: ReactNode }) {
 
 export function useBoardFilters(): BoardFiltersContextValue {
   return useContext(BoardFiltersContext);
+}
+
+/**
+ * Lets go of chosen goals that are no longer on offer (archived, binned, or
+ * outside the chosen projects), so a goal nobody can see or untick never
+ * narrows the board. A goal that is merely done stays on offer while chosen.
+ * `offered` is undefined while the tasks are loading, when nothing is let go.
+ */
+export function usePruneChosenGoals(offered: readonly Task[] | undefined): void {
+  const { filters, update } = useBoardFilters();
+  useEffect(() => {
+    if (!offered || filters.goals.length === 0) return;
+    const kept = filters.goals.filter((id) => offered.some((g) => g.id === id));
+    if (kept.length !== filters.goals.length) update({ goals: kept });
+  }, [offered, filters.goals, update]);
 }

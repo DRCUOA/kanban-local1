@@ -6,52 +6,39 @@ import { useLocation } from 'wouter';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { AppLogo } from '@/components/AppLogo';
-import { ProjectSelector } from '@/components/ProjectSelector';
-import { useProjectScope } from '@/hooks/use-project-scope';
 import { cn } from '@/lib/utils';
 import { BuiltByTk } from '@/components/BuiltByTk';
 import { MoreActionsMenu, type MoreActionsMenuProps } from './MoreActionsMenu';
-import { GoalFilterSelect } from './GoalFilterSelect';
-import type { Task } from '@shared/schema';
 
 export interface DashboardHeaderProps extends MoreActionsMenuProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onClearSearch: () => void;
-  /** Goals in scope, and the ones the board is narrowed to. */
-  goals?: Task[];
-  goalSelection?: number[];
-  onGoalSelectionChange?: (next: number[]) => void;
   /** The goals view of the board's scope: one project, "No project" or every project. */
   goalsHref?: string;
 }
 
 /**
- * App header. On a phone it is one row: the logo, then the project selector
- * filling the rest of the bar — it is the board's title and its first filter —
+ * App header. It carries no filters: what the board shows is chosen on the
+ * landing page, which the logo leads back to, and the strip under the header
+ * names it. On a phone it is one row: the logo, the app name filling the bar,
  * and the search toggle at the end. Goals and More are not here on a phone:
- * they sit in the bottom nav, which is what gives the selector its room. Until
- * a project exists the app name takes the selector's place. The row never
- * wraps. The search field opens under the row on demand and stays open while
- * a query is active, so a filter is never hidden.
+ * they sit in the bottom nav. The row never wraps. The search field opens
+ * under the row on demand and stays open while a query is active, so a
+ * search is never hidden.
  *
  * From the tablet breakpoint (`lg`) there is room for everything at once:
  * title and tagline beside the logo, the always-visible search field
- * right-aligned in the title row, then the selector, Goals and More.
+ * right-aligned in the title row, then Goals and More.
  */
 export function DashboardHeader({
   searchQuery,
   onSearchChange,
   onClearSearch,
-  goals = [],
-  goalSelection = [],
-  onGoalSelectionChange,
   goalsHref,
   ...moreActions
 }: DashboardHeaderProps) {
-  const { projects } = useProjectScope();
   const [, navigate] = useLocation();
-  const hasProjects = projects.length > 0;
   const hasQuery = searchQuery.length > 0;
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -82,10 +69,10 @@ export function DashboardHeader({
           to a second line. */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 lg:flex-nowrap">
         {/* The bar. On a phone it is one non-wrapping line: the logo, the
-            selector (or the app name) taking all the width between, and the
-            search toggle. From lg the wrapper dissolves (`contents`) and its
-            children join the outer row, where the order classes put the title
-            beside the logo and the selector beside Goals and More. */}
+            app name taking all the width between, and the search toggle. From
+            lg the wrapper dissolves (`contents`) and its children join the
+            outer row, where the order classes put the title beside the logo
+            and Goals and More at the end. */}
         <div
           className="flex min-w-0 basis-full items-center gap-2 lg:contents"
           data-testid="app-bar"
@@ -107,14 +94,7 @@ export function DashboardHeader({
             </button>
           </div>
 
-          {/* Once a project exists the selector names the board on a phone;
-              the app name stays for screen readers and comes back at lg. */}
-          <div
-            className={cn(
-              'min-w-0 flex-1 text-center lg:order-2 lg:flex-initial lg:text-left',
-              hasProjects && 'sr-only lg:not-sr-only',
-            )}
-          >
+          <div className="min-w-0 flex-1 text-center lg:order-2 lg:flex-initial lg:text-left">
             <h1 className="truncate text-lg font-bold leading-tight tracking-tight text-foreground">
               {import.meta.env.VITE_APP_NAME || 'Kanbando'}
             </h1>
@@ -126,18 +106,6 @@ export function DashboardHeader({
                 with no space for a third line. */}
             <BuiltByTk align="start" className="hidden px-0 py-0 leading-tight lg:flex" />
           </div>
-
-          {/* Hidden until a project exists. Fills the phone bar; sized to its
-              name from lg. */}
-          <ProjectSelector className="min-w-0 flex-1 lg:order-4 lg:flex-initial" />
-          {onGoalSelectionChange && (
-            <GoalFilterSelect
-              goals={goals}
-              value={goalSelection}
-              onChange={onGoalSelectionChange}
-              className="hidden min-w-0 lg:order-4 lg:flex"
-            />
-          )}
 
           <div
             className="flex flex-none items-center gap-1 lg:order-5"
@@ -170,12 +138,7 @@ export function DashboardHeader({
                   <Target className="h-5 w-5" aria-hidden />
                 </button>
               )}
-              <MoreActionsMenu
-                {...moreActions}
-                goals={goals}
-                goalSelection={goalSelection}
-                onGoalSelectionChange={onGoalSelectionChange}
-              />
+              <MoreActionsMenu {...moreActions} />
             </div>
           </div>
         </div>

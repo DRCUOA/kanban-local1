@@ -16,8 +16,6 @@ export interface DashboardContentProps {
   searchQuery: string;
   /** Order cards by owner name instead of by due date (EPIC-06 OWN-R33). */
   sortByOwner?: boolean;
-  /** True while a warning pill is narrowing the board. */
-  isFiltered?: boolean;
   /** True while a landing page row is narrowing the board. */
   landingFiltered?: boolean;
   /** The columns the landing page chose; absent is every open column. */
@@ -32,7 +30,6 @@ export function DashboardContent({
   boardLayout,
   searchQuery,
   sortByOwner = false,
-  isFiltered = false,
   landingFiltered = false,
   columnStageIds,
   onTaskClick,
@@ -80,15 +77,13 @@ export function DashboardContent({
             </div>
             <h3 className="text-lg font-bold mb-2 text-foreground">No tasks found</h3>
             <p className="text-muted-foreground text-sm mb-6">
-              {searchQuery && isFiltered
-                ? 'No tasks match your search within the current filter.'
+              {searchQuery && landingFiltered
+                ? 'No tasks match your search within the current filters.'
                 : searchQuery
                   ? 'No tasks match your search.'
                   : landingFiltered
                     ? 'No task matches the filters on the board.'
-                    : isFiltered
-                      ? 'Nothing is left once the filter is applied. Press the pill again to show every task.'
-                      : 'Create your first task to get started.'}
+                    : 'Create your first task to get started.'}
             </p>
             {landingFiltered && !searchQuery && (
               <Button
@@ -103,7 +98,7 @@ export function DashboardContent({
                 Change filters
               </Button>
             )}
-            {!searchQuery && !isFiltered && !landingFiltered && <CreateTaskDialog />}
+            {!searchQuery && !landingFiltered && <CreateTaskDialog />}
           </div>
         )}
       </div>

@@ -11,7 +11,6 @@ const base: ActiveFilterInput = {
     { id: 6, name: 'Team' },
   ],
   ownerSelection: [],
-  warningFilter: null,
   searchQuery: '',
   focusMode: false,
 };
@@ -34,15 +33,13 @@ describe('describeActiveFilters', () => {
     expect(by({ ownerSelection: [4] }).owner).toMatchObject({ value: 'Rich', narrowing: true });
     expect(by({ ownerSelection: ['none'] }).owner).toMatchObject({ value: 'Unassigned' });
   });
-  it('adds warning, search and focus only while on, and hides project with no projects', () => {
+  it('adds search and focus only while on, and hides project with no projects', () => {
     const f = by({
-      warningFilter: 'overdue',
       searchQuery: ' paint ',
       focusMode: true,
       hasProjects: false,
     });
-    expect(Object.keys(f)).toEqual(['owner', 'warning', 'search', 'focus']);
-    expect(f.warning?.value).toBe('Overdue');
+    expect(Object.keys(f)).toEqual(['owner', 'search', 'focus']);
     expect(f.search?.value).toBe('“paint”');
   });
 });
@@ -72,18 +69,11 @@ describe('the landing page rows', () => {
     });
   });
 
-  it('adds stage, due by and new only while they narrow', () => {
-    const f = by({
-      stageNames: ['Backlog'],
-      due: { mode: 'open', date: '2026-10-31' },
-      onlyNew: true,
+  it('adds stage only while it narrows', () => {
+    expect(by({ stageNames: ['Backlog', 'Waiting'] }).stage).toMatchObject({
+      label: 'Stages',
+      value: 'Backlog, Waiting',
     });
-    expect(f.stage?.value).toBe('Backlog');
-    expect(f.due?.value).toBe('Oct 31, not done');
-    expect(f.new?.value).toBe('New only');
-    expect(by({ due: { mode: 'archived', date: '2026-10-31' } }).due?.value).toBe(
-      'Oct 31, archived',
-    );
-    expect(Object.keys(by({ due: { mode: 'open', date: '' } }))).toEqual(['project', 'owner']);
+    expect(Object.keys(by({ stageNames: [] }))).toEqual(['project', 'owner']);
   });
 });
