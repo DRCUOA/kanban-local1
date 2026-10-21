@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Task } from '@shared/schema';
 import {
   BOARD_WARNING_KINDS,
@@ -12,10 +13,6 @@ import { useStages } from '@/hooks/use-stages';
 
 interface TaskWarningsProps {
   tasks: Task[];
-  /** The warning the board is currently filtered to, if any. */
-  activeKind?: BoardWarningKind | null;
-  /** Called with the pill pressed; the same pill again means "stop filtering". */
-  onToggleKind?: (kind: BoardWarningKind) => void;
   className?: string;
 }
 
@@ -64,9 +61,7 @@ const TONE_CLASS: Record<WarningTone, string> = {
 };
 
 /**
- * The pressed pill. The tone's own colour washes the pill and rings it, so the
- * one that is filtering reads as switched on at a glance rather than by its
- * text alone — and `aria-pressed` says the same thing to a screen reader.
+ * The opened pill. The tone's own colour washes the pill and rings it.
  * Written out per tone because Tailwind only keeps class names it can see.
  */
 const TONE_ACTIVE_CLASS: Record<WarningTone, string> = {
@@ -80,20 +75,15 @@ const TONE_ACTIVE_CLASS: Record<WarningTone, string> = {
  * (overdue red, high-priority gold, info blue). The name, the count and the
  * full sentence are the icon's hover text and its accessible name.
  *
- * An icon is also the filter for what it counts: pressing it shows only those
- * tasks, pressing it again shows everything. The pressed icon opens to name
- * what it is filtering — which is also how a phone, with no hover, gets the
- * text. Counts are taken from the whole board, not from what is currently
- * shown, so they stay put while filtering and you can move from one to the
- * next.
+ * They say what is wrong; they do not filter, since the landing page is the
+ * only place the board is filtered. Pressing an icon opens it to name what it
+ * counts, which is how a phone, with no hover, gets the text; pressing it
+ * again closes it. Counts are taken from the whole board, not from what the
+ * filters leave.
  */
-export function TaskWarnings({
-  tasks,
-  activeKind = null,
-  onToggleKind,
-  className,
-}: TaskWarningsProps) {
+export function TaskWarnings({ tasks, className }: TaskWarningsProps) {
   const { data: stages = [] } = useStages();
+  const [openKind, setOpenKind] = useState<BoardWarningKind | null>(null);
 
   const counts = countBoardWarnings(tasks, stages, new Date());
   const kinds = BOARD_WARNING_KINDS.filter((kind) => counts[kind] !== undefined);
@@ -111,7 +101,7 @@ export function TaskWarnings({
           const pill = PILLS[kind];
           const count = counts[kind] ?? 0;
           const Icon = pill.icon;
-          const isActive = activeKind === kind;
+          const isActive = openKind === kind;
           const label = `${pill.title}: ${pill.message(count)}`;
 
           return (
@@ -120,13 +110,11 @@ export function TaskWarnings({
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    aria-pressed={isActive}
-                    aria-label={`${label} ${
-                      isActive
-                        ? 'Showing only these. Press to show every task.'
-                        : 'Press to show only these.'
-                    }`}
-                    onClick={() => onToggleKind?.(kind)}
+                    aria-expanded={isActive}
+                    aria-label={label}
+                    onClick={() => {
+                      setOpenKind(isActive ? null : kind);
+                    }}
                     data-testid={`task-warning-${kind}`}
                     className={cn(
                       // A round icon until pressed; then it widens to carry

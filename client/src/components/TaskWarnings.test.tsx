@@ -137,7 +137,7 @@ describe('TaskWarnings (icons)', () => {
     expect(screen.queryByTestId('task-warning-overdue')).toBeNull();
   });
 
-  describe('as a filter', () => {
+  describe('pressed', () => {
     const manyInProgress = [
       makeTask({ id: 4, stageId: 2 }),
       makeTask({ id: 5, stageId: 2 }),
@@ -145,62 +145,33 @@ describe('TaskWarnings (icons)', () => {
       makeTask({ id: 7, stageId: 2 }),
     ];
 
-    it('reports the icon pressed', () => {
-      const onToggleKind = vi.fn();
-      render(<TaskWarnings tasks={manyInProgress} onToggleKind={onToggleKind} />);
-
-      fireEvent.click(screen.getByTestId('task-warning-in-progress'));
-
-      expect(onToggleKind).toHaveBeenCalledWith('in-progress');
-    });
-
-    it('reports the active icon too, so pressing it again clears the filter', () => {
-      const onToggleKind = vi.fn();
-      render(
-        <TaskWarnings
-          tasks={manyInProgress}
-          activeKind="in-progress"
-          onToggleKind={onToggleKind}
-        />,
-      );
-
-      fireEvent.click(screen.getByTestId('task-warning-in-progress'));
-
-      expect(onToggleKind).toHaveBeenCalledWith('in-progress');
-    });
-
-    it('opens the pressed icon to show its name and count — how a phone, with no hover, reads it', () => {
+    it('opens to show its name and count, which is how a phone, with no hover, reads it', () => {
       const tasks = [...manyInProgress, makeTask({ id: 1, priority: 'high' })];
-      render(<TaskWarnings tasks={tasks} activeKind="high-priority" />);
+      render(<TaskWarnings tasks={tasks} />);
 
-      const active = screen.getByTestId('task-warning-high-priority');
-      expect(active.getAttribute('aria-pressed')).toBe('true');
-      expect(active.className).toContain('bg-warning/15');
-      expect(active.getAttribute('aria-label')).toContain('Showing only these');
+      const icon = screen.getByTestId('task-warning-high-priority');
+      expect(icon.getAttribute('aria-expanded')).toBe('false');
+      expect(screen.queryByTestId('task-warning-high-priority-label')).toBeNull();
+
+      fireEvent.click(icon);
+      expect(icon.getAttribute('aria-expanded')).toBe('true');
+      expect(icon.className).toContain('bg-warning/15');
       const label = screen.getByTestId('task-warning-high-priority-label');
       expect(label.textContent).toContain('High-priority waiting');
       expect(label.textContent).toContain('1');
 
-      const inactive = screen.getByTestId('task-warning-in-progress');
-      expect(inactive.getAttribute('aria-pressed')).toBe('false');
-      expect(inactive.className).toContain('neo-raised');
-      expect(inactive.getAttribute('aria-label')).toContain('Press to show only these');
+      // One open at a time; pressing it again closes it.
+      fireEvent.click(screen.getByTestId('task-warning-in-progress'));
+      expect(screen.queryByTestId('task-warning-high-priority-label')).toBeNull();
+      fireEvent.click(screen.getByTestId('task-warning-in-progress'));
       expect(screen.queryByTestId('task-warning-in-progress-label')).toBeNull();
     });
 
-    it('counts the whole board, so a count does not move under its own filter', () => {
-      // The caller passes every task whatever the filter is; an icon saying
-      // "4 in progress" over a board showing five would be worse than none.
-      const tasks = [...manyInProgress, makeTask({ id: 1, priority: 'high' })];
-      const { rerender } = render(<TaskWarnings tasks={tasks} />);
-      expect(screen.getByTestId('task-warning-in-progress').getAttribute('aria-label')).toContain(
-        '4 tasks in progress',
-      );
-
-      rerender(<TaskWarnings tasks={tasks} activeKind="high-priority" />);
-      expect(screen.getByTestId('task-warning-in-progress').getAttribute('aria-label')).toContain(
-        '4 tasks in progress',
-      );
+    it('says what it counts without offering to filter: the landing page does that', () => {
+      render(<TaskWarnings tasks={manyInProgress} />);
+      const label = screen.getByTestId('task-warning-in-progress').getAttribute('aria-label');
+      expect(label).toContain('4 tasks in progress');
+      expect(label).not.toContain('show only');
     });
 
     it('is a button, so it is reachable by keyboard', () => {

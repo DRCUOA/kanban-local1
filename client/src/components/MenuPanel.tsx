@@ -31,8 +31,7 @@ export interface MenuPanelProps {
 }
 
 /**
- * The surface every tap-to-open menu shares (More, the project selector,
- * Filing). Its trigger renders it inside a `relative` wrapper.
+ * The surface every tap-to-open menu shares (More, Filing). Its trigger renders it inside a `relative` wrapper.
  *
  * On a phone the panel is a card centred over the dimmed page, wherever the
  * trigger sits: a dropdown hung from a button near a screen edge ran off the

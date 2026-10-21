@@ -88,8 +88,7 @@ describe('DashboardHeader', () => {
     expect(bar.className).not.toContain('flex-wrap');
     expect(bar.className).toContain('lg:contents');
 
-    // The logo and the actions are fixed-size; whatever sits between them
-    // (the app name here, the project selector once one exists) grows.
+    // The logo and the actions are fixed-size; the app name between them grows.
     expect(bar.firstElementChild?.className).toContain('flex-none');
     const title = screen.getByRole('heading', { level: 1 });
     expect(title.parentElement?.className).toContain('flex-1');
@@ -108,11 +107,6 @@ describe('DashboardHeader', () => {
     expect(wide.className).toContain('lg:flex');
     expect(wide.contains(screen.getByTestId('button-project-goals'))).toBe(true);
     expect(wide.contains(screen.getByLabelText('More options'))).toBe(true);
-    // The selector fills the phone bar.
-    renderWithProjects(<DashboardHeader {...defaults} />, [project]);
-    const selector = screen.getByTestId('project-selector-trigger');
-    expect(selector.parentElement?.className).toContain('flex-1');
-    expect(selector.parentElement?.className).toContain('lg:flex-initial');
   });
 
   it('never wraps the wide row: the search field flexes and the labels shrink instead', () => {
@@ -126,13 +120,10 @@ describe('DashboardHeader', () => {
     }
     expect(field.className).not.toContain('lg:w-[26rem]');
 
-    // Shrinkable, never fixed: the title block and the selector give way.
+    // Shrinkable, never fixed: the title block gives way.
     const title = screen.getByRole('heading', { level: 1 });
     expect(title.parentElement?.className).toContain('lg:flex-initial');
     expect(title.parentElement?.className).toContain('min-w-0');
-    expect(screen.getByTestId('project-selector-trigger').parentElement?.className).toContain(
-      'min-w-0',
-    );
   });
 
   it('offers Goals under "All projects" too, pointing at the view across every project', () => {
@@ -140,21 +131,19 @@ describe('DashboardHeader', () => {
     expect(screen.getByTestId('button-project-goals')).toBeDefined();
   });
 
-  it('on a phone the app name gives way to the project selector once a project exists', () => {
-    const { unmount } = render(<DashboardHeader {...defaults} />);
+  it('carries no filters: with projects there is still no project or goal picker', () => {
+    renderWithProjects(<DashboardHeader {...defaults} />, [project]);
     const title = screen.getByRole('heading', { level: 1 });
     expect(title.parentElement?.className).not.toContain('sr-only');
-    // The tagline is a wide-screen extra whatever the project situation.
+    // The tagline is a wide-screen extra.
     expect(title.nextElementSibling?.className).toContain('hidden');
     expect(title.nextElementSibling?.className).toContain('lg:block');
-    unmount();
-
-    renderWithProjects(<DashboardHeader {...defaults} />, [project]);
-    const scopedTitle = screen.getByRole('heading', { level: 1 });
-    // Kept for screen readers, visible again from the tablet breakpoint.
-    expect(scopedTitle.parentElement?.className).toContain('sr-only');
-    expect(scopedTitle.parentElement?.className).toContain('lg:not-sr-only');
-    expect(screen.getByTestId('project-selector-trigger').textContent).toContain('All projects');
+    expect(screen.queryByTestId('project-selector-trigger')).toBeNull();
+    expect(screen.getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Choose what the board shows',
+      'Search tasks',
+      'More options',
+    ]);
   });
 
   it('on a phone the search field is collapsed until its toggle opens it, which focuses the field', () => {

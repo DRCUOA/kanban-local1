@@ -154,7 +154,7 @@ export function ProjectSection({ projects, isLoading }: ProjectSectionProps) {
         <div>
           <h2 className="text-base font-semibold">Projects</h2>
           <p className="text-[10px] text-muted-foreground">
-            A set of tasks with a common goal. Scope the board to one from the header.
+            A set of tasks with a common goal. Archived projects leave the filter page.
           </p>
         </div>
         <Dialog
@@ -283,7 +283,7 @@ export function ProjectSection({ projects, isLoading }: ProjectSectionProps) {
         <div className="text-center py-6 text-sm text-muted-foreground">Loading projects...</div>
       ) : projects.length === 0 ? (
         <div className="text-center py-6 text-sm text-muted-foreground">
-          No projects yet. Create one and a project selector appears in the board header.
+          No projects yet. Create one and the filter page offers it as a Project choice.
         </div>
       ) : (
         <div className="space-y-2">
