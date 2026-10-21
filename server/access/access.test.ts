@@ -1,10 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access -- supertest bodies are untyped JSON */
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
+import type { Server } from 'node:http';
 import type { AccessDevice } from '@shared/schema';
 import { accessConfigFromEnv, createAccess, type AccessStore } from './index';
 import { hashAccessCode, newAccessCode, secretMatches, CODE_ALPHABET } from './keys';
+import { serveOnLoopback, closeServer } from '../test-support/loopback';
 
 const SECRET = 'developer-secret-for-tests';
 
@@ -61,9 +63,10 @@ function memoryStore(): AccessStore & { rows: AccessDevice[] } {
 
 let clock = new Date('2026-10-16T00:00:00Z');
 let store: ReturnType<typeof memoryStore>;
-let app: express.Express;
+/** The test app, listening on 127.0.0.1 (see test-support/loopback.ts). */
+let app: Server;
 
-beforeEach(() => {
+beforeEach(async () => {
   clock = new Date('2026-10-16T00:00:00Z');
   store = memoryStore();
   const access = createAccess({
@@ -77,19 +80,22 @@ beforeEach(() => {
     now: () => clock,
     openPaths: ['/api/webhooks/gmail-pubsub'],
   });
-  app = express();
-  app.use(express.json());
-  app.use('/console/api', access.console);
-  app.use(access.browserKey);
-  app.use(access.routes);
-  app.use('/api', access.guard);
-  app.get('/api/tasks', (_req, res) => res.json([{ id: 1 }]));
-  app.get('/api/export', (_req, res) => res.json({ ok: true }));
-  app.post('/api/tasks', (_req, res) => res.status(201).json({ id: 2 }));
-  app.get('/api/health', (_req, res) => res.json({ ok: true }));
-  app.post('/api/webhooks/gmail-pubsub', (_req, res) => res.status(204).end());
-  app.post('/api/inbox', (_req, res) => res.status(202).json({ id: 1, duplicate: false }));
+  const handler = express();
+  handler.use(express.json());
+  handler.use('/console/api', access.console);
+  handler.use(access.browserKey);
+  handler.use(access.routes);
+  handler.use('/api', access.guard);
+  handler.get('/api/tasks', (_req, res) => res.json([{ id: 1 }]));
+  handler.get('/api/export', (_req, res) => res.json({ ok: true }));
+  handler.post('/api/tasks', (_req, res) => res.status(201).json({ id: 2 }));
+  handler.get('/api/health', (_req, res) => res.json({ ok: true }));
+  handler.post('/api/webhooks/gmail-pubsub', (_req, res) => res.status(204).end());
+  handler.post('/api/inbox', (_req, res) => res.status(202).json({ id: 1, duplicate: false }));
+  app = await serveOnLoopback(handler);
 });
+
+afterEach(() => closeServer(app));
 
 /** A browser: keeps its cookie between requests. */
 const browser = () => request.agent(app);

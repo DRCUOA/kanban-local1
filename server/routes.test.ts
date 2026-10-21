@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- test assertions access untyped JSON response bodies */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
-import type { Express } from 'express';
+import type { Server } from 'node:http';
 import type { Task, Stage, SubStage, Project, Owner } from '@shared/schema';
 
 // ---------------------------------------------------------------------------
@@ -66,6 +66,7 @@ vi.mock('./storage', () => ({
 }));
 
 import { createApp } from './app';
+import { serveOnLoopback, closeServer } from './test-support/loopback';
 import { api } from '@shared/routes';
 import { EXPORT_FORMAT_VERSION, EXPORT_GENERATOR, taskExportBundleSchema } from '@shared/export';
 import { ATTACHMENT_MAX_BYTES } from '@shared/attachments';
@@ -158,10 +159,11 @@ function fakeSubStage(overrides: Partial<SubStage> = {}): SubStage {
 
 // ---------------------------------------------------------------------------
 // Setup: build a fresh Express app before each test so routes bind to the
-// current mock state and no cross-test pollution occurs.
+// current mock state and no cross-test pollution occurs. `app` is that app
+// already listening on 127.0.0.1 (see test-support/loopback.ts).
 // ---------------------------------------------------------------------------
 
-let app: Express;
+let app: Server;
 
 beforeEach(async () => {
   vi.resetAllMocks();
@@ -169,8 +171,10 @@ beforeEach(async () => {
   mockStorage.getAttachmentsByTasks.mockResolvedValue([]);
   mockStorage.getTaskDependencies.mockResolvedValue([]);
   const result = await createApp();
-  app = result.app;
+  app = await serveOnLoopback(result.app);
 });
+
+afterEach(() => closeServer(app));
 
 // ===========================================================================
 // Health

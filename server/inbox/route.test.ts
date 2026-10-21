@@ -1,14 +1,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- supertest bodies are untyped JSON */
 import { createHash } from 'node:crypto';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
+import type { Server } from 'node:http';
 
 const mockEnqueue = vi.hoisted(() => vi.fn());
 vi.mock('../inbound-email/repository', () => ({ enqueueInboundMessage: mockEnqueue }));
 
 import { errorHandler } from '../errors';
 import { registerInboxRoute } from './route';
+import { serveOnLoopback, closeServer } from '../test-support/loopback';
 
 /** The route as the server mounts it: after the JSON parser, before the error handler. */
 function inboxApp() {
@@ -32,15 +34,21 @@ const RAW_EMAIL = [
   '> Could you send it over?',
 ].join('\r\n');
 
-beforeEach(() => {
+/** `inboxApp()`, listening on 127.0.0.1 (see test-support/loopback.ts). */
+let app: Server;
+
+beforeEach(async () => {
   mockEnqueue.mockReset();
   mockEnqueue.mockResolvedValue({ id: 7, duplicate: false });
   delete process.env.INBOX_ALLOWED_SENDERS;
+  app = await serveOnLoopback(inboxApp());
 });
+
+afterEach(() => closeServer(app));
 
 describe('POST /api/inbox', () => {
   it('queues a JSON message and answers 202 with its row', async () => {
-    const res = await request(inboxApp()).post('/api/inbox').send({
+    const res = await request(app).post('/api/inbox').send({
       subject: 'Book the dentist',
       text: 'Soon.',
       from: 'Rich <rich@example.com>',
@@ -59,7 +67,7 @@ describe('POST /api/inbox', () => {
   });
 
   it('takes a plain-text note: the first line is the subject, keyed by a digest', async () => {
-    const res = await request(inboxApp())
+    const res = await request(app)
       .post('/api/inbox')
       .set('Content-Type', 'text/plain')
       .send('Fix the gate\nIt sticks.');
@@ -76,7 +84,7 @@ describe('POST /api/inbox', () => {
   });
 
   it('parses a raw email: headers, text without the quoted reply, keyed by its Message-ID', async () => {
-    const res = await request(inboxApp())
+    const res = await request(app)
       .post('/api/inbox')
       .set('Content-Type', 'message/rfc822')
       .send(RAW_EMAIL);
@@ -93,21 +101,21 @@ describe('POST /api/inbox', () => {
 
   it('answers a redelivery with the row it already has', async () => {
     mockEnqueue.mockResolvedValue({ id: 7, duplicate: true });
-    const res = await request(inboxApp()).post('/api/inbox').send({ subject: 'Again' });
+    const res = await request(app).post('/api/inbox').send({ subject: 'Again' });
     expect(res.status).toBe(202);
     expect(res.body).toEqual({ id: 7, duplicate: true });
   });
 
   it('refuses an empty message, a missing body and a body type it does not take', async () => {
-    const empty = await request(inboxApp()).post('/api/inbox').send({ subject: ' ' });
+    const empty = await request(app).post('/api/inbox').send({ subject: ' ' });
     expect(empty.status).toBe(400);
     expect(empty.body.error).toContain('subject or some text');
 
-    const missing = await request(inboxApp()).post('/api/inbox');
+    const missing = await request(app).post('/api/inbox');
     expect(missing.status).toBe(400);
     expect(missing.body.error).toContain('empty');
 
-    const xml = await request(inboxApp())
+    const xml = await request(app)
       .post('/api/inbox')
       .set('Content-Type', 'application/xml')
       .send('<task/>');
@@ -117,26 +125,24 @@ describe('POST /api/inbox', () => {
 
   it('refuses a sender outside INBOX_ALLOWED_SENDERS and lets one inside, or none, through', async () => {
     process.env.INBOX_ALLOWED_SENDERS = 'example.com, boss@work.test';
-    const refused = await request(inboxApp())
+    const refused = await request(app)
       .post('/api/inbox')
       .send({ subject: 'Buy now', from: 'spam@evil.test' });
     expect(refused.status).toBe(403);
     expect(mockEnqueue).not.toHaveBeenCalled();
 
-    const byDomain = await request(inboxApp())
+    const byDomain = await request(app)
       .post('/api/inbox')
       .send({ subject: 'Fine', from: 'Rich <rich@example.com>' });
     expect(byDomain.status).toBe(202);
 
-    const raw = await request(inboxApp())
+    const raw = await request(app)
       .post('/api/inbox')
       .set('Content-Type', 'message/rfc822')
       .send(RAW_EMAIL.replace('Rich@Example.com', 'someone@elsewhere.test'));
     expect(raw.status).toBe(403);
 
-    const noSender = await request(inboxApp())
-      .post('/api/inbox')
-      .send({ subject: 'From a script' });
+    const noSender = await request(app).post('/api/inbox').send({ subject: 'From a script' });
     expect(noSender.status).toBe(202);
   });
 });
