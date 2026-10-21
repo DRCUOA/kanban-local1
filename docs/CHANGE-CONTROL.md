@@ -65,6 +65,7 @@ opened, since its merge date is not yet known. Schema names the migration file u
 | #159 | 21 Oct | feat | Landing page chooses what the board shows; board moves to `/board`; `tasks.viewed_at` | Not on backlog | `0024_task_viewed` | — |
 | #161 | 21 Oct (opened) | docs | This register, backfilled to #131; `docs/BACKLOG.md` 21 Oct amendment; `docs/WAYS-OF-WORKING.md` lists the register and makes a row part of every PR. Its `CHANGELOG.md` backfill for #131–#154 rides in #160 (`513c95e`), not here | Not on backlog (asked for on 21 Oct) | — | — |
 | #162 | 21 Oct (opened) | fix | `createStage` stores the stage's `kind`. Since #134 every new stage, seeded or added in Admin, was stored as `backlog`, so on a fresh database Done drew as an ordinary column and its tasks counted as open | Not on backlog (defect in #134) | — | Production unchecked: run the query in #162 to list stages created since `0014` that are `backlog`, and correct any that should not be in Admin |
+| #163 | 21 Oct (opened) | fix | Every database session runs in UTC (`server/pg-config.ts`; the migrator pins its own session after reading the server's zone). On a `Pacific/Auckland` server each `now()` default had been stored in local time and served 13 h in the future (`createdAt`, `viewedAt`), and inbound leases expired 13 h early. `copyAttachment` reads its raw `created_at` as UTC | Not on backlog (defect, found verifying #160) | `0025_utc_timestamps` (moves stored local-time values to UTC, `utc_timestamp_repair_report`; no-op on a UTC server) | None required. After deploy, the start-up log names the server's zone (`Database server TimeZone is …`); if it is not UTC, `utc_timestamp_repair_report` lists every value moved |
 
 **In this window:** 28 PRs, 12 migrations (`0013`–`0024`), 2 changes with required deploy
 actions (#146, #158). Of the 26 PRs that changed the app (all but #133, docs, and #139, a
@@ -79,7 +80,7 @@ leaves this table only when a later PR's row closes it.
 |---|---|---|---|
 | ≤ #131 | `tsc` error in `client/src/lib/task-share.test.ts:128` (a fixture missing `urgency`). `npm run check` runs lint, Prettier and Vitest but not `tsc`, so nothing gates it | #131, #135–#145, #152 | Still present, the only `tsc` error |
 | ≤ #132 | `format:check` fails on the tracked 464 KB `logs.1774761325491.json` | #132 | Still fails, on that file only |
-| ≤ #131 | `server/attachments.integration.test.ts` failing, put down to "a stale attachment row in the dev DB" (#136) | #131–#147 | 5 of 6 fail, and 3 of 3 in `server/delete-task-fk.integration.test.ts`: the local database has migrations to `0022` only, so `tasks.viewed_at` does not exist. Not yet re-run against a migrated database |
+| ≤ #131 | `server/attachments.integration.test.ts` failing, put down to "a stale attachment row in the dev DB" (#136) | #131–#147 | 5 of 6 fail, and 3 of 3 in `server/delete-task-fk.integration.test.ts`: the local database has migrations to `0022` only, so `tasks.viewed_at` does not exist. Against a migrated copy of it (#163, 21 Oct) both files pass, 6 of 6 and 3 of 3; the local database itself is still at `0022` |
 | 21 Oct | Two tests fail only in the full parallel run: `access.test.ts` "the gate…" (socket hang up) and `routes.test.ts` "honours an explicit tz" (5 s timeout) | 21 Oct review | Both pass when their file runs alone |
 | #137 | Import does not restore goal links or dependency edges (ids are remapped) | #137 | Open |
 | #143 | Schedules count effort as days, start today and do not skip weekends: "assumptions to confirm" | #143 | Unconfirmed |
@@ -87,6 +88,7 @@ leaves this table only when a later PR's row closes it.
 | #146 | Production stopped at start-up after #146 although both variables were set | #149 | #149 makes the log name the cause. Whether production now starts is not recorded here |
 | #147 | A goal refuses dependencies in the UI only; the API still accepts them | #147 | Open: the PR asked whether to refuse server-side |
 | #152 | Playwright mobile-first suite (`tests/uix/`, `playwright.config.ts`) kept out of the PR, uncommitted | #152 | Not in the repo (`tests/` holds `smoke.test.ts` only) |
+| #163 | Production Postgres TimeZone not checked, so whether production stored local time is unknown. After deploy: the start-up line `Database server TimeZone is …`, and `SELECT count(*) FROM utc_timestamp_repair_report` | #163 | Open |
 
 ### Documents out of step on 21 Oct 2026
 
