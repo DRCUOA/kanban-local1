@@ -14,12 +14,13 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { createServer } from 'http';
+import { createServer, type Server } from 'http';
 import express from 'express';
 import request from 'supertest';
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { eq, inArray, sql, TransactionRollbackError, type SQL } from 'drizzle-orm';
 import { tasks, stages, taskAttachments } from '@shared/schema';
+import { serveOnLoopback, closeServer } from './test-support/loopback';
 
 const NOT_UTC = 'Pacific/Auckland';
 /** Generous against clock skew between Node and the database; the bug is hours. */
@@ -28,6 +29,8 @@ const TOLERANCE_MS = 60_000;
 describe('timestamps on a Postgres whose TimeZone is not UTC', () => {
   let db: (typeof import('./db'))['db'];
   let app: express.Express;
+  /** `app`, listening on 127.0.0.1 (see test-support/loopback.ts). */
+  let server: Server;
   let stageId: number;
 
   beforeAll(async () => {
@@ -41,12 +44,14 @@ describe('timestamps on a Postgres whose TimeZone is not UTC', () => {
     app = express();
     app.use(express.json());
     await registerRoutes(createServer(app), app);
+    server = await serveOnLoopback(app);
 
     const [stage] = await db.insert(stages).values({ name: 'Test-UTC', order: 0 }).returning();
     stageId = stage!.id;
   });
 
   afterAll(async () => {
+    await closeServer(server);
     await db.delete(tasks).where(eq(tasks.stageId, stageId));
     await db.delete(stages).where(eq(stages.id, stageId));
     vi.unstubAllEnvs();
@@ -59,11 +64,11 @@ describe('timestamps on a Postgres whose TimeZone is not UTC', () => {
 
   it('serves a new task from GET /api/tasks with the time it was created', async () => {
     const before = Date.now();
-    const created = await request(app).post('/api/tasks').send({ title: 'Made now', stageId });
+    const created = await request(server).post('/api/tasks').send({ title: 'Made now', stageId });
     const after = Date.now();
     expect(created.status).toBe(201);
 
-    const list = await request(app).get('/api/tasks');
+    const list = await request(server).get('/api/tasks');
     const task = (list.body as { id: number }[]).find((t) => t.id === created.body.id) as
       | Record<string, string>
       | undefined;
