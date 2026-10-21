@@ -9,7 +9,7 @@ documents in `docs/` are legible to anyone picking them up.
 
 ## Document taxonomy
 
-The three artifact types are kept separate because they have different change
+The artifact types are kept separate because they have different change
 cadences. Collapsing them into one file is what makes documentation rot.
 
 | Artifact | Location | Changes | Lifecycle |
@@ -18,6 +18,15 @@ cadences. Collapsing them into one file is what makes documentation rot.
 | Epic specifications | `docs/epics/EPIC-xx-*.md` | On refinement | Versioned (e.g. "v2") |
 | Architecture Decision Records | `docs/adr/NNNN-*.md` | **Never** | Append-only; superseded, not edited |
 | Architecture overview | `ARCHITECTURE.md` | On structural change | Mutable |
+| Change control register | `docs/CHANGE-CONTROL.md` | Every merged PR | Append-only rows; the *Carried* table is mutable |
+| Changelog | `CHANGELOG.md` | Every merged PR | [Keep a Changelog](https://keepachangelog.com/en/1.0.0/); `[Unreleased]` until a version is cut |
+
+**The changelog and the change control register answer different questions.** The
+changelog says what changed for someone using the board or its API. The register says
+how each change got to `main`: what authorised it (a backlog item, an epic, or "not on
+backlog"), what it did to the schema, what deploy action it needs, and what its PR left
+unchecked. Every PR adds a register row; a PR that changes something a user or an API
+consumer would notice also adds a changelog entry, and a docs-only PR does not.
 
 **ADRs are immutable by design.** When a decision changes, write a new record that
 states it supersedes the old one. Editing a past decision destroys the only thing an
@@ -88,6 +97,8 @@ Adapted for a team of one — the ceremonies that survive are the ones with an a
   (`docs(epics):`, `fix(board):`, `feat(api):`).
 - **Branching** — short-lived branches off `main`, merged via PR. Documentation
   changes are PR'd like code, so decisions get a review trail.
+- **Change records** — every PR carries its `docs/CHANGE-CONTROL.md` row, and its
+  `CHANGELOG.md` entry unless it changes docs only. A PR missing either is not finished.
 - **Reviews** — review feedback is answered by a revision that maps each point to a
   resolution, rather than by argument in comments. EPIC-04 v2 (PR #108 → #114) is the
   worked example.
