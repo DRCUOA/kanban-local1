@@ -64,6 +64,7 @@ opened, since its merge date is not yet known. Schema names the migration file u
 | #158 | 21 Oct | feat | Inbox: `POST /api/inbox` turns mail and notes into tasks without a provider API; inbox tokens (`kbi_…`) | Not on backlog | `0023_inbox` (renames `gmail_message_id` to `message_key`) | Issue an inbox token from `/console`. Optional: `INBOX_ALLOWED_SENDERS`, `INBOX_EXTRACTION`. Set up the mail receiver (`INBOX_SETUP.md`) |
 | #159 | 21 Oct | feat | Landing page chooses what the board shows; board moves to `/board`; `tasks.viewed_at` | Not on backlog | `0024_task_viewed` | — |
 | #161 | 21 Oct (opened) | docs | This register, backfilled to #131; `docs/BACKLOG.md` 21 Oct amendment; `docs/WAYS-OF-WORKING.md` lists the register and makes a row part of every PR. Its `CHANGELOG.md` backfill for #131–#154 rides in #160 (`513c95e`), not here | Not on backlog (asked for on 21 Oct) | — | — |
+| #162 | 21 Oct (opened) | fix | `createStage` stores the stage's `kind`. Since #134 every new stage, seeded or added in Admin, was stored as `backlog`, so on a fresh database Done drew as an ordinary column and its tasks counted as open | Not on backlog (defect in #134) | — | Production unchecked: run the query in #162 to list stages created since `0014` that are `backlog`, and correct any that should not be in Admin |
 
 **In this window:** 28 PRs, 12 migrations (`0013`–`0024`), 2 changes with required deploy
 actions (#146, #158). Of the 26 PRs that changed the app (all but #133, docs, and #139, a
