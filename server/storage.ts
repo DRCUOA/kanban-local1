@@ -641,9 +641,13 @@ export class DatabaseStorage implements IStorage {
     logger.debug('[DAO] [CREATE_STAGE] Color value:', insertStage.color);
     logger.debug('[DAO] [CREATE_STAGE] Color type:', typeof insertStage.color);
 
+    // Every column is listed: a field left out falls to the column default, which
+    // is how `kind` was silently stored as backlog for every new stage, the
+    // seed's In Progress and Done included.
     const stageData = {
       name: insertStage.name,
       order: insertStage.order,
+      kind: insertStage.kind ?? DEFAULT_STAGE_KIND,
       color: insertStage.color || null,
     };
 

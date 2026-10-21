@@ -1299,6 +1299,28 @@ describe('Stage routes', () => {
       expect(res.body.color).toBe('#3B82F6');
     });
 
+    it('hands the chosen kind to storage', async () => {
+      mockStorage.createStage.mockResolvedValue(fakeStage({ name: 'Done', kind: 'done' }));
+
+      const res = await request(app)
+        .post('/api/stages')
+        .send({ name: 'Done', order: 3, kind: 'done' });
+
+      expect(res.status).toBe(201);
+      expect(mockStorage.createStage).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Done', order: 3, kind: 'done' }),
+      );
+    });
+
+    it('returns 400 for a kind that is not a stage kind', async () => {
+      const res = await request(app)
+        .post('/api/stages')
+        .send({ name: 'Done', order: 3, kind: 'finished' });
+
+      expect(res.status).toBe(400);
+      expect(mockStorage.createStage).not.toHaveBeenCalled();
+    });
+
     it('returns 400 when name is missing', async () => {
       const res = await request(app).post('/api/stages').send({ order: 0 });
 
