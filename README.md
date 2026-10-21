@@ -35,7 +35,8 @@ The app serves both API and client on **port 5000** (`http://localhost:5000`).
 | `npm run dev` | Development server with Vite HMR |
 | `npm run build` | Production build (client → `dist/public/`, server → `dist/index.cjs`) |
 | `npm start` | Run production build |
-| `npm run check` | TypeScript type-check (`tsc --noEmit`) |
+| `npm run check` | The pre-merge gate: lint, type-check, format check, then the full test suite |
+| `npm run typecheck` | TypeScript type-check alone (`tsc --noEmit`) |
 | `npm run db:push` | Push Drizzle schema to database (handy for local dev) |
 | `npm run db:migrate` | Apply versioned SQL migrations (`migrations/`) — use for production and CI |
 | `npm run db:add-color` | Migration: add color column to stages |
