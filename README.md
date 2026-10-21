@@ -189,9 +189,9 @@ See [COMPONENT_INDEX.md](COMPONENT_INDEX.md) for the full breakdown of every com
 A project is a set of tasks related to a common goal. Projects scope *which tasks the board shows*; they never change the stages, so one shared workflow serves every project (see [docs/epics/EPIC-01-project-layer.md](docs/epics/EPIC-01-project-layer.md)).
 
 - **Admin → Projects** creates, renames, recolours, archives and deletes projects. Deleting one releases its tasks (they stay on the board with no project).
-- As soon as one project exists a **project selector** appears in the board header: "All projects", each active project with its live task count, and "No project" for unassigned work. The choice is filtered server-side, applies to the board, Filing and Archive (not Admin), and is remembered per browser (`localStorage`) and mirrored into `?project=` so a scoped view can be shared by link. There are no accounts yet, so each person's scope is a preference their own browser keeps, not a permission boundary.
+- As soon as one project exists the landing page (`/`, where the board's filters are chosen) offers a **Project** row: each active project with its live task count, and "No project" for unassigned work. Archived projects drop out of it. One project chosen there is the board's project scope, filtered server-side; it applies to the board, Filing and Archive (not Admin), and is remembered per browser (`localStorage`) and mirrored into `?project=` so a scoped view can be shared by link. There are no accounts yet, so each person's scope is a preference their own browser keeps, not a permission boundary.
 - New tasks land in the project being viewed. The create and edit forms carry a **Project** field (hidden until a project exists).
-- Under "All projects", cards show a colour-dot **project chip** (the short key when the project has one); it disappears once the header already names the project.
+- Under "All projects", cards show a colour-dot **project chip** (the short key when the project has one); it disappears once the board is scoped to one project.
 
 ### Voice dictation
 

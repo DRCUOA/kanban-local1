@@ -3,9 +3,9 @@ import type { ActiveFilter } from './active-filters';
 
 /**
  * Read-only summary of the filters applied to the board. Not a control: the
- * chips cannot be pressed, so it can sit between the stage chips and the
- * warning pills without competing with them. Its job is to make a selection
- * made elsewhere (a menu, the project selector, a pressed pill) visible.
+ * chips cannot be pressed, so it can sit beside the warning icons without
+ * competing with them. Its job is to make the choice made on the landing page
+ * visible on the board; the Change button beside it leads back there.
  */
 export function ActiveFilters({
   filters,

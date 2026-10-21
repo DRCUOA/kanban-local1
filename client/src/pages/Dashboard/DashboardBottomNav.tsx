@@ -27,9 +27,8 @@ export interface DashboardBottomNavProps {
 
 /**
  * The three places a task can go — Filing on the left, Add in the middle, Bin
- * on the right — and, on a phone, the two buttons that left the header so the
- * project selector could have its row: Goals between Filing and Add, More
- * between Add and Bin. The view toggles live in More; the board's done/archive
+ * on the right — and, on a phone, the two buttons that left the header: Goals
+ * between Filing and Add, More between Add and Bin. The view toggles live in More; the board's done/archive
  * band is gone, and Filing is where a finished task goes, by tap or by drag.
  *
  * Each of Filing and Bin wraps an empty slot the board portals its drop target

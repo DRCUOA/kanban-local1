@@ -1,30 +1,15 @@
-import { format } from 'date-fns';
 import type { Owner } from '@shared/schema';
 import { PROJECT_SCOPE_NONE, type ProjectScope } from '@shared/project-scope';
-import type { BoardWarningKind } from '@shared/board-warnings';
-import {
-  DUE_MODE,
-  FILTER_NONE,
-  endOfDueDay,
-  type DueMode,
-  type FilterId,
-} from '@/lib/board-filters';
+import { FILTER_NONE, type FilterId } from '@/lib/board-filters';
 
 export interface ActiveFilter {
   /** Stable key, also the test id suffix. */
-  key: 'project' | 'goal' | 'owner' | 'stage' | 'due' | 'new' | 'warning' | 'search' | 'focus';
+  key: 'project' | 'goal' | 'owner' | 'stage' | 'search' | 'focus';
   label: string;
   value: string;
   /** True when it narrows the board; false for the "everything" default. */
   narrowing: boolean;
 }
-
-const WARNING_TITLE: Record<BoardWarningKind, string> = {
-  'in-progress': 'Many in progress',
-  'high-priority': 'High-priority waiting',
-  overdue: 'Overdue',
-  stale: 'Stale tasks',
-};
 
 export interface ActiveFilterInput {
   scope: ProjectScope;
@@ -36,16 +21,12 @@ export interface ActiveFilterInput {
   owners: Pick<Owner, 'id' | 'name'>[];
   /** The owners chosen; empty is everyone. */
   ownerSelection: FilterId[];
-  warningFilter: BoardWarningKind | null;
   searchQuery: string;
   focusMode: boolean;
   /** The goals the board is narrowed to, by name. */
   goalNames?: string[];
   /** The stages chosen, by name. */
   stageNames?: string[];
-  /** The DUE BY row; the date is `yyyy-MM-dd`. */
-  due?: { mode: DueMode; date: string };
-  onlyNew?: boolean;
 }
 
 /** One or two names in full; past that the first and how many more. */
@@ -57,8 +38,8 @@ function nameList(names: string[]): string {
 /**
  * What is currently narrowing the board, as read-only feedback. Project and
  * owner are always listed — "Everyone" is a state worth stating, since the
- * selector that set it lives in a menu or off screen. The other landing page
- * rows, warning, search and focus appear only while they are on.
+ * landing page that set it is off screen. The goal and stage rows, search and
+ * focus appear only while they are on.
  */
 export function describeActiveFilters(input: ActiveFilterInput): ActiveFilter[] {
   const out: ActiveFilter[] = [];
@@ -111,27 +92,6 @@ export function describeActiveFilters(input: ActiveFilterInput): ActiveFilter[] 
     });
   }
 
-  const dueEnd = input.due ? endOfDueDay(input.due.date) : null;
-  if (input.due && input.due.mode !== DUE_MODE.ANY && dueEnd) {
-    const day = format(dueEnd, 'MMM d');
-    out.push({
-      key: 'due',
-      label: 'Due by',
-      value: input.due.mode === DUE_MODE.ARCHIVED ? `${day}, archived` : `${day}, not done`,
-      narrowing: true,
-    });
-  }
-
-  if (input.onlyNew) out.push({ key: 'new', label: 'Showing', value: 'New only', narrowing: true });
-
-  if (input.warningFilter) {
-    out.push({
-      key: 'warning',
-      label: 'Showing',
-      value: WARNING_TITLE[input.warningFilter],
-      narrowing: true,
-    });
-  }
   const query = input.searchQuery.trim();
   if (query) out.push({ key: 'search', label: 'Search', value: `“${query}”`, narrowing: true });
   if (input.focusMode) out.push({ key: 'focus', label: 'Focus', value: 'On', narrowing: true });

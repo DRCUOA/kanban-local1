@@ -4,7 +4,7 @@ import {
   EMPTY_BOARD_FILTERS,
   boardColumnStages,
   boardFiltersActive,
-  endOfDueDay,
+  goalsOnOffer,
   parseBoardFilters,
   tasksOnBoard,
   toggleInList,
@@ -39,42 +39,58 @@ describe('board columns', () => {
     expect(boardColumnStages(stages, EMPTY_BOARD_FILTERS).map((s) => s.id)).toEqual([1, 2]);
     expect(boardColumnStages(stages, filters({ stages: [3, 1] })).map((s) => s.id)).toEqual([1, 3]);
   });
-
-  it('draws every column for "Archived before", whose tasks are mostly done', () => {
-    const archived = filters({ due: 'archived', dueDate: '2026-10-31' });
-    expect(boardColumnStages(stages, archived).map((s) => s.id)).toEqual([1, 2, 3]);
-  });
 });
 
 describe('tasksOnBoard', () => {
   const live = [
     task({ id: 1, stageId: 1 }),
-    task({ id: 2, stageId: 2 }),
+    task({ id: 2, stageId: 2, ownerId: 7 }),
     // Done and live: behind Filing, so not on the board unless Done is chosen.
     task({ id: 3, stageId: 3 }),
+    // Archived work is never on the board.
+    task({ id: 4, stageId: 1, archived: true }),
   ];
-  const archived = [task({ id: 4, stageId: 3, archived: true, dueDate: new Date(2026, 9, 2) })];
 
   it('counts what the board shows: open columns only, unless a closed one is chosen', () => {
-    const ids = (f: BoardFilters) => tasksOnBoard(live, archived, f, { stages }).map((t) => t.id);
+    const ids = (f: BoardFilters) => tasksOnBoard(live, f, stages).map((t) => t.id);
     expect(ids(EMPTY_BOARD_FILTERS)).toEqual([1, 2]);
     expect(ids(filters({ stages: [3] }))).toEqual([3]);
-    expect(ids(filters({ due: 'archived', dueDate: '2026-10-31' }))).toEqual([4]);
+    expect(ids(filters({ owners: [7] }))).toEqual([2]);
+    expect(ids(filters({ owners: ['none'] }))).toEqual([1]);
+  });
+});
+
+describe('goalsOnOffer', () => {
+  const goal = (id: number, overrides: Partial<Task> = {}) =>
+    task({ id, title: `Goal ${id}`, type: 'goal', ...overrides });
+  const tasks = [
+    goal(1, { projectId: 1 }),
+    goal(2, { projectId: 2 }),
+    // Done: closed, so it drops out of the Goal row.
+    goal(3, { projectId: 1, stageId: 3 }),
+    goal(4, { projectId: 1, archived: true }),
+    task({ id: 5, projectId: 1 }),
+  ];
+  const ids = (projects: BoardFilters['projects'], chosen: number[] = []) =>
+    goalsOnOffer(tasks, stages, projects, chosen).map((t) => t.id);
+
+  it('offers the open goals inside the chosen projects', () => {
+    expect(ids([])).toEqual([1, 2]);
+    expect(ids([1])).toEqual([1]);
+    expect(ids(['none'])).toEqual([]);
+  });
+
+  it('keeps a closed goal while it is chosen, so it can be unticked, but never an archived one', () => {
+    expect(ids([1], [3])).toEqual([1, 3]);
+    expect(ids([1], [4])).toEqual([1]);
   });
 });
 
 describe('the helpers', () => {
-  it('reads a due day to its last millisecond, and refuses a bad one', () => {
-    expect(endOfDueDay('2026-10-31')?.getHours()).toBe(23);
-    expect(endOfDueDay('31/10/2026')).toBeNull();
-    expect(endOfDueDay('')).toBeNull();
-  });
-
   it('is active only while a row narrows', () => {
     expect(boardFiltersActive(EMPTY_BOARD_FILTERS)).toBe(false);
-    expect(boardFiltersActive(filters({ due: 'open', dueDate: '' }))).toBe(false);
-    expect(boardFiltersActive(filters({ due: 'open', dueDate: '2026-10-31' }))).toBe(true);
     expect(boardFiltersActive(filters({ owners: ['none'] }))).toBe(true);
+    expect(boardFiltersActive(filters({ stages: [3] }))).toBe(true);
   });
 
   it('toggles an id in and out of a list', () => {
@@ -82,7 +98,7 @@ describe('the helpers', () => {
     expect(toggleInList([1, 2], 1)).toEqual([2]);
   });
 
-  it('keeps only the well-formed parts of a stored value', () => {
+  it('keeps only the well-formed parts of a stored value, and lets go of retired rows', () => {
     expect(parseBoardFilters(null)).toEqual(EMPTY_BOARD_FILTERS);
     expect(
       parseBoardFilters({
@@ -90,20 +106,16 @@ describe('the helpers', () => {
         goals: ['3'],
         owners: [4],
         stages: [5, 0],
-        due: 'sometime',
-        dueDate: 'tomorrow',
-        onlyNew: 'yes',
+        // A value from the build that had DUE BY and NEW TASKS rows.
+        due: 'open',
+        dueDate: '2026-10-31',
+        onlyNew: true,
       }),
     ).toEqual({
       ...EMPTY_BOARD_FILTERS,
       projects: [1, 'none'],
       owners: [4],
       stages: [5],
-    });
-    expect(parseBoardFilters({ due: 'open', dueDate: '2026-10-31', onlyNew: true })).toMatchObject({
-      due: 'open',
-      dueDate: '2026-10-31',
-      onlyNew: true,
     });
   });
 });
