@@ -29,7 +29,9 @@ Rules:
 
 ## Register
 
-Merged dates are `Pacific/Auckland`. Schema names the migration file under `migrations/`.
+Merged dates are `Pacific/Auckland`. A row written in its own PR carries the day the PR was
+opened, since its merge date is not yet known. Schema names the migration file under
+`migrations/`.
 
 | PR | Merged | Type | Change | Authority | Schema | Deploy action |
 |---|---|---|---|---|---|---|
@@ -61,6 +63,7 @@ Merged dates are `Pacific/Auckland`. Schema names the migration file under `migr
 | #157 | 20 Oct | fix | Horizontal layout's columns run down to the nav | Not on backlog | — | — |
 | #158 | 21 Oct | feat | Inbox: `POST /api/inbox` turns mail and notes into tasks without a provider API; inbox tokens (`kbi_…`) | Not on backlog | `0023_inbox` (renames `gmail_message_id` to `message_key`) | Issue an inbox token from `/console`. Optional: `INBOX_ALLOWED_SENDERS`, `INBOX_EXTRACTION`. Set up the mail receiver (`INBOX_SETUP.md`) |
 | #159 | 21 Oct | feat | Landing page chooses what the board shows; board moves to `/board`; `tasks.viewed_at` | Not on backlog | `0024_task_viewed` | — |
+| #161 | 21 Oct (opened) | docs | This register, backfilled to #131; `docs/BACKLOG.md` 21 Oct amendment; `docs/WAYS-OF-WORKING.md` lists the register and makes a row part of every PR. Its `CHANGELOG.md` backfill for #131–#154 rides in #160 (`513c95e`), not here | Not on backlog (asked for on 21 Oct) | — | — |
 
 **In this window:** 28 PRs, 12 migrations (`0013`–`0024`), 2 changes with required deploy
 actions (#146, #158). Of the 26 PRs that changed the app (all but #133, docs, and #139, a
