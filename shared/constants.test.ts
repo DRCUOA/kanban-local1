@@ -107,7 +107,8 @@ describe('constants', () => {
 
   describe('ROUTES', () => {
     it('defines client-side route paths', () => {
-      expect(ROUTES.DASHBOARD).toBe('/');
+      expect(ROUTES.HOME).toBe('/');
+      expect(ROUTES.DASHBOARD).toBe('/board');
       expect(ROUTES.ADMIN).toBe('/admin');
       expect(ROUTES.ARCHIVE).toBe('/archive');
     });

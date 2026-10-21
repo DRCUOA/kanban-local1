@@ -204,7 +204,10 @@ export const DEFAULT_PROJECT_COLOR = '#6366F1';
 // --- Client Routes ---
 
 export const ROUTES = {
-  DASHBOARD: '/',
+  /** The landing page: choose what the board shows, then GO. */
+  HOME: '/',
+  /** The board. */
+  DASHBOARD: '/board',
   ADMIN: '/admin',
   ARCHIVE: '/archive',
   FILING: '/filing',

@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useFilteredTasks } from './use-filtered-tasks';
 import type { Task, Stage } from '@shared/schema';
+import { EMPTY_BOARD_FILTERS, type BoardFilters } from '@/lib/board-filters';
 
 const makeTask = (overrides: Partial<Task> = {}): Task => ({
   id: 1,
@@ -11,6 +12,7 @@ const makeTask = (overrides: Partial<Task> = {}): Task => ({
   stageId: 1,
   archived: false,
   deletedAt: null,
+  viewedAt: new Date(),
   priority: 'normal',
   type: null,
   goalTaskId: null,
@@ -317,7 +319,7 @@ describe('useFilteredTasks and the header warning pills', () => {
         ...base,
         tasks: [mine, theirs],
         warningFilter: 'high-priority',
-        ownerFilter: 1,
+        boardFilters: { ...EMPTY_BOARD_FILTERS, owners: [1] },
       }),
     ).toEqual([4]);
   });
@@ -340,7 +342,7 @@ describe('useFilteredTasks goal filter', () => {
       goalTaskId: 99,
     });
     const loose = makeTask({ id: 13, title: 'Loose task' });
-    const run = (goalFilter: number | null, searchQuery = '') =>
+    const run = (goals: number[], searchQuery = '') =>
       renderHook(() =>
         useFilteredTasks({
           tasks: [goal, block, other, loose],
@@ -348,11 +350,84 @@ describe('useFilteredTasks goal filter', () => {
           focusMode: false,
           viewMode: 'detail',
           stages,
-          goalFilter,
+          boardFilters: { ...EMPTY_BOARD_FILTERS, goals },
         }),
       ).result.current.map((t) => t.id);
-    expect(run(10).sort()).toEqual([10, 11]);
-    expect(run(10, 'timber')).toEqual([11]);
-    expect(run(null).length).toBe(4);
+    expect(run([10]).sort()).toEqual([10, 11]);
+    expect(run([10], 'timber')).toEqual([11]);
+    expect(run([]).length).toBe(4);
+  });
+});
+
+describe('useFilteredTasks and the landing page rows', () => {
+  const run = (
+    boardFilters: Partial<BoardFilters>,
+    tasks: Task[],
+    archivedTasks: Task[] = [],
+    keepAsNew?: ReadonlySet<number>,
+  ) =>
+    renderHook(() =>
+      useFilteredTasks({
+        tasks,
+        archivedTasks,
+        searchQuery: '',
+        focusMode: false,
+        viewMode: 'detail',
+        stages,
+        boardFilters: { ...EMPTY_BOARD_FILTERS, ...boardFilters },
+        keepAsNew,
+      }),
+    )
+      .result.current.map((t) => t.id)
+      .sort((a, b) => a - b);
+
+  it('lets any of the chosen owners through, the unassigned included', () => {
+    const tasks = [
+      makeTask({ id: 1, ownerId: 1 }),
+      makeTask({ id: 2, ownerId: 2 }),
+      makeTask({ id: 3, ownerId: 3 }),
+      makeTask({ id: 4, ownerId: null }),
+    ];
+    expect(run({ owners: [1, 3] }, tasks)).toEqual([1, 3]);
+    expect(run({ owners: [2, 'none'] }, tasks)).toEqual([2, 4]);
+  });
+
+  it('narrows by several projects and by stage, each row with the others', () => {
+    const tasks = [
+      makeTask({ id: 1, projectId: 7, stageId: 1 }),
+      makeTask({ id: 2, projectId: 8, stageId: 2 }),
+      makeTask({ id: 3, projectId: 9, stageId: 1 }),
+      makeTask({ id: 4, projectId: null, stageId: 1 }),
+    ];
+    expect(run({ projects: [7, 8] }, tasks)).toEqual([1, 2]);
+    expect(run({ projects: [7, 'none'], stages: [1] }, tasks)).toEqual([1, 4]);
+    expect(run({ projects: [7, 8], stages: [2] }, tasks)).toEqual([2]);
+  });
+
+  it('"Not done before" keeps open work due on or before the day, and nothing undated', () => {
+    const tasks = [
+      makeTask({ id: 1, dueDate: new Date(2026, 9, 31, 17, 0) }),
+      makeTask({ id: 2, dueDate: new Date(2026, 10, 1, 9, 0) }),
+      makeTask({ id: 3, dueDate: new Date(2026, 9, 1), stageId: 3 }),
+      makeTask({ id: 4, dueDate: null }),
+    ];
+    expect(run({ due: 'open', dueDate: '2026-10-31' }, tasks)).toEqual([1]);
+    // A mode with no date yet does not filter.
+    expect(run({ due: 'open', dueDate: '' }, tasks)).toEqual([1, 2, 3, 4]);
+  });
+
+  it('"Archived before" draws the board from the archived tasks instead', () => {
+    const live = [makeTask({ id: 1, dueDate: new Date(2026, 9, 1) })];
+    const archived = [
+      makeTask({ id: 2, archived: true, dueDate: new Date(2026, 9, 1), stageId: 3 }),
+      makeTask({ id: 3, archived: true, dueDate: new Date(2026, 11, 1), stageId: 3 }),
+    ];
+    expect(run({ due: 'archived', dueDate: '2026-10-31' }, live, archived)).toEqual([2]);
+  });
+
+  it('"Only new" keeps the unopened tasks, and those opened since the board opened', () => {
+    const tasks = [makeTask({ id: 1, viewedAt: null }), makeTask({ id: 2 }), makeTask({ id: 3 })];
+    expect(run({ onlyNew: true }, tasks)).toEqual([1]);
+    expect(run({ onlyNew: true }, tasks, [], new Set([3]))).toEqual([1, 3]);
   });
 });

@@ -5,7 +5,9 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ProjectScopeProvider } from '@/hooks/use-project-scope';
+import { BoardFiltersProvider } from '@/hooks/use-board-filters';
 import { ROUTES } from '@shared/constants';
+import Landing from '@/pages/Landing';
 import Dashboard from '@/pages/Dashboard';
 import Admin from '@/pages/Admin';
 import Archive from '@/pages/Archive';
@@ -20,6 +22,7 @@ import NotFound from '@/pages/not-found';
 function Router() {
   return (
     <Switch>
+      <Route path={ROUTES.HOME} component={Landing} />
       <Route path={ROUTES.DASHBOARD} component={Dashboard} />
       <Route path={ROUTES.ADMIN} component={Admin} />
       <Route path={ROUTES.ARCHIVE} component={Archive} />
@@ -40,11 +43,15 @@ function App() {
         <TooltipProvider>
           <Toaster />
           {/* Every page reads the project scope: the board and Filing/Archive
-              honour it, Admin manages the projects it points at. */}
+              honour it, Admin manages the projects it points at. The board
+              filters sit inside it: the landing page sets them, the board
+              reads them, and one project of theirs is the scope. */}
           {/* Nothing below is fetched until this browser is admitted. */}
           <AccessGate>
             <ProjectScopeProvider>
-              <Router />
+              <BoardFiltersProvider>
+                <Router />
+              </BoardFiltersProvider>
             </ProjectScopeProvider>
           </AccessGate>
         </TooltipProvider>

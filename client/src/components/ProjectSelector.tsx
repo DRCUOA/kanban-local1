@@ -3,6 +3,8 @@ import { ChevronDown, FolderKanban } from 'lucide-react';
 import { DEFAULT_PROJECT_COLOR } from '@shared/constants';
 import { PROJECT_SCOPE_ALL, PROJECT_SCOPE_NONE, type ProjectScope } from '@shared/project-scope';
 import { useProjectScope } from '@/hooks/use-project-scope';
+import { useBoardFilters } from '@/hooks/use-board-filters';
+import { FILTER_NONE } from '@/lib/board-filters';
 import { Badge } from '@/components/ui/badge';
 import { MenuPanel } from '@/components/MenuPanel';
 import { cn } from '@/lib/utils';
@@ -13,11 +15,14 @@ import { cn } from '@/lib/utils';
  * projects" is always one row away, so a scope can never hide work for good.
  * Each project row shows its live task count: the volume a scoped view hides.
  * On a phone the trigger doubles as the board's title, and its menu opens
- * centred (see MenuPanel).
+ * centred (see MenuPanel). When the landing page chose several projects it
+ * says how many, and picking a row here narrows to that one.
  */
 export function ProjectSelector({ className }: { className?: string }) {
-  const { scope, setScope, projects, activeProjects, currentProject } = useProjectScope();
+  const { scope, projects, activeProjects, currentProject } = useProjectScope();
+  const { filters, setProjects } = useBoardFilters();
   const [open, setOpen] = useState(false);
+  const several = filters.projects.length > 1;
 
   if (projects.length === 0) return null;
 
@@ -28,16 +33,27 @@ export function ProjectSelector({ className }: { className?: string }) {
       ? [...activeProjects, currentProject]
       : activeProjects;
 
-  const label = currentProject
-    ? currentProject.name
-    : scope === PROJECT_SCOPE_NONE
-      ? 'No project'
-      : 'All projects';
+  const label = several
+    ? `${filters.projects.length} projects`
+    : currentProject
+      ? currentProject.name
+      : scope === PROJECT_SCOPE_NONE
+        ? 'No project'
+        : 'All projects';
 
+  // Through the board filters, so a choice of several is replaced, not kept.
   const choose = (next: ProjectScope) => () => {
-    setScope(next);
+    setProjects(
+      next === PROJECT_SCOPE_ALL ? [] : [next === PROJECT_SCOPE_NONE ? FILTER_NONE : next],
+    );
     setOpen(false);
   };
+  const chosen = (id: number | typeof FILTER_NONE) =>
+    several
+      ? filters.projects.includes(id)
+      : id === FILTER_NONE
+        ? scope === PROJECT_SCOPE_NONE
+        : scope === id;
 
   const row = (active: boolean) =>
     cn(
@@ -90,8 +106,8 @@ export function ProjectSelector({ className }: { className?: string }) {
         <button
           type="button"
           role="menuitemradio"
-          aria-checked={scope === PROJECT_SCOPE_ALL}
-          className={row(scope === PROJECT_SCOPE_ALL)}
+          aria-checked={scope === PROJECT_SCOPE_ALL && !several}
+          className={row(scope === PROJECT_SCOPE_ALL && !several)}
           onClick={choose(PROJECT_SCOPE_ALL)}
           data-testid="project-selector-item-all"
         >
@@ -99,7 +115,7 @@ export function ProjectSelector({ className }: { className?: string }) {
           <span className="flex-1 truncate">All projects</span>
         </button>
         {options.map((project) => {
-          const active = scope === project.id;
+          const active = chosen(project.id);
           return (
             <button
               key={project.id}
@@ -137,8 +153,8 @@ export function ProjectSelector({ className }: { className?: string }) {
         <button
           type="button"
           role="menuitemradio"
-          aria-checked={scope === PROJECT_SCOPE_NONE}
-          className={row(scope === PROJECT_SCOPE_NONE)}
+          aria-checked={chosen(FILTER_NONE)}
+          className={row(chosen(FILTER_NONE))}
           onClick={choose(PROJECT_SCOPE_NONE)}
           data-testid="project-selector-item-none"
         >

@@ -71,6 +71,7 @@ type TaskInsertExecutor = Pick<typeof db, 'insert' | 'select'>;
 async function insertTaskWithExecutor(
   executor: TaskInsertExecutor,
   insertTask: InsertTask,
+  opts: { unviewed?: boolean } = {},
 ): Promise<Task> {
   // The task's state is the kind of the column it is created in — there is no
   // `status` to set alongside it, and no chance of the two disagreeing. Read
@@ -94,6 +95,8 @@ async function insertTaskWithExecutor(
     recurrence: insertTask.recurrence || TASK_RECURRENCE.NONE,
     history,
     updatedAt: new Date(),
+    // Left to the column default (now) unless the task arrived by mail.
+    ...(opts.unviewed ? { viewedAt: null } : {}),
   };
 
   const [task] = await executor.insert(tasks).values(taskData).returning();
@@ -146,6 +149,8 @@ export interface IStorage {
   bulkUpdateTasks(changes: { id: number; updates: Partial<InsertTask> }[]): Promise<number>;
   archiveTask(id: number): Promise<Task | undefined>;
   unarchiveTask(id: number): Promise<Task | undefined>;
+  /** Stamps the first time a task is opened; a task already seen keeps its stamp. */
+  markTaskViewed(id: number): Promise<Task | undefined>;
   getDeletedTasks(): Promise<Task[]>;
   binTask(id: number): Promise<Task | undefined>;
   restoreTask(id: number): Promise<Task | undefined>;
@@ -399,6 +404,15 @@ export class DatabaseStorage implements IStorage {
       .where(eq(tasks.id, id))
       .returning();
     return unarchived;
+  }
+
+  async markTaskViewed(id: number): Promise<Task | undefined> {
+    const [viewed] = await db
+      .update(tasks)
+      .set({ viewedAt: sql`coalesce(${tasks.viewedAt}, now())` })
+      .where(eq(tasks.id, id))
+      .returning();
+    return viewed;
   }
 
   /** Bin contents, most recently binned first — the order the Bin page reads in. */
@@ -901,15 +915,20 @@ export async function createEmailTasks(params: {
   children: InsertTask[];
 }): Promise<{ parent: Task; children: Task[] }> {
   return db.transaction(async (tx) => {
-    const parent = await insertTaskWithExecutor(tx, params.parent);
+    // Nobody has seen mail that became a task: it is new until it is opened.
+    const parent = await insertTaskWithExecutor(tx, params.parent, { unviewed: true });
     const children: Task[] = [];
 
     for (const child of params.children) {
       children.push(
-        await insertTaskWithExecutor(tx, {
-          ...child,
-          parentTaskId: parent.id,
-        }),
+        await insertTaskWithExecutor(
+          tx,
+          {
+            ...child,
+            parentTaskId: parent.id,
+          },
+          { unviewed: true },
+        ),
       );
     }
 

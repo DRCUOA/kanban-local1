@@ -125,6 +125,7 @@ class MemStorage implements IStorage {
       // trigger; mirror that here so the double behaves like the database.
       owner: this.ownerNameFor(insert.ownerId ?? null),
       deletedAt: null,
+      viewedAt: now,
     };
 
     this.taskStore.set(task.id, task);
@@ -192,6 +193,15 @@ class MemStorage implements IStorage {
 
     this.taskStore.set(id, unarchived);
     return unarchived;
+  }
+
+  async markTaskViewed(id: number): Promise<Task | undefined> {
+    const current = this.taskStore.get(id);
+    if (!current) return undefined;
+
+    const viewed: Task = { ...current, viewedAt: current.viewedAt ?? new Date() };
+    this.taskStore.set(id, viewed);
+    return viewed;
   }
 
   async getDeletedTasks(): Promise<Task[]> {
