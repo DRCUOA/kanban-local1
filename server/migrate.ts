@@ -4,6 +4,7 @@ import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { logger } from '@shared/logger';
+import { PG_SESSION_OPTIONS } from './pg-session';
 
 /**
  * Applies SQL migrations from ./migrations (cwd must be project root — true in Docker and local npm start).
@@ -14,7 +15,10 @@ export async function runMigrations(): Promise<void> {
   }
 
   const migrationsFolder = path.join(process.cwd(), 'migrations');
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    options: PG_SESSION_OPTIONS,
+  });
   const db = drizzle(pool);
 
   try {
