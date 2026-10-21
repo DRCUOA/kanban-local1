@@ -503,6 +503,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     },
   );
 
+  app.post(
+    api.tasks.viewed.path,
+    async (req: Request<IdParams>, res: Response<Task | ApiErrorResponse>) => {
+      const id = parseIdParam(req.params.id, res);
+      if (id === null) return;
+      const task = await storage.markTaskViewed(id);
+      if (!task) {
+        return res.status(404).json({ error: 'Task not found', status: 404 });
+      }
+      res.json(task);
+    },
+  );
+
   app.get(api.tasks.deleted.path, async (_req: Request, res: Response<Task[]>) => {
     const deletedTasks = await storage.getDeletedTasks();
     res.json(deletedTasks);

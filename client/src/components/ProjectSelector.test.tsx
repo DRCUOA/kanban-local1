@@ -4,6 +4,12 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import type { ProjectSummary } from '@shared/schema';
 import { ProjectScopeContext, type ProjectScopeContextValue } from '@/hooks/use-project-scope';
+import {
+  BoardFiltersContext,
+  BoardFiltersProvider,
+  type BoardFiltersContextValue,
+} from '@/hooks/use-board-filters';
+import { EMPTY_BOARD_FILTERS } from '@/lib/board-filters';
 import { ProjectSelector } from './ProjectSelector';
 
 const project = (overrides: Partial<ProjectSummary>): ProjectSummary => ({
@@ -35,9 +41,13 @@ function renderSelector(overrides: Partial<ProjectScopeContextValue> = {}) {
     projectById: (id) => projects.find((p) => p.id === id) ?? null,
     ...overrides,
   };
+  // The real board-filter provider, so a row reaches the stubbed setScope the
+  // way it does in the app.
   render(
     <ProjectScopeContext.Provider value={value}>
-      <ProjectSelector />
+      <BoardFiltersProvider>
+        <ProjectSelector />
+      </BoardFiltersProvider>
     </ProjectScopeContext.Provider>,
   );
   return value;
@@ -111,6 +121,44 @@ describe('ProjectSelector', () => {
     fireEvent.click(screen.getByTestId('project-selector-trigger'));
     fireEvent.click(screen.getByTestId('project-selector-item-all'));
     expect(value.setScope).toHaveBeenCalledWith('all');
+  });
+
+  it('names a choice of several projects, and narrows to one row when picked', () => {
+    const filters: BoardFiltersContextValue = {
+      filters: { ...EMPTY_BOARD_FILTERS, projects: [1, 'none'] },
+      setProjects: vi.fn(),
+      update: vi.fn(),
+      clear: vi.fn(),
+    };
+    render(
+      <ProjectScopeContext.Provider
+        value={{
+          scope: 'all',
+          setScope: vi.fn(),
+          projects,
+          activeProjects: projects.filter((p) => !p.archived),
+          currentProject: null,
+          showProjectOnCards: true,
+          projectById: (id) => projects.find((p) => p.id === id) ?? null,
+        }}
+      >
+        <BoardFiltersContext.Provider value={filters}>
+          <ProjectSelector />
+        </BoardFiltersContext.Provider>
+      </ProjectScopeContext.Provider>,
+    );
+
+    expect(screen.getByTestId('project-selector-trigger').textContent).toContain('2 projects');
+    fireEvent.click(screen.getByTestId('project-selector-trigger'));
+    const checked = (id: string) =>
+      screen.getByTestId(`project-selector-item-${id}`).getAttribute('aria-checked');
+    expect(checked('all')).toBe('false');
+    expect(checked('1')).toBe('true');
+    expect(checked('2')).toBe('false');
+    expect(checked('none')).toBe('true');
+
+    fireEvent.click(screen.getByTestId('project-selector-item-2'));
+    expect(filters.setProjects).toHaveBeenCalledWith([2]);
   });
 
   it('always fills its wrapper: the whole phone bar, its capped name from lg', () => {

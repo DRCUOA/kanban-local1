@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/no-empty-function, @typescript-eslint/no-misused-promises -- R2 baseline: strict fixes deferred to follow-up tasks */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { TASK_TYPE, projectViewPath } from '@shared/constants';
 import { useTasks, useArchivedTasks } from '@/hooks/use-tasks';
 import { EditTaskDialog } from '@/components/EditTaskDialog';
@@ -11,7 +11,8 @@ import { useBoardLayout } from '@/hooks/use-board-layout';
 import { useProjectScope } from '@/hooks/use-project-scope';
 import { type Task } from '@shared/schema';
 import { ROUTES } from '@shared/constants';
-import { Loader2 } from 'lucide-react';
+import { Loader2, SlidersHorizontal } from 'lucide-react';
+import { useLocation } from 'wouter';
 import { useStages } from '@/hooks/use-stages';
 import { NavDropSlotsProvider } from '@/components/nav-drop-slots';
 import { DashboardHeader } from './DashboardHeader';
@@ -21,8 +22,16 @@ import { useOwners } from '@/hooks/use-owners';
 import { useFilteredTasks } from './use-filtered-tasks';
 import { ActiveFilters } from './ActiveFilters';
 import { describeActiveFilters } from './active-filters';
-import { OWNER_FILTER_ALL, type OwnerFilter } from './owner-view';
 import type { BoardWarningKind } from '@shared/board-warnings';
+import { useBoardFilters } from '@/hooks/use-board-filters';
+import {
+  DUE_MODE,
+  FILTER_NONE,
+  boardColumnStages,
+  boardFiltersActive,
+  dueFilterActive,
+  isNewTask,
+} from '@/lib/board-filters';
 import { useTaskImportExport } from './use-task-import-export';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- page component; props will grow during Phase 5 decomposition
@@ -46,41 +55,74 @@ export default function Dashboard(_props: DashboardProps) {
   const { boardLayout, toggleBoardLayout } = useBoardLayout();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [isShareBoardOpen, setIsShareBoardOpen] = useState(false);
-  // Whose work the board shows, and whether it is ordered by owner (EPIC-06).
-  const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>(OWNER_FILTER_ALL);
+  // Whether cards are ordered by owner (EPIC-06). Whose work the board shows
+  // is one of the landing page's rows, with the goals, stages and the rest.
   const [sortByOwner, setSortByOwner] = useState(false);
   // Which header warning pill is filtering the board, if any.
   const [warningFilter, setWarningFilter] = useState<BoardWarningKind | null>(null);
-  // Which goal the board is narrowed to (the goal and its building-blocks), if any.
-  const [goalFilter, setGoalFilter] = useState<number | null>(null);
+  const { filters: boardFilters, update: updateBoardFilters } = useBoardFilters();
+  const [, navigate] = useLocation();
 
   const { data: stages = [] } = useStages();
   const { data: owners = [] } = useOwners();
-  const { projects, currentProject } = useProjectScope();
+  const { projects, currentProject, projectById } = useProjectScope();
   // Goals in the current project scope, for the goal filter.
   const goals = useMemo(
     () =>
       (tasks ?? [])
-        .filter((t) => t.type === TASK_TYPE.GOAL && !t.archived)
+        .filter(
+          (t) =>
+            t.type === TASK_TYPE.GOAL &&
+            !t.archived &&
+            (boardFilters.projects.length < 2 ||
+              boardFilters.projects.includes(t.projectId ?? FILTER_NONE)),
+        )
         .sort((a, b) => a.title.localeCompare(b.title)),
-    [tasks],
+    [tasks, boardFilters.projects],
   );
   // A goal that leaves the scope (another project chosen, archived) stops filtering.
   useEffect(() => {
-    if (goalFilter !== null && tasks && !goals.some((g) => g.id === goalFilter))
-      setGoalFilter(null);
-  }, [goalFilter, goals, tasks]);
+    if (!tasks || boardFilters.goals.length === 0) return;
+    const kept = boardFilters.goals.filter((id) => goals.some((g) => g.id === id));
+    if (kept.length !== boardFilters.goals.length) updateBoardFilters({ goals: kept });
+  }, [boardFilters.goals, goals, tasks, updateBoardFilters]);
+
+  // New tasks opened while an "only new" board is up stay on it until the
+  // board is left, so opening a card does not make it vanish.
+  const keepAsNew = useRef(new Set<number>());
+  useEffect(() => {
+    if (!boardFilters.onlyNew) keepAsNew.current.clear();
+    else for (const t of tasks ?? []) if (isNewTask(t)) keepAsNew.current.add(t.id);
+  }, [boardFilters.onlyNew, tasks]);
+
+  const sortedStages = useMemo(() => [...stages].sort((a, b) => a.order - b.order), [stages]);
+
   const activeFilters = describeActiveFilters({
     scope,
     projectName: currentProject?.name ?? null,
     hasProjects: projects.length > 0,
+    projectNames:
+      boardFilters.projects.length > 1
+        ? boardFilters.projects.map((id) =>
+            id === FILTER_NONE ? 'No project' : (projectById(id)?.name ?? 'Unknown project'),
+          )
+        : undefined,
     owners,
-    ownerFilter,
+    ownerSelection: boardFilters.owners,
     warningFilter,
     searchQuery,
     focusMode,
-    goalName: goals.find((g) => g.id === goalFilter)?.title ?? null,
+    goalNames: boardFilters.goals.map(
+      (id) => goals.find((g) => g.id === id)?.title ?? 'Unknown goal',
+    ),
+    stageNames: sortedStages
+      .filter((stage) => boardFilters.stages.includes(stage.id))
+      .map((stage) => stage.name.trim()),
+    due: { mode: boardFilters.due, date: boardFilters.dueDate },
+    onlyNew: boardFilters.onlyNew,
   });
+
+  const narrowingFilters = activeFilters.filter((f) => f.narrowing);
 
   const filteredTasks = useFilteredTasks({
     tasks,
@@ -89,10 +131,24 @@ export default function Dashboard(_props: DashboardProps) {
     focusMode,
     viewMode,
     stages,
-    ownerFilter,
     warningFilter,
-    goalFilter,
+    boardFilters,
+    keepAsNew: keepAsNew.current,
   });
+
+  // Only when the landing page changes them; otherwise the board picks its
+  // usual open columns itself. Archived work could sit in any column, so
+  // under "Archived before" the board draws the ones it actually fills.
+  const archivedBoard = boardFilters.due === DUE_MODE.ARCHIVED && dueFilterActive(boardFilters);
+  const columnStageIds = useMemo(() => {
+    if (boardFilters.stages.length === 0 && !archivedBoard) return undefined;
+    const columns = boardColumnStages(sortedStages, boardFilters);
+    return (
+      boardFilters.stages.length > 0
+        ? columns
+        : columns.filter((s) => filteredTasks.some((t) => t.stageId === s.id))
+    ).map((s) => s.id);
+  }, [sortedStages, boardFilters, archivedBoard, filteredTasks]);
   const { handleExport, handleImport } = useTaskImportExport({ tasks, stages });
 
   useKeyboardShortcuts({
@@ -146,16 +202,36 @@ export default function Dashboard(_props: DashboardProps) {
   // offers it from lg, the bottom nav on a phone.
   const goalsHref = projectViewPath(scope);
 
+  // Beside the filter chips: the chips say what narrows the board, this is
+  // the way back to the landing page that chose it.
+  const changeFilters = (
+    <button
+      type="button"
+      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] leading-none text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground active:scale-95"
+      onClick={() => {
+        navigate(ROUTES.HOME);
+      }}
+      data-testid="button-change-filters"
+    >
+      <SlidersHorizontal className="h-3 w-3" aria-hidden />
+      Change
+    </button>
+  );
+
   const moreActions = {
     goals,
-    goalFilter,
-    onGoalFilterChange: setGoalFilter,
+    goalSelection: boardFilters.goals,
+    onGoalSelectionChange: (next: number[]) => {
+      updateBoardFilters({ goals: next });
+    },
     viewMode,
     focusMode,
     boardLayout,
     owners,
-    ownerFilter,
-    onSetOwnerFilter: setOwnerFilter,
+    ownerSelection: boardFilters.owners,
+    onSetOwnerSelection: (next: typeof boardFilters.owners) => {
+      updateBoardFilters({ owners: next });
+    },
     sortByOwner,
     onToggleSortByOwner: () => {
       setSortByOwner(!sortByOwner);
@@ -202,7 +278,14 @@ export default function Dashboard(_props: DashboardProps) {
             <div className="space-y-1.5 px-3 pt-2 lg:hidden" data-testid="phone-filter-strip">
               {/* Both rows sit about the centre; the pills scroll from the
                   left only once they are wider than the screen. */}
-              <ActiveFilters filters={activeFilters.filter((f) => f.narrowing)} />
+              {narrowingFilters.length > 0 && (
+                // Wraps rather than spill: Change drops under the chips when
+                // they need the width.
+                <div className="flex flex-wrap items-center justify-center gap-1.5">
+                  <ActiveFilters filters={narrowingFilters} className="max-w-full" />
+                  {changeFilters}
+                </div>
+              )}
               <div className="-mx-3 overflow-x-auto px-3 pb-1">
                 <TaskWarnings
                   tasks={tasks}
@@ -222,7 +305,10 @@ export default function Dashboard(_props: DashboardProps) {
               className="hidden items-center gap-3 px-3 pt-2 lg:flex"
               data-testid="wide-filter-strip"
             >
-              <ActiveFilters filters={activeFilters} className="min-w-0 flex-1 justify-start" />
+              <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                <ActiveFilters filters={activeFilters} className="min-w-0 justify-start" />
+                {changeFilters}
+              </div>
               {/* Counted against the whole board, so a count does not change
                   under the filter it is applying. */}
               <TaskWarnings
@@ -243,9 +329,9 @@ export default function Dashboard(_props: DashboardProps) {
           viewMode={viewMode}
           boardLayout={boardLayout}
           sortByOwner={sortByOwner}
-          isFiltered={
-            warningFilter !== null || ownerFilter !== OWNER_FILTER_ALL || goalFilter !== null
-          }
+          isFiltered={warningFilter !== null}
+          landingFiltered={boardFiltersActive(boardFilters)}
+          columnStageIds={columnStageIds}
           searchQuery={searchQuery}
           onTaskClick={handleTaskClick}
         />

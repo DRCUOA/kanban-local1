@@ -5,8 +5,12 @@ const base: ActiveFilterInput = {
   scope: 'all',
   projectName: null,
   hasProjects: true,
-  owners: [{ id: 4, name: 'Rich' }],
-  ownerFilter: 'all',
+  owners: [
+    { id: 4, name: 'Rich' },
+    { id: 5, name: 'Moi' },
+    { id: 6, name: 'Team' },
+  ],
+  ownerSelection: [],
   warningFilter: null,
   searchQuery: '',
   focusMode: false,
@@ -27,8 +31,8 @@ describe('describeActiveFilters', () => {
       narrowing: true,
     });
     expect(by({ scope: 'none' }).project).toMatchObject({ value: 'No project', narrowing: true });
-    expect(by({ ownerFilter: 4 }).owner).toMatchObject({ value: 'Rich', narrowing: true });
-    expect(by({ ownerFilter: 'none' }).owner).toMatchObject({ value: 'Unassigned' });
+    expect(by({ ownerSelection: [4] }).owner).toMatchObject({ value: 'Rich', narrowing: true });
+    expect(by({ ownerSelection: ['none'] }).owner).toMatchObject({ value: 'Unassigned' });
   });
   it('adds warning, search and focus only while on, and hides project with no projects', () => {
     const f = by({
@@ -45,10 +49,41 @@ describe('describeActiveFilters', () => {
 
 describe('goal filter', () => {
   it('names the goal the board is narrowed to', () => {
-    const f = describeActiveFilters({ ...base, goalName: 'Build a shed' });
+    const f = describeActiveFilters({ ...base, goalNames: ['Build a shed'] });
     expect(f.find((x) => x.key === 'goal')).toMatchObject({
+      label: 'Goal',
       value: 'Build a shed',
       narrowing: true,
     });
+  });
+});
+
+describe('the landing page rows', () => {
+  it('names two choices in full and shortens more', () => {
+    expect(by({ ownerSelection: [4, 5] }).owner).toMatchObject({
+      label: 'Owners',
+      value: 'Rich, Moi',
+    });
+    expect(by({ ownerSelection: [4, 5, 6] }).owner?.value).toBe('Rich +2');
+    expect(by({ projectNames: ['Shed', 'House'] }).project).toMatchObject({
+      label: 'Projects',
+      value: 'Shed, House',
+      narrowing: true,
+    });
+  });
+
+  it('adds stage, due by and new only while they narrow', () => {
+    const f = by({
+      stageNames: ['Backlog'],
+      due: { mode: 'open', date: '2026-10-31' },
+      onlyNew: true,
+    });
+    expect(f.stage?.value).toBe('Backlog');
+    expect(f.due?.value).toBe('Oct 31, not done');
+    expect(f.new?.value).toBe('New only');
+    expect(by({ due: { mode: 'archived', date: '2026-10-31' } }).due?.value).toBe(
+      'Oct 31, archived',
+    );
+    expect(Object.keys(by({ due: { mode: 'open', date: '' } }))).toEqual(['project', 'owner']);
   });
 });

@@ -14,6 +14,8 @@ const ALL = 'all';
 /**
  * Narrows the board to one goal: the goal itself and its building-blocks.
  * Offers the goals in the current project scope; hidden when there are none.
+ * The landing page can choose several; the picker then names how many, and
+ * choosing one here narrows to just that one.
  */
 export function GoalFilterSelect({
   goals,
@@ -22,29 +24,31 @@ export function GoalFilterSelect({
   className,
 }: {
   goals: Task[];
-  value: number | null;
-  onChange: (next: number | null) => void;
+  value: number[];
+  onChange: (next: number[]) => void;
   className?: string;
 }) {
-  if (goals.length === 0 && value === null) return null;
+  if (goals.length === 0 && value.length === 0) return null;
+  const [only] = value;
   return (
     <Select
-      value={value === null ? ALL : String(value)}
+      // Several goals match no single item; an empty value shows the placeholder.
+      value={value.length === 0 ? ALL : value.length === 1 ? String(only) : ''}
       onValueChange={(v) => {
-        onChange(v === ALL ? null : Number(v));
+        onChange(v === ALL ? [] : [Number(v)]);
       }}
     >
       <SelectTrigger
         aria-label="Goal filter"
         className={cn(
           'h-10 w-auto max-w-[14rem] gap-2 rounded-md px-3 text-sm font-medium',
-          value !== null && 'border-primary bg-primary/10 text-primary',
+          value.length > 0 && 'border-primary bg-primary/10 text-primary',
           className,
         )}
         data-testid="goal-filter-trigger"
       >
         <Target className="h-4 w-4 shrink-0" aria-hidden />
-        <SelectValue />
+        <SelectValue placeholder={`${value.length} goals`} />
       </SelectTrigger>
       <SelectContent>
         <SelectItem value={ALL} className="py-3">

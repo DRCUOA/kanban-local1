@@ -2,7 +2,10 @@
 import { type Task } from '@shared/schema';
 import { KanbanBoard } from '@/components/KanbanBoard';
 import { CreateTaskDialog } from '@/components/CreateTaskDialog';
-import { LayoutDashboard } from 'lucide-react';
+import { LayoutDashboard, SlidersHorizontal } from 'lucide-react';
+import { useLocation } from 'wouter';
+import { ROUTES } from '@shared/constants';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 export interface DashboardContentProps {
@@ -13,8 +16,12 @@ export interface DashboardContentProps {
   searchQuery: string;
   /** Order cards by owner name instead of by due date (EPIC-06 OWN-R33). */
   sortByOwner?: boolean;
-  /** True while a warning pill or an owner is narrowing the board. */
+  /** True while a warning pill is narrowing the board. */
   isFiltered?: boolean;
+  /** True while a landing page row is narrowing the board. */
+  landingFiltered?: boolean;
+  /** The columns the landing page chose; absent is every open column. */
+  columnStageIds?: number[];
   onTaskClick: (task: Task) => void;
 }
 
@@ -26,8 +33,11 @@ export function DashboardContent({
   searchQuery,
   sortByOwner = false,
   isFiltered = false,
+  landingFiltered = false,
+  columnStageIds,
   onTaskClick,
 }: DashboardContentProps) {
+  const [, navigate] = useLocation();
   return (
     // Vertical is a page that scrolls: a long run-off at its end lets the last
     // card clear the selection toolbar and toasts that float above the nav.
@@ -60,6 +70,7 @@ export function DashboardContent({
               boardLayout={boardLayout}
               searchQuery={searchQuery}
               sortByOwner={sortByOwner}
+              columnStageIds={columnStageIds}
             />
           </div>
         ) : (
@@ -73,11 +84,26 @@ export function DashboardContent({
                 ? 'No tasks match your search within the current filter.'
                 : searchQuery
                   ? 'No tasks match your search.'
-                  : isFiltered
-                    ? 'Nothing is left once the filter is applied. Press the pill again to show every task.'
-                    : 'Create your first task to get started.'}
+                  : landingFiltered
+                    ? 'No task matches the filters on the board.'
+                    : isFiltered
+                      ? 'Nothing is left once the filter is applied. Press the pill again to show every task.'
+                      : 'Create your first task to get started.'}
             </p>
-            {!searchQuery && !isFiltered && <CreateTaskDialog />}
+            {landingFiltered && !searchQuery && (
+              <Button
+                variant="outline"
+                className="gap-2 rounded-md"
+                onClick={() => {
+                  navigate(ROUTES.HOME);
+                }}
+                data-testid="button-change-filters-empty"
+              >
+                <SlidersHorizontal className="h-4 w-4" aria-hidden />
+                Change filters
+              </Button>
+            )}
+            {!searchQuery && !isFiltered && !landingFiltered && <CreateTaskDialog />}
           </div>
         )}
       </div>

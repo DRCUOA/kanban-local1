@@ -74,6 +74,20 @@ export function useUpdateTask() {
   });
 }
 
+/**
+ * Marks a task seen, so it stops counting as new. Fired when a task is opened;
+ * the lists refetch so the landing page's NEW TASKS count drops with it.
+ */
+export function useMarkTaskViewed() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => apiPost<Task>(api.tasks.viewed.path.replace(':id', String(id))),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.tasks.list.path] });
+    },
+  });
+}
+
 /** Permanent removal — the row is gone. Reached only from the Bin's "Delete forever". */
 export function useDeleteTask() {
   const queryClient = useQueryClient();

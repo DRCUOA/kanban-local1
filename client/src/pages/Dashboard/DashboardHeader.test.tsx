@@ -53,14 +53,22 @@ describe('DashboardHeader', () => {
     expect(screen.getByRole('banner')).toBeDefined();
   });
 
-  it('renders the search field in a search landmark; the only other buttons are the phone search toggle and More', () => {
+  it('renders the search field in a search landmark; the only other buttons are the logo, the phone search toggle and More', () => {
     render(<DashboardHeader {...defaults} />);
     const input = screen.getByTestId('input-search');
     expect(screen.getByRole('search').contains(input)).toBe(true);
     expect(screen.getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Choose what the board shows',
       'Search tasks',
       'More options',
     ]);
+  });
+
+  it('leads back to the landing page from the logo', () => {
+    window.history.replaceState(null, '', '/board');
+    render(<DashboardHeader {...defaults} />);
+    fireEvent.click(screen.getByTestId('button-landing'));
+    expect(window.location.pathname).toBe('/');
   });
 
   it('hosts the More menu, which the bottom bar handed over', () => {

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { Search, Target, X } from 'lucide-react';
+import { ROUTES } from '@shared/constants';
 import { useLocation } from 'wouter';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -17,10 +18,10 @@ export interface DashboardHeaderProps extends MoreActionsMenuProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onClearSearch: () => void;
-  /** Goals in scope, and the one the board is narrowed to. */
+  /** Goals in scope, and the ones the board is narrowed to. */
   goals?: Task[];
-  goalFilter?: number | null;
-  onGoalFilterChange?: (next: number | null) => void;
+  goalSelection?: number[];
+  onGoalSelectionChange?: (next: number[]) => void;
   /** The goals view of the board's scope: one project, "No project" or every project. */
   goalsHref?: string;
 }
@@ -43,8 +44,8 @@ export function DashboardHeader({
   onSearchChange,
   onClearSearch,
   goals = [],
-  goalFilter = null,
-  onGoalFilterChange,
+  goalSelection = [],
+  onGoalSelectionChange,
   goalsHref,
   ...moreActions
 }: DashboardHeaderProps) {
@@ -90,10 +91,20 @@ export function DashboardHeader({
           data-testid="app-bar"
         >
           <div className="flex flex-none items-center lg:order-1">
-            {/* A bare mark on a phone; the raised tile from lg. */}
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center lg:neo-raised lg:rounded-lg">
+            {/* A bare mark on a phone; the raised tile from lg. It leads back
+                to the landing page, where the board's filters are chosen. */}
+            <button
+              type="button"
+              aria-label="Choose what the board shows"
+              title="Choose what the board shows"
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md transition-all active:scale-90 lg:neo-raised lg:rounded-lg"
+              onClick={() => {
+                navigate(ROUTES.HOME);
+              }}
+              data-testid="button-landing"
+            >
               <AppLogo className="h-7 w-7 text-primary lg:h-6 lg:w-6" />
-            </div>
+            </button>
           </div>
 
           {/* Once a project exists the selector names the board on a phone;
@@ -119,11 +130,11 @@ export function DashboardHeader({
           {/* Hidden until a project exists. Fills the phone bar; sized to its
               name from lg. */}
           <ProjectSelector className="min-w-0 flex-1 lg:order-4 lg:flex-initial" />
-          {onGoalFilterChange && (
+          {onGoalSelectionChange && (
             <GoalFilterSelect
               goals={goals}
-              value={goalFilter}
-              onChange={onGoalFilterChange}
+              value={goalSelection}
+              onChange={onGoalSelectionChange}
               className="hidden min-w-0 lg:order-4 lg:flex"
             />
           )}
@@ -162,8 +173,8 @@ export function DashboardHeader({
               <MoreActionsMenu
                 {...moreActions}
                 goals={goals}
-                goalFilter={goalFilter}
-                onGoalFilterChange={onGoalFilterChange}
+                goalSelection={goalSelection}
+                onGoalSelectionChange={onGoalSelectionChange}
               />
             </div>
           </div>

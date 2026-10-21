@@ -2,8 +2,14 @@
 import { useMemo } from 'react';
 import { type Task, type Stage } from '@shared/schema';
 import { matchesBoardWarning, type BoardWarningKind } from '@shared/board-warnings';
-import { OWNER_FILTER_ALL, ownerFilterMatches, type OwnerFilter } from './owner-view';
 import { richTextToPlainText } from '@/lib/rich-text';
+import {
+  DUE_MODE,
+  EMPTY_BOARD_FILTERS,
+  dueFilterActive,
+  matchesBoardFilters,
+  type BoardFilters,
+} from '@/lib/board-filters';
 import {
   STAGE_KIND,
   TASK_PRIORITY,
@@ -22,12 +28,16 @@ export interface UseFilteredTasksOptions {
   /** In focus mode, detail view shows only high/critical incomplete tasks; summary keeps the in-progress + next-backlog slice. */
   viewMode: 'detail' | 'summary';
   stages: Stage[];
-  /** Restrict the board to one owner, to nobody's, or to everyone's (EPIC-06). */
-  ownerFilter?: OwnerFilter;
   /** Restrict the board to the tasks behind one header warning pill. */
   warningFilter?: BoardWarningKind | null;
-  /** Restrict the board to one goal and its building-blocks. */
-  goalFilter?: number | null;
+  /**
+   * What the landing page chose: projects, goals, owners (EPIC-06), stages,
+   * due by and new tasks. Under "Archived before" the board is drawn from
+   * `archivedTasks` instead of the live list.
+   */
+  boardFilters?: BoardFilters;
+  /** New tasks opened since the board opened, kept on an "only new" board. */
+  keepAsNew?: ReadonlySet<number>;
 }
 
 /**
@@ -48,9 +58,9 @@ export function useFilteredTasks({
   focusMode,
   viewMode,
   stages,
-  ownerFilter = OWNER_FILTER_ALL,
   warningFilter = null,
-  goalFilter = null,
+  boardFilters = EMPTY_BOARD_FILTERS,
+  keepAsNew,
 }: UseFilteredTasksOptions): Task[] {
   return useMemo(() => {
     const taskId = parseTaskIdQuery(searchQuery);
@@ -62,14 +72,18 @@ export function useFilteredTasks({
       return match ? [match] : [];
     }
 
-    // The warning pills, the owner filter and the search box narrow the board
-    // together: each one is a condition, not a mode that replaces the others.
+    // The warning pills, the landing page's rows and the search box narrow
+    // the board together: each one is a condition, not a mode that replaces
+    // the others.
     const now = new Date();
+    const source =
+      boardFilters.due === DUE_MODE.ARCHIVED && dueFilterActive(boardFilters)
+        ? archivedTasks
+        : tasks;
     let filtered =
-      tasks?.filter(
+      source?.filter(
         (t) =>
-          ownerFilterMatches(t.ownerId, ownerFilter) &&
-          (goalFilter === null || t.id === goalFilter || t.goalTaskId === goalFilter) &&
+          matchesBoardFilters(t, boardFilters, { stages, keepAsNew }) &&
           (warningFilter === null || matchesBoardWarning(t, warningFilter, stages, now)) &&
           (t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (t.description &&
@@ -112,8 +126,8 @@ export function useFilteredTasks({
     focusMode,
     viewMode,
     stages,
-    ownerFilter,
     warningFilter,
-    goalFilter,
+    boardFilters,
+    keepAsNew,
   ]);
 }

@@ -71,6 +71,11 @@ export interface KanbanBoardProps {
   searchQuery?: string;
   /** Order cards by owner name instead of by due date (EPIC-06 OWN-R33). */
   sortByOwner?: boolean;
+  /**
+   * The columns to draw, when the landing page chose them (a closed stage
+   * included). Absent is the usual board: every open column.
+   */
+  columnStageIds?: number[];
 }
 
 export function KanbanBoard({
@@ -81,6 +86,7 @@ export function KanbanBoard({
   boardLayout = 'vertical',
   searchQuery = '',
   sortByOwner = false,
+  columnStageIds,
 }: KanbanBoardProps) {
   const { data: stages = [] } = useStages();
   const { data: allSubStages = [] } = useSubStages();
@@ -91,10 +97,14 @@ export function KanbanBoard({
   // behind the nav's Filing button, as both its submenu rows and the /filing
   // page. The band they and the archive strip used to occupy goes back to the
   // columns. Read from `stage.kind` since EPIC-03 story 1, so renaming a
-  // column no longer moves it on or off the board.
+  // column no longer moves it on or off the board. The landing page can pick
+  // the columns instead, and a closed one comes back when it is picked.
   const columnStages = useMemo(
-    () => sortedStages.filter((stage) => !isClosedStageKind(stageKind(stage))),
-    [sortedStages],
+    () =>
+      columnStageIds
+        ? sortedStages.filter((stage) => columnStageIds.includes(stage.id))
+        : sortedStages.filter((stage) => !isClosedStageKind(stageKind(stage))),
+    [sortedStages, columnStageIds],
   );
   const filingMenuTargets = useMemo(() => filingTargets(sortedStages), [sortedStages]);
   const lastColumnStage =

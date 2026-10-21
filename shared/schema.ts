@@ -178,6 +178,11 @@ export const tasks = pgTable('tasks', {
   // Bin (soft delete). Null = live. Set when a task is dropped on the Bin;
   // cleared by Restore. Only "Delete forever" removes the row.
   deletedAt: timestamp('deleted_at'),
+  // When the task was first opened. Null = new: mail turned it into a task
+  // and nobody has opened it yet (the landing page's NEW TASKS row). Every
+  // other way in stamps it at creation, since whoever made the task has seen
+  // it. Set by POST /api/tasks/:id/viewed, never by a task write.
+  viewedAt: timestamp('viewed_at').defaultNow(),
 });
 
 // Drizzle has no built-in bytea column; the driver already speaks Buffer.
@@ -468,6 +473,8 @@ export const insertTaskSchema = createInsertSchema(tasks)
     // `owner` is a mirror of the owner's name maintained by the database;
     // a task write sets `ownerId` (EPIC-06 OWN-R1).
     owner: true,
+    // Owned by the viewed endpoint, like the bin state.
+    viewedAt: true,
   })
   .extend({
     title: z.string().min(1),

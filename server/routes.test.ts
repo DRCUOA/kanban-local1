@@ -24,6 +24,7 @@ const mockStorage = vi.hoisted(() => ({
   updateTask: vi.fn(),
   archiveTask: vi.fn(),
   unarchiveTask: vi.fn(),
+  markTaskViewed: vi.fn(),
   deleteTask: vi.fn(),
   getStages: vi.fn(),
   createStage: vi.fn(),
@@ -83,6 +84,7 @@ function fakeTask(overrides: Partial<Task> = {}): Task {
     stageId: 1,
     archived: false,
     deletedAt: null,
+    viewedAt: NOW,
     priority: 'normal',
     type: null,
     goalTaskId: null,
@@ -400,6 +402,36 @@ describe('Task routes', () => {
       expect(res.status).toBe(400);
       expect(res.body).toHaveProperty('error');
       expect(res.body).toHaveProperty('status', 400);
+    });
+  });
+
+  // ---- POST /api/tasks/:id/viewed ----
+
+  describe('POST /api/tasks/:id/viewed', () => {
+    it('returns 200 with the task, now seen', async () => {
+      mockStorage.markTaskViewed.mockResolvedValue(fakeTask({ viewedAt: NOW }));
+
+      const res = await request(app).post('/api/tasks/1/viewed');
+
+      expect(res.status).toBe(200);
+      expect(mockStorage.markTaskViewed).toHaveBeenCalledWith(1);
+      expect(res.body.viewedAt).toBe(NOW.toISOString());
+    });
+
+    it('returns 404 when the task does not exist', async () => {
+      mockStorage.markTaskViewed.mockResolvedValue(undefined);
+
+      const res = await request(app).post('/api/tasks/999/viewed');
+
+      expect(res.status).toBe(404);
+      expect(res.body).toHaveProperty('error', 'Task not found');
+    });
+
+    it('returns 400 for a non-numeric ID', async () => {
+      const res = await request(app).post('/api/tasks/abc/viewed');
+
+      expect(res.status).toBe(400);
+      expect(mockStorage.markTaskViewed).not.toHaveBeenCalled();
     });
   });
 

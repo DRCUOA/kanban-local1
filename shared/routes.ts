@@ -98,6 +98,15 @@ export const api = {
         404: z.object({ message: z.string() }),
       },
     },
+    /** Marks a task seen: it stops counting as new (the landing page's NEW TASKS row). */
+    viewed: {
+      method: 'POST' as const,
+      path: '/api/tasks/:id/viewed',
+      responses: {
+        200: z.custom<Task>(),
+        404: z.object({ message: z.string() }),
+      },
+    },
     deleted: {
       method: 'GET' as const,
       path: '/api/tasks/deleted',

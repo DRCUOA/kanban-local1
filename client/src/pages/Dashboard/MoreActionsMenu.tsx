@@ -18,7 +18,7 @@ import { MenuPanel } from '@/components/MenuPanel';
 import { BuiltByTk } from '@/components/BuiltByTk';
 import type { OwnerSummary } from '@shared/schema';
 import { DEFAULT_OWNER_COLOR } from '@shared/constants';
-import { OWNER_FILTER_ALL, OWNER_FILTER_NONE, type OwnerFilter } from './owner-view';
+import { FILTER_NONE, type FilterId } from '@/lib/board-filters';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
 import { NAV_BUTTON_CLASS } from './nav-button';
@@ -31,12 +31,13 @@ export interface MoreActionsMenuProps {
   variant?: 'icon' | 'nav';
   viewMode: 'detail' | 'summary';
   /**
-   * Which owner the board is restricted to (EPIC-06 OWN-R32). Optional so a
-   * caller that does not own this state still gets a working menu: the
+   * Whose work the board shows (EPIC-06 OWN-R32); empty is everyone. The
+   * landing page can choose several; a row here picks just that one. Optional
+   * so a caller that does not own this state still gets a working menu: the
    * defaults are the unfiltered, due-date-ordered board.
    */
-  ownerFilter?: OwnerFilter;
-  onSetOwnerFilter?: (next: OwnerFilter) => void;
+  ownerSelection?: FilterId[];
+  onSetOwnerSelection?: (next: FilterId[]) => void;
   /** Order cards by owner name rather than by due date (OWN-R33). */
   sortByOwner?: boolean;
   onToggleSortByOwner?: () => void;
@@ -53,13 +54,13 @@ export interface MoreActionsMenuProps {
   onExport: () => void;
   onImport: () => void;
   /**
-   * Goals in scope and the one the board is narrowed to. The header shows a
+   * Goals in scope and the ones the board is narrowed to. The header shows a
    * goal picker from the tablet breakpoint; on a phone this menu is where the
    * goal filter lives.
    */
   goals?: Task[];
-  goalFilter?: number | null;
-  onGoalFilterChange?: (next: number | null) => void;
+  goalSelection?: number[];
+  onGoalSelectionChange?: (next: number[]) => void;
 }
 
 /**
@@ -72,8 +73,8 @@ export interface MoreActionsMenuProps {
 export function MoreActionsMenu({
   variant = 'icon',
   viewMode,
-  ownerFilter = OWNER_FILTER_ALL,
-  onSetOwnerFilter,
+  ownerSelection = [],
+  onSetOwnerSelection,
   sortByOwner = false,
   onToggleSortByOwner,
   owners = [],
@@ -88,11 +89,13 @@ export function MoreActionsMenu({
   onExport,
   onImport,
   goals = [],
-  goalFilter = null,
-  onGoalFilterChange,
+  goalSelection = [],
+  onGoalSelectionChange,
 }: MoreActionsMenuProps) {
   const [open, setOpen] = useState(false);
-  const activeOwners = owners.filter((owner) => !owner.archived || owner.id === ownerFilter);
+  const activeOwners = owners.filter(
+    (owner) => !owner.archived || ownerSelection.includes(owner.id),
+  );
 
   const row = 'w-full flex items-center gap-3 p-3 rounded-lg text-sm transition-colors';
   const toggleRow = (active: boolean) =>
@@ -181,17 +184,17 @@ export function MoreActionsMenu({
           {boardLayout === 'vertical' ? 'Horiz' : 'Vert'}
         </button>
 
-        {onGoalFilterChange && (goals.length > 0 || goalFilter !== null) && (
+        {onGoalSelectionChange && (goals.length > 0 || goalSelection.length > 0) && (
           <div className="lg:hidden" data-testid="more-goal-filter">
             <div className="my-1 border-t border-border-subtle" />
             <p className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               Goal
             </p>
             <button
-              className={toggleRow(goalFilter === null)}
-              aria-pressed={goalFilter === null}
+              className={toggleRow(goalSelection.length === 0)}
+              aria-pressed={goalSelection.length === 0}
               onClick={() => {
-                onGoalFilterChange(null);
+                onGoalSelectionChange([]);
               }}
             >
               <Target className="h-4 w-4" />
@@ -200,10 +203,10 @@ export function MoreActionsMenu({
             {goals.map((goal) => (
               <button
                 key={goal.id}
-                className={toggleRow(goalFilter === goal.id)}
-                aria-pressed={goalFilter === goal.id}
+                className={toggleRow(goalSelection.includes(goal.id))}
+                aria-pressed={goalSelection.includes(goal.id)}
                 onClick={() => {
-                  onGoalFilterChange(goal.id);
+                  onGoalSelectionChange([goal.id]);
                 }}
                 data-testid={`goal-filter-option-${goal.id}`}
               >
@@ -222,10 +225,10 @@ export function MoreActionsMenu({
           Owner
         </p>
         <button
-          className={toggleRow(ownerFilter === OWNER_FILTER_ALL)}
-          aria-pressed={ownerFilter === OWNER_FILTER_ALL}
+          className={toggleRow(ownerSelection.length === 0)}
+          aria-pressed={ownerSelection.length === 0}
           onClick={() => {
-            onSetOwnerFilter?.(OWNER_FILTER_ALL);
+            onSetOwnerSelection?.([]);
           }}
           data-testid="owner-filter-all"
         >
@@ -235,10 +238,10 @@ export function MoreActionsMenu({
         {activeOwners.map((owner) => (
           <button
             key={owner.id}
-            className={toggleRow(ownerFilter === owner.id)}
-            aria-pressed={ownerFilter === owner.id}
+            className={toggleRow(ownerSelection.includes(owner.id))}
+            aria-pressed={ownerSelection.includes(owner.id)}
             onClick={() => {
-              onSetOwnerFilter?.(owner.id);
+              onSetOwnerSelection?.([owner.id]);
             }}
             data-testid={`owner-filter-${owner.id}`}
           >
@@ -252,10 +255,10 @@ export function MoreActionsMenu({
           </button>
         ))}
         <button
-          className={toggleRow(ownerFilter === OWNER_FILTER_NONE)}
-          aria-pressed={ownerFilter === OWNER_FILTER_NONE}
+          className={toggleRow(ownerSelection.includes(FILTER_NONE))}
+          aria-pressed={ownerSelection.includes(FILTER_NONE)}
           onClick={() => {
-            onSetOwnerFilter?.(OWNER_FILTER_NONE);
+            onSetOwnerSelection?.([FILTER_NONE]);
           }}
           data-testid="owner-filter-none"
         >
