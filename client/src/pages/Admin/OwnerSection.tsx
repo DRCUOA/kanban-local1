@@ -153,7 +153,8 @@ export function OwnerSection({ owners, isLoading }: OwnerSectionProps) {
         <div>
           <h2 className="text-base font-semibold">Owners</h2>
           <p className="text-[10px] text-muted-foreground">
-            Who work can be assigned to. Rename once here and every task follows.
+            Who work can be assigned to. Rename once here and every task follows. Archived owners
+            leave the filter page.
           </p>
         </div>
         <Dialog

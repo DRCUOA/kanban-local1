@@ -1,58 +1,62 @@
 import { useMemo, useState } from 'react';
-import { format } from 'date-fns';
-import { CalendarDays, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import type { Task } from '@shared/schema';
 import { DEFAULT_OWNER_COLOR, DEFAULT_PROJECT_COLOR } from '@shared/constants';
-import { useTasks, useArchivedTasks } from '@/hooks/use-tasks';
+import { useTasks } from '@/hooks/use-tasks';
 import { useStages } from '@/hooks/use-stages';
 import { useOwners } from '@/hooks/use-owners';
 import { useProjectScope } from '@/hooks/use-project-scope';
-import { useBoardFilters } from '@/hooks/use-board-filters';
+import { useBoardFilters, usePruneChosenGoals } from '@/hooks/use-board-filters';
 import {
-  DUE_MODE,
   FILTER_NONE,
   boardFiltersActive,
-  endOfDueDay,
+  goalsOnOffer,
   tasksOnBoard,
   toggleInList,
-  type DueMode,
   type FilterId,
 } from '@/lib/board-filters';
+import { inboxTasks } from '@/lib/inbox';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
+import { EditTaskDialog } from '@/components/EditTaskDialog';
+import { TaskHistoryModal } from '@/components/TaskHistoryModal';
 import { FilterOption, FilterRow } from './FilterRow';
 import { LandingBottomNav, LandingHeader } from './LandingChrome';
-import { goalsInProjects, landingOptions } from './landing-options';
-import 'react-day-picker/dist/style.css';
+import { LandingInbox } from './LandingInbox';
+import { landingOptions } from './landing-options';
 
-type RowKey = 'project' | 'goal' | 'owner' | 'due' | 'stage' | 'new';
-
-const DUE_CHOICES: { mode: DueMode; label: string }[] = [
-  { mode: DUE_MODE.ANY, label: 'Any date' },
-  { mode: DUE_MODE.OPEN, label: 'Not done before' },
-  { mode: DUE_MODE.ARCHIVED, label: 'Archived before' },
-];
+type RowKey = 'project' | 'goal' | 'owner' | 'stage';
 
 /**
- * The landing page: choose what the board shows, then GO. Each row is a
- * multi-choice read from the board's own data; nothing chosen in a row means
- * the row does not filter. A tick applies at once (the choice is the board's,
- * kept with its project scope), so the count at the foot is always what GO
- * will open.
+ * The landing page: the inbox, then what the board shows, then GO. The inbox
+ * is the mail that became tasks and has not been opened; a row opens its task
+ * here. Below it, four rows choose the board, each a multi-choice read from
+ * the board's own data; nothing ticked in a row means the row shows
+ * everything. A tick applies at once (the choice is the board's, kept with
+ * its project scope), so the count at the foot is always what GO will open.
+ * This is the only place the board is filtered.
  */
 export default function Landing() {
   // The whole board, whatever the header is scoped to: the counts and the
   // project row are about everything there is to choose from.
-  const { data: liveTasks = [], isLoading, error } = useTasks('all');
-  const { data: archivedTasks = [] } = useArchivedTasks('all');
+  const { data: taskData, isLoading, error } = useTasks('all');
+  const liveTasks = useMemo(() => taskData ?? [], [taskData]);
   const { data: stages = [] } = useStages();
   const { data: owners = [] } = useOwners();
   const { projects } = useProjectScope();
   const { filters, setProjects, update, clear } = useBoardFilters();
   const [openRows, setOpenRows] = useState<Set<RowKey>>(() => new Set(['project']));
-  const [dueDateOpen, setDueDateOpen] = useState(false);
+  const [openTask, setOpenTask] = useState<Task | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
+  const inbox = useMemo(() => inboxTasks(liveTasks), [liveTasks]);
+  // A chosen goal archived since (from Admin, say) leaves the Goal row, so it
+  // has to stop filtering too: nothing would be left to untick it.
+  const offeredGoals = useMemo(
+    () => (taskData ? goalsOnOffer(taskData, stages, filters.projects, filters.goals) : undefined),
+    [taskData, stages, filters.projects, filters.goals],
+  );
+  usePruneChosenGoals(offeredGoals);
   const options = useMemo(
     () =>
       landingOptions({
@@ -61,13 +65,13 @@ export default function Landing() {
         owners,
         stages,
         projectSelection: filters.projects,
-        selected: { projects: filters.projects, owners: filters.owners },
+        selected: { projects: filters.projects, owners: filters.owners, goals: filters.goals },
       }),
-    [liveTasks, projects, owners, stages, filters.projects, filters.owners],
+    [liveTasks, projects, owners, stages, filters.projects, filters.owners, filters.goals],
   );
   const showing = useMemo(
-    () => tasksOnBoard(liveTasks, archivedTasks, filters, { stages }).length,
-    [liveTasks, archivedTasks, filters, stages],
+    () => tasksOnBoard(liveTasks, filters, stages).length,
+    [liveTasks, filters, stages],
   );
 
   const toggleRow = (key: RowKey) => () => {
@@ -80,33 +84,17 @@ export default function Landing() {
   };
 
   // A goal outside the projects now chosen would leave the board empty, so
-  // it is let go with the project, as the board does when its scope moves.
+  // it is let go with the project.
   const toggleProject = (id: FilterId) => () => {
     const next = toggleInList(filters.projects, id);
     setProjects(next);
-    const offered = new Set(goalsInProjects(liveTasks, next).map((g) => g.id));
+    const offered = new Set(goalsOnOffer(liveTasks, stages, next, filters.goals).map((g) => g.id));
     const kept = filters.goals.filter((g) => offered.has(g));
     if (kept.length !== filters.goals.length) update({ goals: kept });
   };
 
-  const chooseDue = (mode: DueMode) => () => {
-    // A date mode needs a date: start from today until one is picked.
-    const dueDate =
-      mode !== DUE_MODE.ANY && !endOfDueDay(filters.dueDate)
-        ? format(new Date(), 'yyyy-MM-dd')
-        : filters.dueDate;
-    update({ due: mode, dueDate });
-  };
-
-  const dueEnd = endOfDueDay(filters.dueDate);
   const namesOf = <T,>(list: { id: T; label: string }[], chosen: T[]) =>
     list.filter((o) => chosen.includes(o.id)).map((o) => o.label);
-  const dueSummary =
-    filters.due === DUE_MODE.ANY || !dueEnd
-      ? []
-      : [
-          `${filters.due === DUE_MODE.ARCHIVED ? 'Archived' : 'Not done'}, ${format(dueEnd, 'MMM d')}`,
-        ];
 
   if (isLoading) {
     return (
@@ -145,14 +133,22 @@ export default function Landing() {
       <LandingHeader total={options.total} />
 
       <main className="flex-1 overflow-y-auto" data-testid="landing-main">
-        <div className="mx-auto w-full max-w-6xl px-3 pb-8 pt-4 lg:px-8 lg:pt-10">
-          <div className="flex items-start justify-between gap-4">
+        <div className="mx-auto w-full max-w-6xl px-3 pb-8 pt-4 lg:px-8 lg:pt-8">
+          <LandingInbox
+            tasks={inbox}
+            onOpen={(task) => {
+              setOpenTask(task);
+              setIsEditOpen(true);
+            }}
+          />
+
+          <div className="mt-6 flex items-start justify-between gap-4 lg:mt-10">
             <div className="min-w-0">
               <h1 className="text-lg font-semibold leading-tight text-foreground lg:text-2xl">
                 Choose what the board shows
               </h1>
               <p className="mt-1 text-xs text-muted-foreground lg:mt-2 lg:text-sm">
-                Pick any mix below. Nothing selected in a row means the row doesn&rsquo;t filter.
+                Tick what you want to see. A row with nothing ticked shows everything.
               </p>
             </div>
             <Button
@@ -166,7 +162,7 @@ export default function Landing() {
             </Button>
           </div>
 
-          <div className="mt-4 space-y-3 lg:mt-8 lg:space-y-0 lg:border-b lg:border-border-subtle">
+          <div className="mt-4 space-y-3 lg:mt-6 lg:space-y-0 lg:border-b lg:border-border-subtle">
             {projects.length > 0 && (
               <FilterRow
                 label="Project"
@@ -235,58 +231,6 @@ export default function Landing() {
             </FilterRow>
 
             <FilterRow
-              label="Due by"
-              testId="due"
-              summary={dueSummary}
-              open={openRows.has('due')}
-              onToggle={toggleRow('due')}
-            >
-              {DUE_CHOICES.map((choice) => (
-                <FilterOption
-                  key={choice.mode}
-                  type="radio"
-                  name="landing-due"
-                  label={choice.label}
-                  checked={filters.due === choice.mode}
-                  onChange={chooseDue(choice.mode)}
-                  testId={`due-${choice.mode}`}
-                />
-              ))}
-              <div className="px-4 pb-2 pt-1 lg:p-0">
-                <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      disabled={filters.due === DUE_MODE.ANY}
-                      aria-label={
-                        dueEnd ? `Due by ${format(dueEnd, 'MMM d, yyyy')}` : 'Pick a due-by date'
-                      }
-                      className={cn(
-                        'h-11 w-full justify-start gap-2 rounded-md font-normal lg:w-52',
-                        !dueEnd && 'text-muted-foreground',
-                      )}
-                      data-testid="button-due-date"
-                    >
-                      <CalendarDays className="h-4 w-4 shrink-0" aria-hidden />
-                      {dueEnd ? format(dueEnd, 'MMM d, yyyy') : 'Pick date'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={dueEnd ?? undefined}
-                      onSelect={(date: Date | undefined) => {
-                        if (date) update({ dueDate: format(date, 'yyyy-MM-dd') });
-                        setDueDateOpen(false);
-                      }}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </FilterRow>
-
-            <FilterRow
               label="Stage"
               testId="stage"
               summary={namesOf(options.stages, filters.stages)}
@@ -306,38 +250,6 @@ export default function Landing() {
                 />
               ))}
             </FilterRow>
-
-            <FilterRow
-              label="New tasks"
-              testId="new"
-              summary={filters.onlyNew ? ['Only new'] : []}
-              open={openRows.has('new')}
-              onToggle={toggleRow('new')}
-              hint="Emailed in and not yet opened."
-            >
-              <FilterOption
-                label="Only new"
-                checked={filters.onlyNew}
-                onChange={() => {
-                  update({ onlyNew: !filters.onlyNew });
-                }}
-                badge={
-                  <span
-                    className={cn(
-                      'inline-flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold',
-                      options.newCount > 0
-                        ? 'bg-warning text-warning-foreground'
-                        : 'bg-secondary text-muted-foreground',
-                    )}
-                    aria-label={`${options.newCount} new`}
-                    data-testid="new-count"
-                  >
-                    {options.newCount}
-                  </span>
-                }
-                testId="new"
-              />
-            </FilterRow>
           </div>
 
           <p
@@ -347,12 +259,22 @@ export default function Landing() {
           >
             Showing <strong className="font-semibold text-foreground">{showing}</strong> of{' '}
             {options.total} tasks with these filters
-            {filters.due === DUE_MODE.ARCHIVED && dueEnd ? ', from the archive' : ''}
           </p>
         </div>
       </main>
 
       <LandingBottomNav showing={showing} />
+
+      <EditTaskDialog
+        task={openTask}
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        onViewHistory={() => {
+          setIsEditOpen(false);
+          setIsHistoryOpen(true);
+        }}
+      />
+      <TaskHistoryModal task={openTask} open={isHistoryOpen} onOpenChange={setIsHistoryOpen} />
     </div>
   );
 }

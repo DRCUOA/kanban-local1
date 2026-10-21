@@ -274,60 +274,35 @@ describe('useFilteredTasks', () => {
   });
 });
 
-describe('useFilteredTasks and the header warning pills', () => {
-  const overdue = makeTask({ id: 1, title: 'Overdue one', dueDate: new Date(2026, 0, 1) });
-  const inProgress = makeTask({ id: 2, title: 'Doing', stageId: 2 });
-  const waiting = makeTask({ id: 3, title: 'Urgent waiting', priority: 'high' });
+describe('useFilteredTasks, the search box and the landing page rows', () => {
+  const mine = makeTask({ id: 1, title: 'Urgent mine', ownerId: 1 });
+  const theirs = makeTask({ id: 2, title: 'Urgent theirs', ownerId: 2 });
+  const other = makeTask({ id: 3, title: 'Something else', ownerId: 1 });
 
-  const filtered = (options: Parameters<typeof useFilteredTasks>[0]) =>
-    renderHook(() => useFilteredTasks(options)).result.current.map((t) => t.id);
-
-  const base = {
-    tasks: [overdue, inProgress, waiting],
-    searchQuery: '',
-    focusMode: false,
-    viewMode: 'detail' as const,
-    stages,
-  };
-
-  it('shows every task while no pill is pressed', () => {
-    expect(filtered(base)).toEqual([1, 2, 3]);
-    expect(filtered({ ...base, warningFilter: null })).toEqual([1, 2, 3]);
-  });
-
-  it('shows only the tasks behind the pill that is pressed', () => {
-    expect(filtered({ ...base, warningFilter: 'overdue' })).toEqual([1]);
-    expect(filtered({ ...base, warningFilter: 'in-progress' })).toEqual([2]);
-    expect(filtered({ ...base, warningFilter: 'high-priority' })).toEqual([3]);
-  });
-
-  it('narrows with the search box rather than replacing it', () => {
-    expect(filtered({ ...base, warningFilter: 'high-priority', searchQuery: 'urgent' })).toEqual([
-      3,
-    ]);
-    expect(filtered({ ...base, warningFilter: 'high-priority', searchQuery: 'overdue' })).toEqual(
-      [],
-    );
-  });
-
-  it('narrows with the owner filter rather than replacing it', () => {
-    const mine = makeTask({ id: 4, title: 'Mine', priority: 'high', ownerId: 1 });
-    const theirs = makeTask({ id: 5, title: 'Theirs', priority: 'high', ownerId: 2 });
-
-    expect(
-      filtered({
-        ...base,
-        tasks: [mine, theirs],
-        warningFilter: 'high-priority',
-        boardFilters: { ...EMPTY_BOARD_FILTERS, owners: [1] },
+  const filtered = (options: Partial<Parameters<typeof useFilteredTasks>[0]>) =>
+    renderHook(() =>
+      useFilteredTasks({
+        tasks: [mine, theirs, other],
+        searchQuery: '',
+        focusMode: false,
+        viewMode: 'detail',
+        stages,
+        ...options,
       }),
-    ).toEqual([4]);
+    ).result.current.map((t) => t.id);
+
+  it('narrows the search with the rows rather than replacing them', () => {
+    const owners = { ...EMPTY_BOARD_FILTERS, owners: [1] };
+    expect(filtered({ searchQuery: 'urgent' })).toEqual([1, 2]);
+    expect(filtered({ searchQuery: 'urgent', boardFilters: owners })).toEqual([1]);
   });
 
   it('lets an ID search through, as every other filter does', () => {
     // The ID lookup is the one search that outranks the filters: asking for
     // task 2 by number means "show me task 2", wherever it is.
-    expect(filtered({ ...base, warningFilter: 'overdue', searchQuery: '2' })).toEqual([2]);
+    expect(
+      filtered({ searchQuery: '2', boardFilters: { ...EMPTY_BOARD_FILTERS, owners: [1] } }),
+    ).toEqual([2]);
   });
 });
 
@@ -360,22 +335,15 @@ describe('useFilteredTasks goal filter', () => {
 });
 
 describe('useFilteredTasks and the landing page rows', () => {
-  const run = (
-    boardFilters: Partial<BoardFilters>,
-    tasks: Task[],
-    archivedTasks: Task[] = [],
-    keepAsNew?: ReadonlySet<number>,
-  ) =>
+  const run = (boardFilters: Partial<BoardFilters>, tasks: Task[]) =>
     renderHook(() =>
       useFilteredTasks({
         tasks,
-        archivedTasks,
         searchQuery: '',
         focusMode: false,
         viewMode: 'detail',
         stages,
         boardFilters: { ...EMPTY_BOARD_FILTERS, ...boardFilters },
-        keepAsNew,
       }),
     )
       .result.current.map((t) => t.id)
@@ -402,32 +370,5 @@ describe('useFilteredTasks and the landing page rows', () => {
     expect(run({ projects: [7, 8] }, tasks)).toEqual([1, 2]);
     expect(run({ projects: [7, 'none'], stages: [1] }, tasks)).toEqual([1, 4]);
     expect(run({ projects: [7, 8], stages: [2] }, tasks)).toEqual([2]);
-  });
-
-  it('"Not done before" keeps open work due on or before the day, and nothing undated', () => {
-    const tasks = [
-      makeTask({ id: 1, dueDate: new Date(2026, 9, 31, 17, 0) }),
-      makeTask({ id: 2, dueDate: new Date(2026, 10, 1, 9, 0) }),
-      makeTask({ id: 3, dueDate: new Date(2026, 9, 1), stageId: 3 }),
-      makeTask({ id: 4, dueDate: null }),
-    ];
-    expect(run({ due: 'open', dueDate: '2026-10-31' }, tasks)).toEqual([1]);
-    // A mode with no date yet does not filter.
-    expect(run({ due: 'open', dueDate: '' }, tasks)).toEqual([1, 2, 3, 4]);
-  });
-
-  it('"Archived before" draws the board from the archived tasks instead', () => {
-    const live = [makeTask({ id: 1, dueDate: new Date(2026, 9, 1) })];
-    const archived = [
-      makeTask({ id: 2, archived: true, dueDate: new Date(2026, 9, 1), stageId: 3 }),
-      makeTask({ id: 3, archived: true, dueDate: new Date(2026, 11, 1), stageId: 3 }),
-    ];
-    expect(run({ due: 'archived', dueDate: '2026-10-31' }, live, archived)).toEqual([2]);
-  });
-
-  it('"Only new" keeps the unopened tasks, and those opened since the board opened', () => {
-    const tasks = [makeTask({ id: 1, viewedAt: null }), makeTask({ id: 2 }), makeTask({ id: 3 })];
-    expect(run({ onlyNew: true }, tasks)).toEqual([1]);
-    expect(run({ onlyNew: true }, tasks, [], new Set([3]))).toEqual([1, 3]);
   });
 });

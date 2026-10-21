@@ -1,13 +1,12 @@
 import type { Owner, Project, Stage, Task } from '@shared/schema';
-import { TASK_TYPE } from '@shared/constants';
-import { FILTER_NONE, isNewTask, type FilterId } from '@/lib/board-filters';
+import { FILTER_NONE, goalsOnOffer, type FilterId } from '@/lib/board-filters';
 
 export interface FilterOption<T> {
   id: T;
   label: string;
   /** Live tasks it holds, counted across the whole board. */
   count: number;
-  /** The dot the header selector and the chips draw beside it. */
+  /** The dot drawn beside it, as the cards draw it. */
   color?: string | null;
 }
 
@@ -16,8 +15,6 @@ export interface LandingOptions {
   goals: FilterOption<number>[];
   owners: FilterOption<FilterId>[];
   stages: FilterOption<number>[];
-  /** Live tasks nobody has opened since mail made them. */
-  newCount: number;
   /** Every live task: the "of M" in "Showing N of M". */
   total: number;
 }
@@ -30,8 +27,8 @@ export interface LandingOptionsInput {
   stages: Stage[];
   /** The project row's choice, so the goal row offers only goals inside it. */
   projectSelection: FilterId[];
-  /** Kept on offer while chosen, even if archived, so they can be unticked. */
-  selected: { projects: FilterId[]; owners: FilterId[] };
+  /** Kept on offer while chosen, even if archived or closed, so they can be unticked. */
+  selected: { projects: FilterId[]; owners: FilterId[]; goals: number[] };
 }
 
 function countBy<K>(tasks: Task[], key: (task: Task) => K): Map<K, number> {
@@ -46,9 +43,9 @@ function countBy<K>(tasks: Task[], key: (task: Task) => K): Map<K, number> {
  * number does not move under the box being ticked; the "Showing N" line is
  * where the rows meet.
  *
- * Archived projects and owners are left out, as they are from the header
- * selector and the More menu, unless one is still chosen. "No project" and
- * "Unassigned" close their rows, the way the selector and the menu end.
+ * Archived projects and owners, and closed goals (done, abandoned or
+ * archived), are left out unless one is still chosen. "No project" and
+ * "Unassigned" close their rows.
  */
 export function landingOptions(input: LandingOptionsInput): LandingOptions {
   const { tasks } = input;
@@ -70,11 +67,13 @@ export function landingOptions(input: LandingOptionsInput): LandingOptions {
     { id: FILTER_NONE, label: 'Unassigned', count: byOwner.get(FILTER_NONE) ?? 0 },
   ];
 
-  const goals = goalsInProjects(tasks, input.projectSelection).map((goal) => ({
-    id: goal.id,
-    label: goal.title,
-    count: tasks.filter((t) => t.id === goal.id || t.goalTaskId === goal.id).length,
-  }));
+  const goals = goalsOnOffer(tasks, input.stages, input.projectSelection, input.selected.goals).map(
+    (goal) => ({
+      id: goal.id,
+      label: goal.title,
+      count: tasks.filter((t) => t.id === goal.id || t.goalTaskId === goal.id).length,
+    }),
+  );
 
   const stages = [...input.stages]
     .sort((a, b) => a.order - b.order)
@@ -85,19 +84,6 @@ export function landingOptions(input: LandingOptionsInput): LandingOptions {
     goals,
     owners,
     stages,
-    newCount: tasks.filter(isNewTask).length,
     total: tasks.length,
   };
-}
-
-/** Live goals inside the chosen projects (every project when none is chosen), by title. */
-export function goalsInProjects(tasks: Task[], projectSelection: FilterId[]): Task[] {
-  return tasks
-    .filter(
-      (t) =>
-        t.type === TASK_TYPE.GOAL &&
-        !t.archived &&
-        (projectSelection.length === 0 || projectSelection.includes(t.projectId ?? FILTER_NONE)),
-    )
-    .sort((a, b) => a.title.localeCompare(b.title));
 }

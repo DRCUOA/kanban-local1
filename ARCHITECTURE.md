@@ -94,9 +94,11 @@ App
 │           ├── Toaster
 │           └── ProjectScopeProvider (project scope: localStorage + ?project=)
 │             └── Router (wouter)
-│               ├── Dashboard (/)
-│               │   ├── DashboardHeader
-│               │   │   ├── ProjectSelector (hidden until a project exists)
+│               ├── Landing (/) — inbox, then the board's filters (the only place they are set)
+│               │   ├── LandingInbox
+│               │   └── FilterRow × Project, Goal, Owner, Stage
+│               ├── Dashboard (/board)
+│               │   ├── DashboardHeader (no filters: search, Goals, More)
 │               │   │   ├── FocusModeToggle
 │               │   │   └── MoreActionsMenu
 │               │   ├── DashboardContent
@@ -408,7 +410,6 @@ kanban-local1/
 │       │   ├── EditTaskFormFields.tsx
 │       │   ├── ProjectChip.tsx
 │       │   ├── ProjectSelect.tsx
-│       │   ├── ProjectSelector.tsx
 │       │   ├── InlineTaskEditor.tsx
 │       │   ├── ArchiveZone.tsx
 │       │   ├── ColorPicker.tsx
