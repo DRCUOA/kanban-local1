@@ -50,7 +50,8 @@ const emptyForm = (): InsertProject => ({ name: '', key: null, color: DEFAULT_PR
 
 /**
  * Admin card for projects: create, rename, recolour, archive and delete. A
- * project is a set of tasks related to a common goal; deleting one releases
+ * project is a body of work, like a client or a job (a goal is a task inside
+ * one, not another word for it); deleting one releases
  * its tasks (they stay on the board with no project), so only the delete asks
  * first — and only to explain that.
  */
@@ -154,7 +155,7 @@ export function ProjectSection({ projects, isLoading }: ProjectSectionProps) {
         <div>
           <h2 className="text-base font-semibold">Projects</h2>
           <p className="text-[10px] text-muted-foreground">
-            A set of tasks with a common goal. Archived projects leave the filter page.
+            A body of work, like a client or a job. Archived projects leave the filter page.
           </p>
         </div>
         <Dialog

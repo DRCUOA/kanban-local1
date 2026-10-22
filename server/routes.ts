@@ -705,7 +705,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }),
   );
 
-  // Project endpoints. A project is a set of tasks related to a common goal;
+  // Project endpoints. A project is a body of work, like a client or a job;
   // it scopes the board and never changes the stages.
   app.get(
     api.projects.list.path,

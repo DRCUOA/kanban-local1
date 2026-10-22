@@ -204,7 +204,9 @@ The board tables defined in `shared/schema.ts` (the inbound mail pipeline adds `
 
 ### projects
 
-A project is a set of tasks related to a common goal. It scopes which tasks the board shows and never changes the stages (filter, don't fork — see `docs/epics/EPIC-01-project-layer.md`).
+A project is a body of work, like a client or a job. It scopes which tasks the board shows and never changes the stages (filter, don't fork — see `docs/epics/EPIC-01-project-layer.md`).
+
+**Project is not goal.** They sit at different levels: a project holds tasks, and a goal is one of those tasks, an outcome (`tasks.type = 'goal'`) that its building-blocks lead to. So the order is project → goal → building-blocks, and a goal's blocks share its project (see **Goal link** below). The one exception is a goal with no project, which may gather blocks from any project. EPIC-01 first defined a project as "a set of tasks related to a common goal"; that wording is retired because it made the two sound like the same thing.
 
 | Column | Type | Notes |
 |---|---|---|
