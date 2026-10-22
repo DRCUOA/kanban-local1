@@ -166,6 +166,7 @@ export default function Landing() {
             {projects.length > 0 && (
               <FilterRow
                 label="Project"
+                hint="A body of work, like a client or a job"
                 testId="project"
                 summary={namesOf(options.projects, filters.projects)}
                 open={openRows.has('project')}
@@ -188,6 +189,11 @@ export default function Landing() {
             {options.goals.length > 0 && (
               <FilterRow
                 label="Goal"
+                hint={
+                  filters.projects.length > 0
+                    ? 'Outcomes in the projects you ticked, with the tasks that lead to them'
+                    : 'An outcome, with the tasks that lead to it'
+                }
                 testId="goal"
                 summary={namesOf(options.goals, filters.goals)}
                 open={openRows.has('goal')}
@@ -210,6 +216,7 @@ export default function Landing() {
 
             <FilterRow
               label="Owner"
+              hint="Who the task belongs to"
               testId="owner"
               summary={namesOf(options.owners, filters.owners)}
               open={openRows.has('owner')}
@@ -232,6 +239,7 @@ export default function Landing() {
 
             <FilterRow
               label="Stage"
+              hint="Which column the task sits in"
               testId="stage"
               summary={namesOf(options.stages, filters.stages)}
               open={openRows.has('stage')}

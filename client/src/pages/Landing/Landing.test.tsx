@@ -132,6 +132,26 @@ describe('Landing', () => {
     expect(screen.queryByTestId('filter-row-new')).toBeNull();
   });
 
+  it('says under each row what it is, so Project and Goal read as different things', () => {
+    renderLanding();
+    const hint = (row: string) => screen.getByTestId(`filter-row-hint-${row}`).textContent;
+    expect(hint('project')).toBe('A body of work, like a client or a job');
+    expect(hint('goal')).toBe('An outcome, with the tasks that lead to it');
+    expect(hint('owner')).toBe('Who the task belongs to');
+    expect(hint('stage')).toBe('Which column the task sits in');
+    // The row is described by its hint for a screen reader.
+    const describedBy = screen.getByTestId('filter-row-goal').getAttribute('aria-describedby');
+    expect(describedBy && document.getElementById(describedBy)?.textContent).toBe(
+      'An outcome, with the tasks that lead to it',
+    );
+
+    // Once a project is ticked, the Goal row says it only lists goals inside it.
+    fireEvent.click(within(option('project-1')).getByRole('checkbox'));
+    expect(hint('goal')).toBe(
+      'Outcomes in the projects you ticked, with the tasks that lead to them',
+    );
+  });
+
   it('puts the inbox first, and a row opens its task here', () => {
     renderLanding();
     const inbox = screen.getByTestId('landing-inbox');

@@ -41,7 +41,8 @@ export const stages = pgTable('stages', {
 });
 
 /**
- * A project is a set of tasks related to a common goal. Projects scope which
+ * A project is a body of work, like a client or a job. It is not a goal: a goal
+ * is a task inside a project (`tasks.type = 'goal'`). Projects scope which
  * tasks the board shows; stages and sub-stages stay global (filter, don't fork —
  * see docs/epics/EPIC-01-project-layer.md). A task with no project is
  * "unassigned" and shows under the "All projects" and "No project" scopes.

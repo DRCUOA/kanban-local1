@@ -4,6 +4,11 @@ import { cn } from '@/lib/utils';
 
 export interface FilterRowProps {
   label: string;
+  /**
+   * One plain line under the label saying what the row is, so two rows that
+   * sound alike (Project and Goal) can be told apart without opening them.
+   */
+  hint?: string;
   /** What is chosen, by name: the chips a closed row shows on a phone. */
   summary: string[];
   /** Phone only: whether the row's choices are showing. From lg they always are. */
@@ -19,11 +24,28 @@ export interface FilterRowProps {
  * closes, its header naming what is chosen so a closed row still says what it
  * does.
  */
-export function FilterRow({ label, summary, open, onToggle, testId, children }: FilterRowProps) {
+export function FilterRow({
+  label,
+  hint,
+  summary,
+  open,
+  onToggle,
+  testId,
+  children,
+}: FilterRowProps) {
   const bodyId = useId();
+  const hintId = useId();
+  // Drawn twice (the phone header and the lg label column), so the visible
+  // copies are hidden from screen readers and one unseen copy describes the row.
+  const hintText = hint && (
+    <span aria-hidden className="mt-0.5 block text-xs leading-snug text-muted-foreground">
+      {hint}
+    </span>
+  );
   return (
     <section
       aria-label={label}
+      aria-describedby={hint ? hintId : undefined}
       className={cn(
         'neo-raised overflow-hidden',
         open && 'border-border-strong',
@@ -35,7 +57,7 @@ export function FilterRow({ label, summary, open, onToggle, testId, children }: 
         type="button"
         aria-expanded={open}
         aria-controls={bodyId}
-        className="flex min-h-[3.5rem] w-full items-center gap-3 px-4 py-3 text-left lg:hidden"
+        className="flex min-h-[3.5rem] w-full flex-wrap items-center gap-x-3 px-4 py-3 text-left lg:hidden"
         onClick={onToggle}
         data-testid={`filter-row-toggle-${testId}`}
       >
@@ -55,9 +77,19 @@ export function FilterRow({ label, summary, open, onToggle, testId, children }: 
         ) : (
           <Plus className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
         )}
+        {/* Its own full-width line, so the label and chips keep the row's width. */}
+        {hintText && <span className="w-full">{hintText}</span>}
       </button>
 
-      <h2 className="label-caps hidden lg:block lg:pt-3.5">{label}</h2>
+      <div className="hidden lg:block lg:pt-3.5">
+        <h2 className="label-caps">{label}</h2>
+        {hintText}
+      </div>
+      {hint && (
+        <span id={hintId} className="sr-only" data-testid={`filter-row-hint-${testId}`}>
+          {hint}
+        </span>
+      )}
 
       <div
         id={bodyId}
