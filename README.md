@@ -26,7 +26,7 @@ npm run db:push
 npm run dev
 ```
 
-The app serves both API and client on **port 5000** (`http://localhost:5000`).
+
 
 ### Available Scripts
 
