@@ -3,13 +3,15 @@ import { TASK_TYPE, isClosedStageKind } from '@shared/constants';
 import { isClosedTaskByStage, stageKind } from '@shared/stage-state';
 
 /**
- * What the landing page chooses for the board: any mix of projects, goals,
- * owners and stages. The landing page is the only place they are set; the
- * board reads them and names them in its chips.
+ * What the landing page chooses for the board: projects, then goals inside
+ * them, then tasks inside those, picked a stage at a time by its wizard. The
+ * landing page is the only place they are set; the board reads them and names
+ * them in its chips. Owners and stages are rows the wizard retired: the board
+ * still honours them, and the landing page lets go of any left in storage.
  *
- * A list that is empty does not filter — "nothing ticked in a row means the
- * row shows everything". The rows narrow together: a task is on the board
- * only when it passes every row that has a selection.
+ * A list that is empty does not filter — "nothing picked at a stage means the
+ * stage shows everything". The lists narrow together: a task is on the board
+ * only when it passes every list that has a selection.
  *
  * `none` stands for "no project" and "unassigned", the same token the project
  * scope uses, so it can sit in a list beside real ids.
@@ -20,6 +22,8 @@ export type FilterId = number | typeof FILTER_NONE;
 export interface BoardFilters {
   projects: FilterId[];
   goals: number[];
+  /** Single tasks, the wizard's last stage. */
+  tasks: number[];
   owners: FilterId[];
   stages: number[];
 }
@@ -27,6 +31,7 @@ export interface BoardFilters {
 export const EMPTY_BOARD_FILTERS: BoardFilters = {
   projects: [],
   goals: [],
+  tasks: [],
   owners: [],
   stages: [],
 };
@@ -36,6 +41,7 @@ export function boardFiltersActive(filters: BoardFilters): boolean {
   return (
     filters.projects.length > 0 ||
     filters.goals.length > 0 ||
+    filters.tasks.length > 0 ||
     filters.owners.length > 0 ||
     filters.stages.length > 0
   );
@@ -56,6 +62,7 @@ export function matchesBoardFilters(task: Task, filters: BoardFilters): boolean 
   )
     return false;
   if (!listAllows(filters.goals, (g) => task.id === g || task.goalTaskId === g)) return false;
+  if (!listAllows(filters.tasks, (id) => task.id === id)) return false;
   if (
     !listAllows(filters.owners, (o) =>
       o === FILTER_NONE ? task.ownerId == null : task.ownerId === o,
@@ -110,6 +117,32 @@ export function goalsOnOffer(
     .sort((a, b) => a.title.localeCompare(b.title));
 }
 
+/**
+ * The tasks the wizard's last stage offers, by title: live tasks that are not
+ * goals, inside the chosen projects and under the chosen goals (every one
+ * when none is chosen) and still open. As with goals, a closed task stays on
+ * offer while it is chosen, so it can be unticked.
+ */
+export function tasksOnOffer(
+  tasks: Task[],
+  stages: Stage[],
+  projectSelection: FilterId[],
+  goalSelection: readonly number[],
+  chosen: readonly number[] = [],
+): Task[] {
+  return tasks
+    .filter(
+      (t) =>
+        t.type !== TASK_TYPE.GOAL &&
+        !t.archived &&
+        (projectSelection.length === 0 || projectSelection.includes(t.projectId ?? FILTER_NONE)) &&
+        (goalSelection.length === 0 ||
+          (t.goalTaskId != null && goalSelection.includes(t.goalTaskId))) &&
+        (!isClosedTaskByStage(t, stages) || chosen.includes(t.id)),
+    )
+    .sort((a, b) => a.title.localeCompare(b.title));
+}
+
 /** Adds `id` to the list, or takes it out if it is there. */
 export function toggleInList<T>(list: readonly T[], id: T): T[] {
   return list.includes(id) ? list.filter((entry) => entry !== id) : [...list, id];
@@ -138,6 +171,7 @@ export function parseBoardFilters(raw: unknown): BoardFilters {
   return {
     projects: list('projects', isFilterId),
     goals: list('goals', isId),
+    tasks: list('tasks', isId),
     owners: list('owners', isFilterId),
     stages: list('stages', isId),
   };

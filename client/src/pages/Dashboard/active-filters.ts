@@ -4,7 +4,7 @@ import { FILTER_NONE, type FilterId } from '@/lib/board-filters';
 
 export interface ActiveFilter {
   /** Stable key, also the test id suffix. */
-  key: 'project' | 'goal' | 'owner' | 'stage' | 'search' | 'focus';
+  key: 'project' | 'goal' | 'task' | 'owner' | 'stage' | 'search' | 'focus';
   label: string;
   value: string;
   /** True when it narrows the board; false for the "everything" default. */
@@ -25,6 +25,8 @@ export interface ActiveFilterInput {
   focusMode: boolean;
   /** The goals the board is narrowed to, by name. */
   goalNames?: string[];
+  /** The single tasks the board is narrowed to, by title. */
+  taskNames?: string[];
   /** The stages chosen, by name. */
   stageNames?: string[];
 }
@@ -38,7 +40,7 @@ function nameList(names: string[]): string {
 /**
  * What is currently narrowing the board, as read-only feedback. Project and
  * owner are always listed — "Everyone" is a state worth stating, since the
- * landing page that set it is off screen. The goal and stage rows, search and
+ * landing page that set it is off screen. Goals, tasks, stages, search and
  * focus appear only while they are on.
  */
 export function describeActiveFilters(input: ActiveFilterInput): ActiveFilter[] {
@@ -66,6 +68,16 @@ export function describeActiveFilters(input: ActiveFilterInput): ActiveFilter[] 
       key: 'goal',
       label: goalNames.length > 1 ? 'Goals' : 'Goal',
       value: nameList(goalNames),
+      narrowing: true,
+    });
+  }
+
+  const taskNames = input.taskNames ?? [];
+  if (taskNames.length > 0) {
+    out.push({
+      key: 'task',
+      label: taskNames.length > 1 ? 'Tasks' : 'Task',
+      value: nameList(taskNames),
       narrowing: true,
     });
   }

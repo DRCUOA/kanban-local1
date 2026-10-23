@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
-import type { OwnerSummary, ProjectSummary, Stage, Task } from '@shared/schema';
+import type { ProjectSummary, Stage, Task } from '@shared/schema';
 import { ProjectScopeContext, type ProjectScopeContextValue } from '@/hooks/use-project-scope';
 import { BoardFiltersProvider, BOARD_FILTERS_STORAGE_KEY } from '@/hooks/use-board-filters';
 import Landing from './index';
@@ -28,6 +28,7 @@ const task = (overrides: Partial<Task>): Task =>
     ownerId: 1,
     goalTaskId: null,
     type: null,
+    effort: null,
     dueDate: null,
     viewedAt: new Date(),
     ...overrides,
@@ -35,7 +36,7 @@ const task = (overrides: Partial<Task>): Task =>
 
 const tasks: Task[] = [
   task({ id: 1, title: 'Launch', type: 'goal' }),
-  task({ id: 2, goalTaskId: 1 }),
+  task({ id: 2, title: 'Print flyers', goalTaskId: 1, effort: 3 }),
   task({
     id: 3,
     title: 'Quote for the deck',
@@ -44,9 +45,9 @@ const tasks: Task[] = [
     viewedAt: null,
     createdAt: new Date(),
   }),
-  task({ id: 4, projectId: 2, ownerId: null }),
+  task({ id: 4, title: 'Pack the kitchen', projectId: 2, ownerId: null }),
   task({ id: 5, stageId: 3 }),
-  // A goal that is done has closed: it is not offered as a filter.
+  // A goal that is done has closed: it is not offered.
   task({ id: 6, title: 'Old launch', type: 'goal', stageId: 3 }),
 ];
 
@@ -61,18 +62,10 @@ vi.mock('@/components/EditTaskDialog', () => ({
     open && task ? <div data-testid="edit-task-dialog">{task.title}</div> : null,
 }));
 vi.mock('@/components/TaskHistoryModal', () => ({ TaskHistoryModal: () => null }));
-vi.mock('@/hooks/use-owners', () => ({
-  useOwners: () => ({
-    data: [
-      { id: 1, name: 'Rich', color: null, archived: false },
-      { id: 2, name: 'Moi', color: null, archived: false },
-    ] as OwnerSummary[],
-  }),
-}));
 
 const projects = [
-  { id: 1, name: 'WasteCo', color: null, archived: false },
-  { id: 2, name: 'Moving House', color: null, archived: false },
+  { id: 1, name: 'WasteCo', key: null, color: '#2F5D3A', archived: false },
+  { id: 2, name: 'Moving House', key: 'MOVE', color: null, archived: false },
 ] as ProjectSummary[];
 
 const setScopeSpy = vi.fn();
@@ -107,120 +100,149 @@ function renderLanding() {
 }
 
 const showing = () => screen.getByTestId('landing-showing').textContent;
-const option = (id: string) => screen.getByTestId(`filter-option-${id}`);
+const stone = (id: string) => screen.getByTestId(`stone-${id}`);
+const pick = (id: string) => {
+  fireEvent.click(stone(id));
+};
+const go = () => {
+  fireEvent.click(screen.getByTestId('button-go'));
+};
+const stage = () => screen.getByTestId('stage-route').getAttribute('data-stage');
+const stored = (): unknown =>
+  JSON.parse(window.localStorage.getItem(BOARD_FILTERS_STORAGE_KEY) ?? '{}');
 
-describe('Landing', () => {
+describe('Landing: the filter wizard', () => {
   beforeEach(() => {
     window.localStorage.removeItem(BOARD_FILTERS_STORAGE_KEY);
     navigate.mockClear();
     setScopeSpy.mockClear();
   });
 
-  it('offers each row from the board, counted across the whole board', () => {
+  it('starts on Projects, a stone each, counting their open goals and tasks apart', () => {
     renderLanding();
-    expect(option('project-1').textContent).toContain('WasteCo');
-    expect(option('project-1').textContent).toContain('5');
-    expect(option('project-none').textContent).toContain('No project');
-    expect(option('goal-1').textContent).toContain('Launch');
-    expect(option('goal-1').textContent).toContain('2');
-    expect(option('owner-none').textContent).toContain('Unassigned');
-    // Every stage is offered, Done included: choosing it puts it on the board.
-    expect(option('stage-3').textContent).toContain('Done');
-    expect(screen.queryByTestId('filter-option-goal-6')).toBeNull();
-    // The rows that were retired are gone: the inbox replaces NEW TASKS.
-    expect(screen.queryByTestId('filter-row-due')).toBeNull();
-    expect(screen.queryByTestId('filter-row-new')).toBeNull();
+    expect(stage()).toBe('projects');
+    expect(stone('project-1').textContent).toContain('WasteCo');
+    expect(stone('project-1').textContent).toContain('1 open goal, 2 open tasks');
+    expect(stone('project-2').textContent).toContain('0 open goals, 1 open task');
+    // Nothing open sits outside a project, so "No project" is not offered.
+    expect(screen.queryByTestId('stone-project-none')).toBeNull();
+    // Nothing picked is "All".
+    expect(screen.getByTestId('wizard-all-projects').getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('puts the inbox first, and a row opens its task here', () => {
+  it('GO walks the stages, each offering only what the stage before it left', () => {
     renderLanding();
-    const inbox = screen.getByTestId('landing-inbox');
-    expect(
-      inbox.compareDocumentPosition(screen.getByTestId('filter-row-owner')) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(screen.getByTestId('inbox-count').textContent).toBe('1');
+    pick('project-1');
+    expect(stone('project-1').getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByTestId('wizard-all-projects').getAttribute('aria-pressed')).toBe('false');
 
-    fireEvent.click(within(inbox).getByTestId('inbox-task-3'));
-    expect(screen.getByTestId('edit-task-dialog').textContent).toBe('Quote for the deck');
-    expect(navigate).not.toHaveBeenCalled();
+    go();
+    expect(stage()).toBe('goals');
+    expect(stone('goal-1').textContent).toContain('Launch');
+    // Closed goals are not offered.
+    expect(screen.queryByTestId('stone-goal-6')).toBeNull();
+
+    pick('goal-1');
+    go();
+    expect(stage()).toBe('tasks');
+    // Under the goal only: the task in another column of WasteCo is not.
+    expect(within(screen.getByTestId('stone-strip')).getAllByRole('button')).toHaveLength(1);
+    expect(stone('task-2').textContent).toContain('Print flyers');
+
+    pick('task-2');
+    expect(screen.getByTestId('next-board').textContent).toContain('1 task');
+    go();
+    expect(navigate).toHaveBeenCalledWith('/board');
   });
 
-  it('counts what the board will show, and narrows as boxes are ticked', () => {
+  it('flanks GO with the stages not on screen, the earlier on the left, and jumps straight there', () => {
+    renderLanding();
+    const jumps = () =>
+      within(screen.getByRole('navigation', { name: 'Wizard stages' }))
+        .getAllByRole('button')
+        .map((b) => b.getAttribute('data-testid'));
+    expect(jumps()).toEqual(['wizard-jump-goals', 'button-go', 'wizard-jump-tasks']);
+
+    // Past Goals with none picked: Tasks offers every open task.
+    fireEvent.click(screen.getByTestId('wizard-jump-tasks'));
+    expect(stage()).toBe('tasks');
+    expect(jumps()).toEqual(['wizard-jump-projects', 'button-go', 'wizard-jump-goals']);
+    expect(within(screen.getByTestId('stone-strip')).getAllByRole('button')).toHaveLength(3);
+
+    fireEvent.click(screen.getByTestId('wizard-jump-goals'));
+    expect(stage()).toBe('goals');
+    expect(jumps()).toEqual(['wizard-jump-projects', 'button-go', 'wizard-jump-tasks']);
+  });
+
+  it('counts what the board will show, and narrows as stones are picked', () => {
     renderLanding();
     // Tasks 5 and 6 are done, so they are behind Filing rather than on the board.
     expect(showing()).toContain('Showing 4 of 6 tasks');
-
-    fireEvent.click(within(option('owner-2')).getByRole('checkbox'));
-    expect(showing()).toContain('Showing 1 of 6');
-
-    fireEvent.click(within(option('owner-1')).getByRole('checkbox'));
+    pick('project-1');
     expect(showing()).toContain('Showing 3 of 6');
-
-    fireEvent.click(within(option('stage-3')).getByRole('checkbox'));
+    go();
+    pick('goal-1');
     expect(showing()).toContain('Showing 2 of 6');
-  });
-
-  it('keeps the choice for the board, and GO opens the board', () => {
-    renderLanding();
-    fireEvent.click(within(option('owner-2')).getByRole('checkbox'));
+    go();
+    pick('task-2');
     expect(showing()).toContain('Showing 1 of 6');
-    expect(
-      JSON.parse(window.localStorage.getItem(BOARD_FILTERS_STORAGE_KEY) ?? '{}'),
-    ).toMatchObject({ owners: [2] });
-
-    fireEvent.click(screen.getByTestId('button-go'));
-    expect(navigate).toHaveBeenCalledWith('/board');
+    expect(stored()).toMatchObject({ goals: [1], tasks: [2] });
   });
 
   it('puts one project in the header scope and keeps several here', () => {
     renderLanding();
-    fireEvent.click(within(option('project-1')).getByRole('checkbox'));
+    pick('project-1');
     expect(setScopeSpy).toHaveBeenLastCalledWith(1);
-    expect(showing()).toContain('Showing 3 of 6');
-
-    fireEvent.click(within(option('project-2')).getByRole('checkbox'));
+    pick('project-2');
     expect(setScopeSpy).toHaveBeenLastCalledWith('all');
-    expect(within(option('project-1')).getByRole<HTMLInputElement>('checkbox').checked).toBe(true);
-    expect(within(option('project-2')).getByRole<HTMLInputElement>('checkbox').checked).toBe(true);
-    expect(showing()).toContain('Showing 4 of 6');
-
-    fireEvent.click(within(option('project-1')).getByRole('checkbox'));
+    expect(stored()).toMatchObject({ projects: [1, 2] });
+    pick('project-1');
     expect(setScopeSpy).toHaveBeenLastCalledWith(2);
+  });
+
+  it('lets go of the goals and tasks inside a project when it is unpicked', () => {
+    renderLanding();
+    pick('project-1');
+    go();
+    pick('goal-1');
+    go();
+    pick('task-2');
+    fireEvent.click(screen.getByTestId('wizard-jump-projects'));
+    pick('project-1');
+    pick('project-2');
+    expect(stored()).toMatchObject({ goals: [], tasks: [] });
     expect(showing()).toContain('Showing 1 of 6');
   });
 
-  it('lets go of a chosen goal that has since been archived, which nothing could untick', () => {
-    window.localStorage.setItem(BOARD_FILTERS_STORAGE_KEY, JSON.stringify({ goals: [1, 99] }));
+  it('All lets go of what a stage picked', () => {
     renderLanding();
-    expect(within(option('goal-1')).getByRole<HTMLInputElement>('checkbox').checked).toBe(true);
-    expect(
-      JSON.parse(window.localStorage.getItem(BOARD_FILTERS_STORAGE_KEY) ?? '{}'),
-    ).toMatchObject({ goals: [1] });
+    fireEvent.click(screen.getByTestId('wizard-jump-goals'));
+    pick('goal-1');
     expect(showing()).toContain('Showing 2 of 6');
-  });
-
-  it('clears every row with Clear all', () => {
-    renderLanding();
-    const clear = screen.getByTestId('button-clear-filters');
-    expect(clear.hasAttribute('disabled')).toBe(true);
-
-    fireEvent.click(within(option('goal-1')).getByRole('checkbox'));
-    expect(showing()).toContain('Showing 2 of 6');
-    expect(clear.hasAttribute('disabled')).toBe(false);
-
-    fireEvent.click(clear);
+    fireEvent.click(screen.getByTestId('wizard-all-goals'));
+    expect(stone('goal-1').getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByTestId('wizard-all-goals').getAttribute('aria-pressed')).toBe('true');
     expect(showing()).toContain('Showing 4 of 6');
-    expect(within(option('goal-1')).getByRole<HTMLInputElement>('checkbox').checked).toBe(false);
   });
 
-  it('on a phone, a row opens and closes and names what it has chosen', () => {
+  it('lets go of picks nothing could untick: an archived goal and the retired owner and stage rows', () => {
+    window.localStorage.setItem(
+      BOARD_FILTERS_STORAGE_KEY,
+      JSON.stringify({ goals: [1, 99], tasks: [2, 98], owners: [2], stages: [3] }),
+    );
     renderLanding();
-    const toggle = screen.getByTestId('filter-row-toggle-owner');
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    fireEvent.click(toggle);
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
-    fireEvent.click(within(option('owner-1')).getByRole('checkbox'));
-    expect(toggle.textContent).toContain('Rich');
+    expect(stored()).toMatchObject({ goals: [1], tasks: [2], owners: [], stages: [] });
+    expect(showing()).toContain('Showing 1 of 6');
+  });
+
+  it('keeps the inbox behind the header button, and a row opens its task here', () => {
+    renderLanding();
+    expect(screen.getByTestId('inbox-badge').textContent).toBe('1');
+    expect(screen.queryByTestId('landing-inbox')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('button-inbox'));
+    fireEvent.click(within(screen.getByTestId('landing-inbox')).getByTestId('inbox-task-3'));
+    expect(screen.getByTestId('edit-task-dialog').textContent).toBe('Quote for the deck');
+    expect(navigate).not.toHaveBeenCalled();
   });
 });

@@ -151,16 +151,26 @@ export function useBoardFilters(): BoardFiltersContextValue {
 }
 
 /**
- * Lets go of chosen goals that are no longer on offer (archived, binned, or
- * outside the chosen projects), so a goal nobody can see or untick never
- * narrows the board. A goal that is merely done stays on offer while chosen.
- * `offered` is undefined while the tasks are loading, when nothing is let go.
+ * Lets go of chosen goals or tasks that are no longer on offer (archived,
+ * binned, or outside what the earlier stages chose), so a choice nobody can
+ * see or untick never narrows the board. One that is merely done stays on
+ * offer while chosen. `offered` is undefined while the tasks are loading,
+ * when nothing is let go.
  */
-export function usePruneChosenGoals(offered: readonly Task[] | undefined): void {
+function usePruneChosen(key: 'goals' | 'tasks', offered: readonly Task[] | undefined): void {
   const { filters, update } = useBoardFilters();
+  const chosen = filters[key];
   useEffect(() => {
-    if (!offered || filters.goals.length === 0) return;
-    const kept = filters.goals.filter((id) => offered.some((g) => g.id === id));
-    if (kept.length !== filters.goals.length) update({ goals: kept });
-  }, [offered, filters.goals, update]);
+    if (!offered || chosen.length === 0) return;
+    const kept = chosen.filter((id) => offered.some((t) => t.id === id));
+    if (kept.length !== chosen.length) update({ [key]: kept });
+  }, [key, offered, chosen, update]);
+}
+
+export function usePruneChosenGoals(offered: readonly Task[] | undefined): void {
+  usePruneChosen('goals', offered);
+}
+
+export function usePruneChosenTasks(offered: readonly Task[] | undefined): void {
+  usePruneChosen('tasks', offered);
 }

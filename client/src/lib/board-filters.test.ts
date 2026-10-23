@@ -5,8 +5,10 @@ import {
   boardColumnStages,
   boardFiltersActive,
   goalsOnOffer,
+  matchesBoardFilters,
   parseBoardFilters,
   tasksOnBoard,
+  tasksOnOffer,
   toggleInList,
   type BoardFilters,
 } from './board-filters';
@@ -86,11 +88,47 @@ describe('goalsOnOffer', () => {
   });
 });
 
+describe('the task stage', () => {
+  const tasks = [
+    task({ id: 1, title: 'Launch', type: 'goal', projectId: 1 }),
+    task({ id: 2, title: 'Build', goalTaskId: 1, projectId: 1 }),
+    task({ id: 3, title: 'Approve', goalTaskId: 1, projectId: 1, stageId: 3 }),
+    task({ id: 4, title: 'Advertise', projectId: 1 }),
+    task({ id: 5, title: 'Archived', goalTaskId: 1, projectId: 1, archived: true }),
+    task({ id: 6, title: 'Elsewhere', projectId: 2 }),
+  ];
+  const ids = (projects: BoardFilters['projects'], goals: number[], chosen: number[] = []) =>
+    tasksOnOffer(tasks, stages, projects, goals, chosen).map((t) => t.id);
+
+  it('offers the open tasks, never goals, inside the projects and under the goals chosen', () => {
+    expect(ids([], [])).toEqual([4, 2, 6]);
+    expect(ids([1], [])).toEqual([4, 2]);
+    // Under a goal means under it: a task with no goal is not offered.
+    expect(ids([1], [1])).toEqual([2]);
+    expect(ids([2], [1])).toEqual([]);
+  });
+
+  it('keeps a closed task while it is chosen, but never an archived one', () => {
+    expect(ids([1], [1], [3])).toEqual([3, 2]);
+    expect(ids([1], [1], [5])).toEqual([2]);
+  });
+
+  it('narrows the board to the tasks picked', () => {
+    const [, build, , advertise] = tasks;
+    expect(build && matchesBoardFilters(build, filters({ tasks: [2] }))).toBe(true);
+    expect(advertise && matchesBoardFilters(advertise, filters({ tasks: [2] }))).toBe(false);
+    expect(
+      tasksOnBoard(tasks, filters({ goals: [1], tasks: [2] }), stages).map((t) => t.id),
+    ).toEqual([2]);
+  });
+});
+
 describe('the helpers', () => {
   it('is active only while a row narrows', () => {
     expect(boardFiltersActive(EMPTY_BOARD_FILTERS)).toBe(false);
     expect(boardFiltersActive(filters({ owners: ['none'] }))).toBe(true);
     expect(boardFiltersActive(filters({ stages: [3] }))).toBe(true);
+    expect(boardFiltersActive(filters({ tasks: [7] }))).toBe(true);
   });
 
   it('toggles an id in and out of a list', () => {
@@ -104,6 +142,7 @@ describe('the helpers', () => {
       parseBoardFilters({
         projects: [1, 'none', 'x', -2, 1],
         goals: ['3'],
+        tasks: [6, 'x', 6],
         owners: [4],
         stages: [5, 0],
         // A value from the build that had DUE BY and NEW TASKS rows.
@@ -114,6 +153,7 @@ describe('the helpers', () => {
     ).toEqual({
       ...EMPTY_BOARD_FILTERS,
       projects: [1, 'none'],
+      tasks: [6],
       owners: [4],
       stages: [5],
     });
