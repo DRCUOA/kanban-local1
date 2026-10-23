@@ -4,7 +4,7 @@
   three front tiles kept, wider gaps so shapes stay separate when tiny.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <g fill="currentColor" color="#1f5fde">
+  <g fill="currentColor" color="#ff4500">
     <path d="M256 62 L332 100 L332 320 L256 358 L180 320 L180 100 Z" />
     <path d="M164 328 L240 366 L164 404 L88 366 Z" />
     <path d="M348 328 L424 366 L348 404 L272 366 Z" />
