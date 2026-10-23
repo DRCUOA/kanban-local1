@@ -90,7 +90,7 @@ export function DashboardHeader({
               }}
               data-testid="button-landing"
             >
-              <AppLogo className="h-7 w-7 text-primary lg:h-6 lg:w-6" />
+              <AppLogo className="h-7 w-7 lg:h-6 lg:w-6" />
             </button>
           </div>
 
