@@ -55,6 +55,23 @@ describe('goal filter', () => {
   });
 });
 
+describe('task filter', () => {
+  it('names the tasks picked, after the goals, and only while some are', () => {
+    expect(describeActiveFilters(base).some((x) => x.key === 'task')).toBe(false);
+    const f = describeActiveFilters({
+      ...base,
+      goalNames: ['Build a shed'],
+      taskNames: ['Pour the slab', 'Order timber', 'Frame walls'],
+    });
+    expect(f.find((x) => x.key === 'task')).toMatchObject({
+      label: 'Tasks',
+      value: 'Pour the slab +2',
+      narrowing: true,
+    });
+    expect(f.findIndex((x) => x.key === 'task')).toBe(f.findIndex((x) => x.key === 'goal') + 1);
+  });
+});
+
 describe('the landing page rows', () => {
   it('names two choices in full and shortens more', () => {
     expect(by({ ownerSelection: [4, 5] }).owner).toMatchObject({

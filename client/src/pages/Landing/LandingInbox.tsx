@@ -18,18 +18,20 @@ function arrivedLabel(createdAt: Date | string | null): string {
 }
 
 /**
- * The inbox: tasks mail made that nobody has opened, newest first, at the top
- * of the landing page. It is not a filter: a row opens its task here, and the
+ * The inbox: tasks mail made that nobody has opened, newest first, opened from
+ * the landing page's header. It is not a filter: a row opens its task here, and the
  * task leaves the inbox once it has been opened. The board shows it like any
  * other task, wherever the filters below put it.
  */
 export function LandingInbox({
   tasks,
   onOpen,
+  className,
 }: {
   /** The inbox, already newest first (`inboxTasks`). */
   tasks: Task[];
   onOpen: (task: Task) => void;
+  className?: string;
 }) {
   const headingId = useId();
   const [showAll, setShowAll] = useState(false);
@@ -40,7 +42,7 @@ export function LandingInbox({
   return (
     <section
       aria-labelledby={headingId}
-      className="neo-raised overflow-hidden"
+      className={cn('neo-raised overflow-hidden', className)}
       data-testid="landing-inbox"
     >
       <div className="flex items-center gap-3 px-4 py-3">

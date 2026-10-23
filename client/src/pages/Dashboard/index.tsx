@@ -22,12 +22,17 @@ import { useOwners } from '@/hooks/use-owners';
 import { useFilteredTasks } from './use-filtered-tasks';
 import { ActiveFilters } from './ActiveFilters';
 import { describeActiveFilters } from './active-filters';
-import { useBoardFilters, usePruneChosenGoals } from '@/hooks/use-board-filters';
+import {
+  useBoardFilters,
+  usePruneChosenGoals,
+  usePruneChosenTasks,
+} from '@/hooks/use-board-filters';
 import {
   FILTER_NONE,
   boardColumnStages,
   boardFiltersActive,
   goalsOnOffer,
+  tasksOnOffer,
 } from '@/lib/board-filters';
 import { useTaskImportExport } from './use-task-import-export';
 
@@ -71,6 +76,15 @@ export default function Dashboard(_props: DashboardProps) {
     [tasks, stages, boardFilters.projects, boardFilters.goals],
   );
   usePruneChosenGoals(goals);
+  // Likewise a picked task that has been archived or binned since.
+  const offeredTasks = useMemo(
+    () =>
+      tasks
+        ? tasksOnOffer(tasks, stages, boardFilters.projects, boardFilters.goals, boardFilters.tasks)
+        : undefined,
+    [tasks, stages, boardFilters.projects, boardFilters.goals, boardFilters.tasks],
+  );
+  usePruneChosenTasks(offeredTasks);
 
   const sortedStages = useMemo(() => [...stages].sort((a, b) => a.order - b.order), [stages]);
 
@@ -90,6 +104,9 @@ export default function Dashboard(_props: DashboardProps) {
     focusMode,
     goalNames: boardFilters.goals.map(
       (id) => goals?.find((g) => g.id === id)?.title ?? 'Unknown goal',
+    ),
+    taskNames: boardFilters.tasks.map(
+      (id) => offeredTasks?.find((t) => t.id === id)?.title ?? 'Unknown task',
     ),
     stageNames: sortedStages
       .filter((stage) => boardFilters.stages.includes(stage.id))
