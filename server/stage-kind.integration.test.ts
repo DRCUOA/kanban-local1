@@ -10,6 +10,7 @@
  */
 import { describe, it, expect, afterEach } from 'vitest';
 import request from 'supertest';
+import type { Server } from 'node:http';
 import { eq, inArray } from 'drizzle-orm';
 import { db } from './db';
 import { stages, tasks, type InsertStage, type Stage } from '@shared/schema';
@@ -17,12 +18,24 @@ import { SEED_STAGE_NAMES, STAGE_KIND } from '@shared/constants';
 import { DatabaseStorage, type IStorage } from './storage';
 import { seedDatabase } from './seed';
 import { createApp } from './app';
+import { serveOnLoopback, closeServer } from './test-support/loopback';
 
 describe('stage kind is stored as given', () => {
   const storage = new DatabaseStorage();
   const createdStageIds: number[] = [];
+  /** The app a test serves, listening on 127.0.0.1 until afterEach (see test-support/loopback.ts). */
+  let server: Server | undefined;
+
+  async function serveApp(): Promise<Server> {
+    server = await serveOnLoopback((await createApp()).app);
+    return server;
+  }
 
   afterEach(async () => {
+    if (server) {
+      await closeServer(server);
+      server = undefined;
+    }
     if (createdStageIds.length === 0) return;
     await db.delete(tasks).where(inArray(tasks.stageId, createdStageIds));
     await db.delete(stages).where(inArray(stages.id, createdStageIds));
@@ -71,7 +84,7 @@ describe('stage kind is stored as given', () => {
   });
 
   it('keeps the kind chosen in Admin through POST /api/stages', async () => {
-    const { app } = await createApp();
+    const app = await serveApp();
 
     const res = await request(app)
       .post('/api/stages')
@@ -85,7 +98,7 @@ describe('stage kind is stored as given', () => {
   });
 
   it('stores backlog when no kind is sent', async () => {
-    const { app } = await createApp();
+    const app = await serveApp();
 
     const res = await request(app).post('/api/stages').send({ name: 'Test-Kind-None', order: 901 });
     const created = res.body as Stage;

@@ -224,6 +224,8 @@ export default function Landing() {
     WizardStage,
     {
       heading: string;
+      /** What the stage's things are, in a plain line, so a project and a goal never read alike. */
+      hint: string;
       sub: string;
       pressed: boolean;
       onAll: () => void;
@@ -236,6 +238,7 @@ export default function Landing() {
   > = {
     projects: {
       heading: 'Pick projects',
+      hint: 'A body of work, like a client or a job',
       sub: [
         filters.projects.length ? `${filters.projects.length} picked` : null,
         count(options.goals.length, 'goal'),
@@ -301,6 +304,9 @@ export default function Landing() {
     },
     goals: {
       heading: 'Pick goals',
+      hint: pickedProjects.length
+        ? 'Outcomes in the projects you picked, with the tasks that lead to them'
+        : 'An outcome, with the tasks that lead to it',
       sub: [
         `In ${pickedProjects.length ? nameList(pickedProjects) : 'every project'}`,
         filters.goals.length ? `${filters.goals.length} picked` : null,
@@ -354,6 +360,7 @@ export default function Landing() {
     },
     tasks: {
       heading: 'Pick tasks',
+      hint: 'The work itself, each one a card on the board',
       sub: [
         pickedGoals.length
           ? `Under ${nameList(pickedGoals)}`
@@ -496,7 +503,10 @@ export default function Landing() {
                 >
                   {view.heading}
                 </h1>
-                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground lg:text-sm">
+                <p className="mt-1 text-sm text-fg-secondary" data-testid={`wizard-hint-${stage}`}>
+                  {view.hint}
+                </p>
+                <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground lg:text-sm">
                   {view.sub}
                 </p>
               </div>
@@ -504,7 +514,7 @@ export default function Landing() {
             </div>
 
             {view.stones.length > 0 ? (
-              <StoneStrip label={STAGE_NAME[stage]} className="mt-4">
+              <StoneStrip label={STAGE_NAME[stage]} description={view.hint} className="mt-4">
                 {view.stones}
               </StoneStrip>
             ) : (

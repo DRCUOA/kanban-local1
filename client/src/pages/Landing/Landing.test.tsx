@@ -235,6 +235,28 @@ describe('Landing: the filter wizard', () => {
     expect(showing()).toContain('Showing 1 of 6');
   });
 
+  it('says under each stage what its things are, so a project and a goal never read alike', () => {
+    renderLanding();
+    const hint = () => screen.getByTestId(`wizard-hint-${stage() ?? ''}`).textContent;
+    expect(hint()).toBe('A body of work, like a client or a job');
+    // The strip is described by the same line for a screen reader.
+    const strip = screen.getByTestId('stone-strip');
+    const describedBy = strip.getAttribute('aria-describedby');
+    expect(describedBy && document.getElementById(describedBy)?.textContent).toBe(
+      'A body of work, like a client or a job',
+    );
+
+    go();
+    expect(hint()).toBe('An outcome, with the tasks that lead to it');
+    // With a project picked, Goals only lists goals inside it, and says so.
+    fireEvent.click(screen.getByTestId('wizard-jump-projects'));
+    pick('project-1');
+    go();
+    expect(hint()).toBe('Outcomes in the projects you picked, with the tasks that lead to them');
+    go();
+    expect(hint()).toBe('The work itself, each one a card on the board');
+  });
+
   it('keeps the inbox behind the header button, and a row opens its task here', () => {
     renderLanding();
     expect(screen.getByTestId('inbox-badge').textContent).toBe('1');

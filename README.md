@@ -26,7 +26,7 @@ npm run db:push
 npm run dev
 ```
 
-The app serves both API and client on **port 5000** (`http://localhost:5000`).
+
 
 ### Available Scripts
 
@@ -35,7 +35,8 @@ The app serves both API and client on **port 5000** (`http://localhost:5000`).
 | `npm run dev` | Development server with Vite HMR |
 | `npm run build` | Production build (client → `dist/public/`, server → `dist/index.cjs`) |
 | `npm start` | Run production build |
-| `npm run check` | TypeScript type-check (`tsc --noEmit`) |
+| `npm run check` | The pre-merge gate: lint, type-check, format check, then the full test suite |
+| `npm run typecheck` | TypeScript type-check alone (`tsc --noEmit`) |
 | `npm run db:push` | Push Drizzle schema to database (handy for local dev) |
 | `npm run db:migrate` | Apply versioned SQL migrations (`migrations/`) — use for production and CI |
 | `npm run db:add-color` | Migration: add color column to stages |
@@ -186,7 +187,7 @@ See [COMPONENT_INDEX.md](COMPONENT_INDEX.md) for the full breakdown of every com
 
 ### Projects
 
-A project is a set of tasks related to a common goal. Projects scope *which tasks the board shows*; they never change the stages, so one shared workflow serves every project (see [docs/epics/EPIC-01-project-layer.md](docs/epics/EPIC-01-project-layer.md)).
+A project is a body of work, like a client or a job. It is not the same as a goal: a goal is a task inside a project that names an outcome, and its building-blocks are the tasks that lead to it. Projects scope *which tasks the board shows*; they never change the stages, so one shared workflow serves every project (see [docs/epics/EPIC-01-project-layer.md](docs/epics/EPIC-01-project-layer.md)).
 
 - **Admin → Projects** creates, renames, recolours, archives and deletes projects. Deleting one releases its tasks (they stay on the board with no project).
 - As soon as one project exists the landing page (`/`, where the board's filters are chosen) offers a **Project** row: each active project with its live task count, and "No project" for unassigned work. Archived projects drop out of it. One project chosen there is the board's project scope, filtered server-side; it applies to the board, Filing and Archive (not Admin), and is remembered per browser (`localStorage`) and mirrored into `?project=` so a scoped view can be shared by link. There are no accounts yet, so each person's scope is a preference their own browser keeps, not a permission boundary.

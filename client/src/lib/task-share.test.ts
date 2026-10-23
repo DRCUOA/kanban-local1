@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Task, Stage } from '@shared/schema';
 import { buildExportBundle } from '@shared/export';
+import { annotateTasksWithUrgency } from '@shared/briefing';
 import { buildShareContent, describeShareScope, shareFilename } from './task-share';
 
 const NOW = new Date(2026, 7, 15, 12, 0, 0);
@@ -118,11 +119,18 @@ describe('buildShareContent — board scope', () => {
 
   it('keeps tasks whose stage is missing under a "No stage" heading', () => {
     const { scope } = boardScope();
+    // Bundle tasks carry the derived `urgency`, so annotate the orphan the way
+    // buildExportBundle would, against the bundle's own reference instant.
+    const orphan = annotateTasksWithUrgency(
+      [makeTask({ id: 9, title: 'Orphan', stageId: 99 })],
+      stages,
+      new Date(scope.bundle.exportedAt),
+    );
     const orphaned = {
       ...scope,
       bundle: {
         ...scope.bundle,
-        tasks: [...scope.bundle.tasks, makeTask({ id: 9, title: 'Orphan', stageId: 99 })],
+        tasks: [...scope.bundle.tasks, ...orphan],
       },
     };
     const content = buildShareContent(orphaned, 'text', NOW);

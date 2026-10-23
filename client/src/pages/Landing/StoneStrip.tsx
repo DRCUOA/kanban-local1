@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { smoothPath, type Point } from './glyphs';
@@ -52,13 +52,17 @@ function routePath(columns: number): string {
  */
 export function StoneStrip({
   label,
+  description,
   children,
   className,
 }: {
   label: string;
+  /** Read out with the group: what its stones are. */
+  description?: string;
   children: ReactNode[];
   className?: string;
 }) {
+  const descriptionId = useId();
   const columns: ReactNode[][] = [];
   children.forEach((child, i) => {
     if (i % 2 === 0) columns.push([child]);
@@ -71,9 +75,15 @@ export function StoneStrip({
     <div
       role="group"
       aria-label={label}
+      aria-describedby={description ? descriptionId : undefined}
       className={cn('-mx-4 snap-x snap-mandatory overflow-x-auto scroll-px-4', className)}
       data-testid="stone-strip"
     >
+      {description && (
+        <span id={descriptionId} className="sr-only">
+          {description}
+        </span>
+      )}
       <div className="relative w-max px-4 pb-3 pt-1">
         <svg
           className="pointer-events-none absolute left-4 top-1 overflow-visible text-border-strong"
