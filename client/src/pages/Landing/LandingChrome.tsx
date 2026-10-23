@@ -14,7 +14,7 @@ export function LandingHeader({ total, inbox }: { total: number; inbox?: ReactNo
     <header className="sticky top-0 z-50 neo-container rounded-none px-3 py-2 lg:px-4 lg:py-3">
       <div className="relative flex min-h-[2.75rem] items-center justify-center gap-2 lg:justify-start lg:gap-3">
         <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center lg:neo-raised lg:rounded-lg">
-          <AppLogo className="h-7 w-7 text-primary lg:h-6 lg:w-6" />
+          <AppLogo className="h-7 w-7 lg:h-6 lg:w-6" />
         </div>
         <div className="min-w-0">
           <p className="truncate text-lg font-bold leading-tight tracking-tight text-foreground">

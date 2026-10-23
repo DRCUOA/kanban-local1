@@ -89,7 +89,7 @@ function AccessCodeScreen({ onAdmitted }: { onAdmitted: () => void }) {
         data-testid="access-code-screen"
       >
         <div className="flex items-center gap-3">
-          <AppLogo className="h-8 w-8 text-primary" />
+          <AppLogo className="h-8 w-8" />
           <div>
             <h1 className="text-lg font-bold">{import.meta.env.VITE_APP_NAME || 'Kanbando'}</h1>
             <p className="text-xs text-muted-foreground">This browser needs an access code.</p>
