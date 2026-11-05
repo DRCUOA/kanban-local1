@@ -18,6 +18,7 @@ import {
 import { useUpdateTask, useArchiveTask, useBinTask } from '@/hooks/use-tasks';
 import { overflowAncestors, withClippedDroppableRects } from '@/lib/clip-droppable-rects';
 import { BIN_DROPPABLE_ID, FILING_DROPPABLE_ID, isFilingId } from '@/lib/filing-targets';
+import { tagsAfterStageMove } from '@/lib/stage-move';
 
 /** How long a drag must rest on the Filing button before its submenu appears. */
 export const FILING_HOVER_OPEN_MS = 350;
@@ -230,23 +231,10 @@ export function useKanbanDragDrop({ tasks, sortedStages, allSubStages }: UseKanb
     const targetStage = sortedStages.find((s) => s.id === stageId);
     if (!targetStage || task.stageId === stageId) return;
 
-    const targetSubStages = allSubStages.filter((ss) => ss.stageId === stageId);
-    const targetTags = targetSubStages.map((ss) => ss.tag);
-    const otherTags = allSubStages.filter((ss) => ss.stageId !== stageId).map((ss) => ss.tag);
-    const newTags = (task.tags || []).filter(
-      (tag) => !otherTags.includes(tag) || targetTags.includes(tag),
-    );
+    const tags = tagsAfterStageMove(task.tags, stageId, allSubStages);
 
-    setActiveTasks((prev) =>
-      prev.map((t) =>
-        t.id === task.id ? { ...t, stageId, tags: newTags.length > 0 ? newTags : null } : t,
-      ),
-    );
-    updateTask.mutate({
-      id: task.id,
-      stageId,
-      tags: newTags.length > 0 ? newTags : null,
-    });
+    setActiveTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, stageId, tags } : t)));
+    updateTask.mutate({ id: task.id, stageId, tags });
   }
 
   function handleDragCancel() {
