@@ -369,6 +369,7 @@ class MemStorage implements IStorage {
       bgClass: insert.bgClass,
       // A lane bound to an owner is that owner's lane (EPIC-06).
       ownerId: insert.ownerId ?? null,
+      daySheetSection: insert.daySheetSection ?? null,
       opacity: insert.opacity,
       order: insert.order,
       createdAt: new Date(),

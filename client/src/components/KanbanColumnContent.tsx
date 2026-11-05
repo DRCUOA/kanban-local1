@@ -6,6 +6,7 @@ import { TaskCardSummary } from './TaskCardSummary';
 import { DayPlanSubStage } from './DayPlanSubStage';
 import { STRIP_DETAIL_GRID_CLASS, type ColumnContentLayout } from './column-layout';
 import { useOwnerById } from '@/hooks/use-owners';
+import { assignTasksToLanes } from '@shared/lanes';
 import { cn } from '@/lib/utils';
 
 export interface KanbanColumnContentProps {
@@ -81,39 +82,14 @@ function renderWithSubStages(
   layout: ColumnContentLayout,
   onTaskClick: (task: Task) => void,
 ) {
-  // A person's lane contains exactly the tasks in this stage that owner owns,
-  // by foreign key — its tag is not read (EPIC-06 OWN-R11, OWN-R16). Every
-  // other lane still matches tags: a task may carry more than one (stale tags
-  // from earlier moves, shared tag strings), and the last matching one wins
-  // because drag/drop appends the newest assignment at the end.
-  const tagLaneTags = stageSubStages.filter((ss) => ss.ownerId == null).map((ss) => ss.tag);
-  const subStageTaskLists: Task[][] = stageSubStages.map(() => []);
-  const unlanedTasks: Task[] = [];
-
-  stageTasks.forEach((task) => {
-    const ownLaneIndex =
-      task.ownerId == null ? -1 : stageSubStages.findIndex((ss) => ss.ownerId === task.ownerId);
-    if (ownLaneIndex !== -1) {
-      subStageTaskLists[ownLaneIndex]?.push(task);
-      return;
-    }
-
-    const tags = task.tags || [];
-    const assignedTag = [...tags].reverse().find((tag) => tagLaneTags.includes(tag));
-    if (assignedTag === undefined) {
-      unlanedTasks.push(task);
-      return;
-    }
-    const subStageIndex = stageSubStages.findIndex(
-      (ss) => ss.ownerId == null && ss.tag === assignedTag,
-    );
-    subStageTaskLists[subStageIndex]?.push(task);
-  });
-
-  // Tasks in no lane fall into the first lane that is not somebody's — putting
-  // them in a person's lane would claim they belong to that person. Where every
-  // lane in the stage belongs to someone, they render above the lanes instead.
-  const catchAllIndex = stageSubStages.findIndex((ss) => ss.ownerId == null);
+  // The same split the day sheet prints from (shared/lanes.ts): a person's
+  // lane by owner, every other lane by tag, the rest in the first lane that is
+  // nobody's or, where every lane is somebody's, above the lanes.
+  const {
+    laneTasks: subStageTaskLists,
+    unlaned: unlanedTasks,
+    catchAllIndex,
+  } = assignTasksToLanes(stageSubStages, stageTasks);
 
   return (
     <div

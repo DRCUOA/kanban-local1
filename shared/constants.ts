@@ -178,6 +178,51 @@ export const TASK_RECURRENCE_VALUES = [
   TASK_RECURRENCE.MONTHLY,
 ] as const;
 
+// --- Day sheet section ---
+// Where a lane's tasks print on the day sheet. Stored on the lane
+// (`sub_stages.day_sheet_section`); null = follow the column's kind, through
+// `DAY_SHEET_SECTION_BY_KIND`. A setting rather than a match on the lane's
+// name, because names are decoration and can be renamed freely.
+
+export const DAY_SHEET_SECTION = {
+  NOW: 'now',
+  NEXT: 'next',
+  LATER: 'later',
+} as const;
+
+export type DaySheetSectionValue = (typeof DAY_SHEET_SECTION)[keyof typeof DAY_SHEET_SECTION];
+
+export const DAY_SHEET_SECTION_VALUES = [
+  DAY_SHEET_SECTION.NOW,
+  DAY_SHEET_SECTION.NEXT,
+  DAY_SHEET_SECTION.LATER,
+] as const;
+
+export const DAY_SHEET_SECTION_LABEL: Record<DaySheetSectionValue, string> = {
+  [DAY_SHEET_SECTION.NOW]: 'Do now',
+  [DAY_SHEET_SECTION.NEXT]: 'Next',
+  [DAY_SHEET_SECTION.LATER]: 'Later',
+} as const;
+
+/**
+ * The section a lane with no setting, or a column with no lanes, prints in.
+ * Done and Abandoned columns are on the board only when the filters choose
+ * them, and then their tasks print under Later.
+ */
+export const DAY_SHEET_SECTION_BY_KIND: Record<StageKindValue, DaySheetSectionValue> = {
+  [STAGE_KIND.IN_PROGRESS]: DAY_SHEET_SECTION.NOW,
+  [STAGE_KIND.BACKLOG]: DAY_SHEET_SECTION.NEXT,
+  [STAGE_KIND.WAITING]: DAY_SHEET_SECTION.LATER,
+  [STAGE_KIND.DONE]: DAY_SHEET_SECTION.LATER,
+  [STAGE_KIND.ABANDONED]: DAY_SHEET_SECTION.LATER,
+} as const;
+
+export function isDaySheetSection(value: unknown): value is DaySheetSectionValue {
+  return (
+    typeof value === 'string' && (DAY_SHEET_SECTION_VALUES as readonly string[]).includes(value)
+  );
+}
+
 // --- Effort ---
 
 export const EFFORT_MIN = 1;

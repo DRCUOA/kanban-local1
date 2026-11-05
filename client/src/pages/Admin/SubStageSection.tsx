@@ -25,7 +25,15 @@ import { queryClient } from '@/lib/queryClient';
 import { apiPost, apiPatch, apiDelete } from '@/lib/api';
 import { laneShadeStyle } from '@/lib/lane-shade';
 import { useOwners } from '@/hooks/use-owners';
-import { DEFAULT_OWNER_COLOR } from '@shared/constants';
+import {
+  DAY_SHEET_SECTION_BY_KIND,
+  DAY_SHEET_SECTION_LABEL,
+  DAY_SHEET_SECTION_VALUES,
+  DEFAULT_OWNER_COLOR,
+  isDaySheetSection,
+} from '@shared/constants';
+import { laneDaySheetSection } from '@shared/day-sheet';
+import { stageKind } from '@shared/stage-state';
 import { Edit } from 'lucide-react';
 import { ConfirmDeleteButton } from './ConfirmDeleteButton';
 import { useState } from 'react';
@@ -54,10 +62,14 @@ const EMPTY_SUB_STAGE: InsertSubStage = {
   opacity: 20,
   order: 1,
   ownerId: null,
+  daySheetSection: null,
 };
 
 /** The "no owner" option's value — a Radix SelectItem value cannot be empty. */
 const NO_OWNER = 'none';
+
+/** The day sheet option that stores null: print where the column's kind says. */
+const FOLLOW_COLUMN = 'column';
 
 export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
   const { toast } = useToast();
@@ -146,6 +158,9 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
       opacity: subStage.opacity,
       order: subStage.order,
       ownerId: subStage.ownerId ?? null,
+      daySheetSection: isDaySheetSection(subStage.daySheetSection)
+        ? subStage.daySheetSection
+        : null,
     });
     setSubStageDialogOpen(true);
   };
@@ -289,6 +304,54 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                       </p>
                     </FormItem>
                   )}
+                />
+                {/* Where this lane's tasks print on the day sheet. Unset follows
+                    the column's kind; overdue and due-today work prints under
+                    Do now whatever this says (shared/day-sheet.ts). */}
+                <FormField
+                  control={subStageForm.control}
+                  name="daySheetSection"
+                  render={({ field }) => {
+                    const parent = stages.find((stage) => stage.id === selectedStageId);
+                    const columnLabel =
+                      DAY_SHEET_SECTION_LABEL[DAY_SHEET_SECTION_BY_KIND[stageKind(parent)]];
+                    return (
+                      <FormItem>
+                        <FormLabel className="text-xs">Day sheet section</FormLabel>
+                        <Select
+                          value={field.value ?? FOLLOW_COLUMN}
+                          onValueChange={(value) => {
+                            field.onChange(isDaySheetSection(value) ? value : null);
+                          }}
+                        >
+                          <FormControl>
+                            <SelectTrigger
+                              className="h-12 rounded-md"
+                              data-testid="select-sub-stage-day-sheet"
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value={FOLLOW_COLUMN} className="py-3">
+                              {parent
+                                ? `As the column says (${columnLabel})`
+                                : 'As the column says'}
+                            </SelectItem>
+                            {DAY_SHEET_SECTION_VALUES.map((section) => (
+                              <SelectItem key={section} value={section} className="py-3">
+                                {DAY_SHEET_SECTION_LABEL[section]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[10px] text-muted-foreground">
+                          The heading this lane&apos;s tasks print under on the day sheet. Anything
+                          overdue or due today prints under Do now whatever this says.
+                        </p>
+                      </FormItem>
+                    );
+                  }}
                 />
                 {/* The lane's shade: one slider, previewed as the board will
                     paint it. It is the `opacity` column; the old free-text
@@ -439,6 +502,14 @@ export function SubStageSection({ stages, subStages }: SubStageSectionProps) {
                               ? `${owners.find((o) => o.id === subStage.ownerId)?.name ?? 'owner'}’s lane`
                               : subStage.tag}{' '}
                             | {subStage.opacity}%
+                          </p>
+                          <p
+                            className="text-[10px] text-muted-foreground"
+                            data-testid={`sub-stage-day-sheet-${subStage.id}`}
+                          >
+                            Day sheet:{' '}
+                            {DAY_SHEET_SECTION_LABEL[laneDaySheetSection(subStage, stage)]}
+                            {isDaySheetSection(subStage.daySheetSection) ? '' : ' (as the column)'}
                           </p>
                         </div>
                       </div>
