@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { Task, Stage, SubStage, Project } from './schema';
 import {
   buildExportBundle,
+  buildTaskTransferBundle,
   exportFilename,
   exportQuerySchema,
   tasksFromExportPayload,
@@ -217,5 +218,114 @@ describe('tasksFromExportPayload', () => {
 describe('exportFilename', () => {
   it('names the file after the export date', () => {
     expect(exportFilename('2026-08-11T09:00:00.000Z')).toBe('taskflow-export-2026-08-11.json');
+  });
+});
+
+describe('buildTaskTransferBundle', () => {
+  const stages = [
+    { id: 1, name: 'Backlog', kind: 'backlog' },
+    { id: 2, name: 'In Progress', kind: 'in_progress' },
+  ] as unknown as Stage[];
+  const subStages = [
+    { id: 7, stageId: 1, name: 'Later', tag: 'Later' },
+    { id: 8, stageId: 2, name: 'Doing', tag: 'TK' },
+  ] as unknown as SubStage[];
+  const projects = [
+    { id: 3, name: 'StageBoard', key: 'S&G-SB', taskCount: 12 },
+    { id: 4, name: 'Business Setup', key: 'TK', taskCount: 5 },
+  ] as unknown as (Project & { taskCount: number })[];
+  const transferred = {
+    id: 392,
+    title: 'Set up change management',
+    description: '<p>Customer is <strong>now</strong> using the system</p>',
+    stageId: 2,
+    projectId: 3,
+    archived: false,
+    priority: 'critical',
+    type: null,
+    goalTaskId: null,
+    effort: 4,
+    dueDate: new Date('2026-11-06T00:00:00+13:00'),
+    tags: ['TK', 'change-control'],
+    parentTaskId: null,
+    recurrence: 'none',
+    history: [{ status: 'backlog', timestamp: '2026-11-01T00:00:00.000Z' }],
+    ownerId: 20,
+    owner: 'TK Workflow IT',
+    deletedAt: null,
+    viewedAt: null,
+  } as unknown as Task;
+
+  const build = (task: Task = transferred) =>
+    buildTaskTransferBundle({
+      task,
+      stages,
+      subStages,
+      projects,
+      exportedAt: '2026-11-05T09:00:00.000Z',
+    });
+
+  it('writes the envelope the addtask skill names, with no briefing', () => {
+    const bundle = build();
+
+    expect(taskExportBundleSchema.safeParse(bundle).success).toBe(true);
+    expect(bundle.formatVersion).toBe(EXPORT_FORMAT_VERSION);
+    expect(bundle.generator).toBe('kanban-local');
+    expect(bundle.exportedAt).toBe('2026-11-05T09:00:00.000Z');
+    expect(bundle.scope).toEqual({
+      includeArchived: false,
+      projectIds: null,
+      includeAttachments: false,
+    });
+    expect(bundle.counts).toEqual({
+      tasks: 1,
+      stages: 2,
+      subStages: 2,
+      projects: 1,
+      attachments: 0,
+    });
+    expect(bundle.dependencies).toEqual([]);
+    expect(bundle.attachments).toEqual([]);
+    expect(bundle).not.toHaveProperty('briefing');
+  });
+
+  it('carries every stage and sub-stage, but only the project the task uses', () => {
+    const bundle = build();
+
+    expect(bundle.stages).toEqual(stages);
+    expect(bundle.subStages).toEqual(subStages);
+    // The summary's live count is not a project field the format carries.
+    expect(bundle.projects).toEqual([{ id: 3, name: 'StageBoard', key: 'S&G-SB' }]);
+  });
+
+  it('has no project for a task without one', () => {
+    const bundle = build({ ...transferred, projectId: null });
+
+    expect(bundle.projects).toEqual([]);
+    expect(bundle.counts.projects).toBe(0);
+  });
+
+  it('keeps every stored task field and adds the urgency block', () => {
+    const [task] = build().tasks;
+
+    expect(task).toMatchObject(transferred);
+    expect(task?.urgency.dueDay).toBe('2026-11-06');
+    expect(typeof task?.urgency.dueBucket).toBe('string');
+    expect(typeof task?.urgency.briefingRank).toBe('number');
+    expect(typeof task?.urgency.mustSurface).toBe('boolean');
+  });
+
+  it('survives the clipboard and reads back as the one task the importer takes', () => {
+    const payload: unknown = JSON.parse(JSON.stringify(build()));
+    const imported = tasksFromExportPayload(payload) as Record<string, unknown>[];
+
+    expect(imported).toHaveLength(1);
+    expect(imported[0]).toMatchObject({
+      title: 'Set up change management',
+      stageId: 2,
+      projectId: 3,
+      owner: 'TK Workflow IT',
+    });
+    expect(imported[0]?.dueDate).toBe('2026-11-05T11:00:00.000Z');
   });
 });

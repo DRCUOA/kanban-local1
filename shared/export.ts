@@ -262,6 +262,47 @@ export function buildExportBundle({
 }
 
 /**
+ * One task as a transfer file: the envelope the `addtask` skill's JSON route
+ * writes and the board's Import Tasks accepts. It is the export envelope cut
+ * down to what moving a single task needs, so it can travel on the clipboard:
+ * the task, every stage and sub-stage, only the project the task uses, and no
+ * briefing, dependencies or attachments.
+ */
+export type TaskTransferBundle = Omit<TaskExportBundle, 'briefing'>;
+
+export interface BuildTaskTransferBundleInput {
+  task: Task;
+  stages: Stage[];
+  subStages: SubStage[];
+  /** Every project on the board, or its summaries; the task's own is picked out. */
+  projects: (Project & { taskCount?: number })[];
+  exportedAt: string;
+}
+
+export function buildTaskTransferBundle({
+  task,
+  stages,
+  subStages,
+  projects,
+  exportedAt,
+}: BuildTaskTransferBundleInput): TaskTransferBundle {
+  const usedProjects = projects
+    .filter((project) => project.id === task.projectId)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a live count, not a project field the export carries
+    .map(({ taskCount, ...project }) => project);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- the transfer format has no digest
+  const { briefing, ...envelope } = buildExportBundle({
+    tasks: [task],
+    stages,
+    subStages,
+    projects: usedProjects,
+    includeArchived: task.archived,
+    exportedAt,
+  });
+  return envelope;
+}
+
+/**
  * The attachments an import payload carries, by id. Empty for files written
  * before attachments had rows: those still hold each file inline in the
  * task's description as a `data:` URL, which the server extracts on save.

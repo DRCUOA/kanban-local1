@@ -1,13 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-promises, @typescript-eslint/no-floating-promises, @typescript-eslint/no-confusing-void-expression, @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/return-await, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-unnecessary-type-conversion, @typescript-eslint/no-unnecessary-boolean-literal-compare, @typescript-eslint/require-await, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-non-null-assertion, @typescript-eslint/prefer-optional-chain -- R2 baseline: strict fixes deferred to follow-up tasks */
 import { useEffect, useState } from 'react';
 import type { Task } from '@shared/schema';
-import { useStages } from '@/hooks/use-stages';
+import { useStages, useSubStages } from '@/hooks/use-stages';
 import { useMarkTaskViewed } from '@/hooks/use-tasks';
 import { useEditTaskForm } from '@/hooks/use-edit-task-form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form } from '@/components/ui/form';
 import { EditTaskFormFields } from '@/components/EditTaskFormFields';
 import { EditTaskDialogActions } from '@/components/EditTaskDialogActions';
+import { CopyTaskJsonButton } from '@/components/CopyTaskJsonButton';
 import { ShareDialog } from '@/components/ShareDialog';
 import { GoalPlanDialog } from '@/components/GoalPlanDialog';
 import { useToast } from '@/hooks/use-toast';
@@ -23,6 +24,7 @@ export interface EditTaskDialogProps {
 
 export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: EditTaskDialogProps) {
   const { data: stages = [] } = useStages();
+  const { data: subStages } = useSubStages();
   const { form, onSubmit, handleDelete, isSaving } = useEditTaskForm({ task, open, onOpenChange });
 
   // Opening a task is what seeing it means: a task mail made stops being new.
@@ -67,6 +69,16 @@ export function EditTaskDialog({ task, open, onOpenChange, onViewHistory }: Edit
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-lg">Edit Task</DialogTitle>
         </DialogHeader>
+        {/* Like Share, this copies the saved task, not unsaved edits. It waits
+            for the stages so the file always carries them. */}
+        {task && stages.length > 0 && subStages && (
+          <CopyTaskJsonButton
+            task={task}
+            stages={stages}
+            subStages={subStages}
+            className="absolute right-20 top-4 h-11 w-11"
+          />
+        )}
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}

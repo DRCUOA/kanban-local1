@@ -30,6 +30,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useProjectScope } from '@/hooks/use-project-scope';
 import { useOwnerById } from '@/hooks/use-owners';
+import { CopyTaskJsonButton } from './CopyTaskJsonButton';
 import { ProjectChip } from './ProjectChip';
 import { OwnerChip } from './OwnerChip';
 import { RichTextContent } from './RichTextContent';
@@ -137,12 +138,24 @@ export function TaskPreviewPane({
           </h2>
         </div>
         {task && (
-          <Badge
-            variant="secondary"
-            className="min-h-[28px] rounded-lg px-3 py-1 font-mono text-base font-semibold neo-pressed"
-          >
-            #{task.id}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {/* Keyed so the "copied" tick does not carry over to the next task
+                previewed. The negative margin keeps this row level with the
+                column headers beside it. */}
+            <CopyTaskJsonButton
+              key={task.id}
+              task={task}
+              stages={stages}
+              subStages={subStages}
+              className="-my-1 max-lg:-my-2"
+            />
+            <Badge
+              variant="secondary"
+              className="min-h-[28px] rounded-lg px-3 py-1 font-mono text-base font-semibold neo-pressed"
+            >
+              #{task.id}
+            </Badge>
+          </div>
         )}
       </div>
 

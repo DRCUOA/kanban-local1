@@ -105,6 +105,16 @@ describe('TaskPreviewPane', () => {
     expect(screen.getByTestId('task-preview-empty')).toBeDefined();
     expect(screen.getByTestId('task-preview-pane').getAttribute('data-preview-task-id')).toBeNull();
     expect(screen.queryByTestId('task-preview-open')).toBeNull();
+    expect(screen.queryByTestId('task-copy-json')).toBeNull();
+  });
+
+  it('offers the JSON copy in the header, beside the task id', () => {
+    render(
+      <TaskPreviewPane task={makeTask()} stages={stages} subStages={subStages} onOpen={vi.fn()} />,
+    );
+    const copy = screen.getByTestId('task-copy-json');
+    expect(copy.getAttribute('aria-label')).toBe('Copy JSON to clipboard');
+    expect(copy.parentElement?.textContent).toContain('#42');
   });
 
   it('shows the full task: stage, lane, title, badges, due date, description, tags, details, history', () => {
