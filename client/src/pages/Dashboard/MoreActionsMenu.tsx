@@ -7,6 +7,7 @@ import {
   Download,
   Focus,
   List,
+  Printer,
   Rows,
   Settings,
   Share2,
@@ -42,6 +43,11 @@ export interface MoreActionsMenuProps {
   onShareBoard: () => void;
   onExport: () => void;
   onImport: () => void;
+  /**
+   * Prints the day sheet: what the board shows, as Do now / Next / Later tick
+   * lines on one A4 page. Optional so a caller without a board has no row.
+   */
+  onPrintDaySheet?: () => void;
 }
 
 /**
@@ -66,6 +72,7 @@ export function MoreActionsMenu({
   onShareBoard,
   onExport,
   onImport,
+  onPrintDaySheet,
 }: MoreActionsMenuProps) {
   const [open, setOpen] = useState(false);
 
@@ -178,6 +185,16 @@ export function MoreActionsMenu({
           <Settings className="h-4 w-4" />
           Admin
         </button>
+        {onPrintDaySheet && (
+          <button
+            className={actionRow}
+            onClick={runAndClose(onPrintDaySheet)}
+            data-testid="button-print-day-sheet"
+          >
+            <Printer className="h-4 w-4" />
+            Print day sheet
+          </button>
+        )}
         <button className={actionRow} onClick={runAndClose(onShareBoard)}>
           <Share2 className="h-4 w-4" />
           Share Board

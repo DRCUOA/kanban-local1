@@ -57,6 +57,23 @@ describe('MoreActionsMenu', () => {
     expect(screen.getByText('Import Tasks')).toBeDefined();
   });
 
+  it('prints the day sheet in one click and closes the menu', () => {
+    const onPrintDaySheet = vi.fn();
+    render(<MoreActionsMenu {...defaults} onPrintDaySheet={onPrintDaySheet} />);
+
+    openMenu();
+    fireEvent.click(screen.getByTestId('button-print-day-sheet'));
+
+    expect(onPrintDaySheet).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('Print day sheet')).toBeNull();
+  });
+
+  it('has no day sheet row without a board to print', () => {
+    render(<MoreActionsMenu {...defaults} />);
+    openMenu();
+    expect(screen.queryByText('Print day sheet')).toBeNull();
+  });
+
   it('holds no filters: whose work and which goal are the landing page’s, sorting stays', () => {
     const onToggleSortByOwner = vi.fn();
     render(<MoreActionsMenu {...defaults} onToggleSortByOwner={onToggleSortByOwner} />);

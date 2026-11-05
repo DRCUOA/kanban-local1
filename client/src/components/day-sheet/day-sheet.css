@@ -1,0 +1,188 @@
+/* style-mode: free (REF: the app's own look, Lexend) */
+/* type: document (one A4 page, printed in black ink) */
+
+/*
+ * The day sheet. On screen it is laid out off to the side, invisible, at the
+ * exact width of the printed page box, so its height can be measured against
+ * the page before printing. In print it is the only thing on the page.
+ *
+ * Every size is in em off the article's font-size, which the fit step sets
+ * between 12pt and 10pt. Black, greys and rules only: nothing depends on
+ * colour or on the "background graphics" print option.
+ */
+
+.day-sheet-host {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.day-sheet {
+  /* A4 is 210 mm wide; the @page margin is 12 mm a side. */
+  width: 186mm;
+  box-sizing: border-box;
+  background: #fff;
+  color: #000;
+  font-family: 'Lexend', ui-sans-serif, sans-serif;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+.day-sheet * {
+  box-sizing: border-box;
+}
+
+.ds-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1em;
+}
+
+.ds-title {
+  margin: 0;
+  font-size: 1.75em;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.ds-date {
+  margin: 0;
+  font-size: 1.1em;
+  font-weight: 500;
+  text-align: right;
+}
+
+.ds-scope {
+  margin: 0.3em 0 0;
+  font-size: 0.85em;
+  color: #444;
+}
+
+.ds-section {
+  margin-top: 1.15em;
+  break-inside: auto;
+}
+
+.ds-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0;
+  padding-bottom: 0.2em;
+  border-bottom: 1.5pt solid #000;
+  font-size: 1.15em;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.ds-count {
+  font-size: 0.8em;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ds-line {
+  display: grid;
+  grid-template-columns: 1em minmax(0, 1fr) auto;
+  column-gap: 0.65em;
+  align-items: start;
+  padding: 0.34em 0;
+  border-bottom: 0.5pt solid #b5b5b5;
+  break-inside: avoid;
+}
+
+/* The tick box: square, sized to the text, sitting on the first line. */
+.ds-box {
+  display: block;
+  width: 0.95em;
+  height: 0.95em;
+  margin-top: 0.12em;
+  border: 1pt solid #000;
+}
+
+.ds-task {
+  overflow-wrap: anywhere;
+}
+
+.ds-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5em;
+  padding-top: 0.1em;
+  font-size: 0.82em;
+  white-space: nowrap;
+}
+
+/* The board's priority badge, outlined, with the weight carrying what the
+   screen's colour carries: Critical heavier than High, Low lighter. */
+.ds-priority {
+  padding: 0 0.35em;
+  border: 0.75pt solid #000;
+  border-radius: 0.25em;
+  font-size: 0.92em;
+  line-height: 1.35;
+}
+
+.ds-priority-critical {
+  border-width: 1.5pt;
+  font-weight: 600;
+}
+
+.ds-priority-low {
+  border-color: #808080;
+  color: #444;
+}
+
+.ds-id {
+  color: #333;
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-project {
+  font-weight: 500;
+}
+
+.ds-empty,
+.ds-more {
+  margin: 0;
+  padding: 0.34em 0 0 1.65em;
+  font-size: 0.85em;
+  color: #444;
+}
+
+.ds-foot {
+  margin-top: 1.3em;
+  padding-top: 0.3em;
+  border-top: 0.5pt solid #b5b5b5;
+  font-size: 0.78em;
+  color: #444;
+}
+
+@media print {
+  html.day-sheet-printing,
+  html.day-sheet-printing body {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  html.day-sheet-printing body > :not(.day-sheet-host) {
+    display: none !important;
+  }
+
+  html.day-sheet-printing .day-sheet-host {
+    position: static;
+    left: auto;
+    visibility: visible;
+  }
+}

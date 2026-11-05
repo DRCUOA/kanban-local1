@@ -13,7 +13,9 @@ import { type Task } from '@shared/schema';
 import { ROUTES } from '@shared/constants';
 import { Loader2, SlidersHorizontal } from 'lucide-react';
 import { useLocation } from 'wouter';
-import { useStages } from '@/hooks/use-stages';
+import { useStages, useSubStages } from '@/hooks/use-stages';
+import { usePrintDaySheet } from '@/components/day-sheet/use-print-day-sheet';
+import { describeDaySheetScope } from '@/components/day-sheet/scope';
 import { NavDropSlotsProvider } from '@/components/nav-drop-slots';
 import { DashboardHeader } from './DashboardHeader';
 import { DashboardContent } from './DashboardContent';
@@ -136,6 +138,18 @@ export default function Dashboard(_props: DashboardProps) {
   );
   const { handleExport, handleImport } = useTaskImportExport({ tasks, stages });
 
+  // The day sheet prints exactly what the board is showing: the same filtered
+  // tasks, in the same columns, split by the same lanes.
+  const { data: subStages = [] } = useSubStages();
+  const { printDaySheet, daySheetPortal } = usePrintDaySheet({
+    tasks: filteredTasks,
+    columnStages: boardColumnStages(sortedStages, boardFilters),
+    stages,
+    subStages,
+    scopeLabel: describeDaySheetScope(narrowingFilters),
+    projectById,
+  });
+
   useKeyboardShortcuts({
     onNewTask: () => {
       setCreateDialogOpen(true);
@@ -223,6 +237,7 @@ export default function Dashboard(_props: DashboardProps) {
     },
     onExport: handleExport,
     onImport: handleImport,
+    onPrintDaySheet: printDaySheet,
   };
 
   return (
@@ -233,6 +248,7 @@ export default function Dashboard(_props: DashboardProps) {
     // NavDropSlotsProvider spans header→nav so the board can portal its Filing
     // and Bin drop targets onto the nav buttons without leaving its DndContext.
     <NavDropSlotsProvider>
+      {daySheetPortal}
       <div className="flex h-dvh flex-col overflow-hidden bg-background">
         <DashboardHeader
           searchQuery={searchQuery}

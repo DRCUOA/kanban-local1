@@ -151,6 +151,7 @@ function fakeSubStage(overrides: Partial<SubStage> = {}): SubStage {
     bgClass: 'bg-blue-500/20',
     ownerId: null,
     opacity: 20,
+    daySheetSection: null,
     order: 0,
     createdAt: NOW,
     ...overrides,
@@ -1529,6 +1530,27 @@ describe('Sub-stage routes', () => {
       expect(res.status).toBe(400);
       expect(res.body).toHaveProperty('error');
       expect(res.body).toHaveProperty('status', 400);
+    });
+
+    it('sets and clears the day sheet section', async () => {
+      mockStorage.updateSubStage.mockResolvedValue(fakeSubStage({ daySheetSection: 'later' }));
+
+      const set = await request(app).patch('/api/sub-stages/1').send({ daySheetSection: 'later' });
+      expect(set.status).toBe(200);
+      expect(mockStorage.updateSubStage).toHaveBeenLastCalledWith(1, { daySheetSection: 'later' });
+
+      await request(app).patch('/api/sub-stages/1').send({ daySheetSection: null });
+      expect(mockStorage.updateSubStage).toHaveBeenLastCalledWith(1, { daySheetSection: null });
+    });
+
+    it('refuses a day sheet section it does not know', async () => {
+      mockStorage.updateSubStage.mockClear();
+      const res = await request(app)
+        .patch('/api/sub-stages/1')
+        .send({ daySheetSection: 'someday' });
+
+      expect(res.status).toBe(400);
+      expect(mockStorage.updateSubStage).not.toHaveBeenCalled();
     });
 
     it('returns 404 when the sub-stage does not exist', async () => {

@@ -25,6 +25,7 @@ import {
   OWNER_KEY_MAX_LEN,
   PROJECT_NAME_MAX_LEN,
   PROJECT_KEY_MAX_LEN,
+  DAY_SHEET_SECTION_VALUES,
 } from './constants';
 
 export const stages = pgTable('stages', {
@@ -94,6 +95,9 @@ export const subStages = pgTable('sub_stages', {
   // stage owned by them (`tag` is not read for it). Null = a tag lane, matched
   // against `tasks.tags` as before. See EPIC-06 §5.
   ownerId: integer('owner_id').references(() => owners.id, { onDelete: 'set null' }),
+  // Where this lane's tasks print on the day sheet: 'now', 'next' or 'later'
+  // (DAY_SHEET_SECTION). Null = follow the column's kind. Migration 0026.
+  daySheetSection: text('day_sheet_section'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -460,6 +464,8 @@ export const insertSubStageSchema = createInsertSchema(subStages)
     opacity: z.number().min(0).max(100), // Store as 0-100 integer
     // Set = a person's lane; null = a tag lane (EPIC-06 OWN-R11).
     ownerId: z.number().int().positive().optional().nullable(),
+    // Null = the day sheet follows the column's kind.
+    daySheetSection: z.enum(DAY_SHEET_SECTION_VALUES).optional().nullable(),
   });
 
 // Explicit overrides for every field — `createInsertSchema(tasks)` infers `any`

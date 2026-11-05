@@ -40,6 +40,7 @@ const mockSubStages: SubStage[] = [
     name: 'AM',
     tag: 'day-plan-am',
     bgClass: 'bg-background/20',
+    daySheetSection: null,
     ownerId: null,
     opacity: 20,
     order: 0,
@@ -51,6 +52,7 @@ const mockSubStages: SubStage[] = [
     name: 'PM',
     tag: 'day-plan-pm',
     bgClass: 'bg-background/40',
+    daySheetSection: null,
     ownerId: null,
     opacity: 40,
     order: 1,
@@ -81,6 +83,29 @@ describe('SubStageSection', () => {
 
     expect(screen.getByText('day-plan-am | 20%')).toBeDefined();
     expect(screen.getByText('day-plan-pm | 40%')).toBeDefined();
+  });
+
+  it('says which day sheet section each lane prints in', () => {
+    const [am, pm] = mockSubStages;
+    if (!am || !pm) throw new Error('fixture lanes missing');
+    const lanes: SubStage[] = [am, { ...pm, daySheetSection: 'later' }];
+    render(<SubStageSection stages={mockStages} subStages={lanes} />, { wrapper });
+
+    // No setting: an In Progress lane prints under Do now, as its column does.
+    expect(screen.getByTestId('sub-stage-day-sheet-10').textContent).toBe(
+      'Day sheet: Do now (as the column)',
+    );
+    expect(screen.getByTestId('sub-stage-day-sheet-11').textContent).toBe('Day sheet: Later');
+  });
+
+  it('offers the day sheet section on the lane form, defaulting to the column', () => {
+    render(<SubStageSection stages={mockStages} subStages={mockSubStages} />, { wrapper });
+    fireEvent.click(screen.getByTestId('button-edit-sub-stage-10'));
+
+    expect(screen.getByText('Day sheet section')).toBeDefined();
+    expect(screen.getByTestId('select-sub-stage-day-sheet').textContent).toBe(
+      'As the column says (Do now)',
+    );
   });
 
   it('shows the "Add Sub-Stage" button', () => {
