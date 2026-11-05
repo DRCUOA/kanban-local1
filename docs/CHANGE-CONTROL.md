@@ -73,6 +73,7 @@ opened, since its merge date is not yet known. Schema names the migration file u
 | #168 | 23 Oct (opened) | feat | The landing page becomes a three-stage filter wizard: projects, then goals inside them, then tasks under those, GO between stages and onto the board; islands, pins and circles mark the levels. `BoardFilters.tasks` (`tasksOnOffer`, `usePruneChosenTasks`) and a Tasks chip on the board. The Owner and Stage rows are retired: the board still honours them, and the landing page lets go of any left in a browser's storage. The inbox moves behind a header button. #167's row hints carry over as a line under each stage's heading | Not on backlog (asked for on 23 Oct, from that day's wireframe) | — | — |
 | #169 | 23 Oct (opened) | style | App icon mark in `rgb(255 69 0)`: the favicon on a transparent ground (one colour in place of the light/dark blues), the home-screen icons on a solid black tile instead of blue on grey; manifest `background_color` black. PNGs regenerated from `script/icons/` | Not on backlog (asked for on 23 Oct) | — | None. Browsers and iOS cache icons, so a hard refresh or reinstall may be needed to see it |
 | #170 | 23 Oct (opened) | fix | Header logo (`AppLogo`) paints `rgb(255 69 0)` itself instead of the teal accent, which #169's icon recolour did not reach; `AppLogo.test.ts` holds it, `favicon.svg` and the `script/icons/` sources to one colour | Not on backlog (defect in #169, reported 23 Oct) | — | — |
+| #171 | 5 Nov (opened) | feat | A copy icon on the preview pane and in the Edit Task dialog (`CopyTaskJsonButton`) copies the saved task in the JSON format the `addtask` skill writes and Import Tasks reads (`buildTaskTransferBundle`): the export envelope with that one task, every stage and sub-stage, its own project, no briefing, dependencies or attachments. `copyToClipboard`'s `execCommand` fallback no longer reports success having copied nothing inside a dialog, which also repairs Share | Not on backlog (asked for on 5 Nov; the fallback is a defect found testing it) | — | — |
 
 **In this window:** 28 PRs, 12 migrations (`0013`–`0024`), 2 changes with required deploy
 actions (#146, #158). Of the 26 PRs that changed the app (all but #133, docs, and #139, a
@@ -93,6 +94,7 @@ leaves this table only when a later PR's row closes it.
 | #152 | Playwright mobile-first suite (`tests/uix/`, `playwright.config.ts`) kept out of the PR, uncommitted | #152 | Not in the repo (`tests/` holds `smoke.test.ts` only) |
 | #163 | Production Postgres TimeZone not checked, so whether production stored local time is unknown. After deploy: the start-up line `Database server TimeZone is …`, and `SELECT count(*) FROM utc_timestamp_repair_report` | #163 | Open |
 | #168 | The filter wizard was seen in a desktop browser only (375 px emulated, 800 px), not on a real phone or in Safari, and not walked end to end by keyboard | #168 | Open |
+| #171 | Copy JSON was exercised through the `execCommand` fallback only, since the built-in browser denies `navigator.clipboard`; not seen in Safari or Chrome, where the direct route runs | #171 | Open |
 
 ### Documents out of step on 21 Oct 2026
 

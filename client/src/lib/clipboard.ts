@@ -24,8 +24,13 @@ function copyViaExecCommand(text: string): boolean {
   textarea.style.position = 'fixed';
   textarea.style.top = '-1000px';
   textarea.style.opacity = '0';
-  document.body.appendChild(textarea);
+  // A modal dialog traps focus: a textarea outside it loses focus the moment it
+  // is selected, and `execCommand` then reports success having copied nothing.
+  const focused = document.activeElement;
+  const host = focused?.closest('[role="dialog"]') ?? document.body;
+  host.appendChild(textarea);
   try {
+    textarea.focus();
     textarea.select();
     // eslint-disable-next-line @typescript-eslint/no-deprecated -- the only copy path in non-secure contexts, where navigator.clipboard is absent
     return document.execCommand('copy');
@@ -34,6 +39,7 @@ function copyViaExecCommand(text: string): boolean {
     return false;
   } finally {
     textarea.remove();
+    if (focused instanceof HTMLElement) focused.focus();
   }
 }
 
