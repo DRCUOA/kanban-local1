@@ -1,23 +1,25 @@
 import { DEFAULT_PROJECT_COLOR } from '@shared/constants';
 import { cn } from '@/lib/utils';
 
-export interface ZenProjectIconProps {
-  /** The project's colour; the sun is drawn in it. */
+export interface ZenIconProps {
+  /** The task's project colour; the sun is drawn in it. */
   color?: string | null;
   className?: string;
 }
 
 /**
- * The Everyday project's mark: one day as a loop. The sun rides the top of it,
+ * Zen doing mode's mark: one day as a loop. The sun rides the top of it,
  * the day is the solid arc that turns down at the right, the night is the
  * dotted half underneath that brings it back round, and the tick in the middle
- * is the chore done. Drawn on a 32-unit grid with 2-unit strokes so it sits
- * beside the 24-unit lucide icons at the same weight.
+ * is the task done. Drawn first for the Everyday project, it now marks Zen on
+ * every task, with the sun in the task's project colour. Drawn on a 32-unit
+ * grid with 2-unit strokes so it sits beside the 24-unit lucide icons at the
+ * same weight.
  *
  * The arc stops short of the sun rather than running behind it, so the gap
  * stays a gap on any ground, hover tint included.
  */
-export function EverydayIcon({ color, className }: ZenProjectIconProps) {
+export function ZenIcon({ color, className }: ZenIconProps) {
   const sun = color ?? DEFAULT_PROJECT_COLOR;
   return (
     <svg
@@ -28,7 +30,7 @@ export function EverydayIcon({ color, className }: ZenProjectIconProps) {
       className={cn('h-7 w-7', className)}
       aria-hidden
       focusable="false"
-      data-testid="everyday-icon"
+      data-testid="zen-icon"
     >
       {/* Day: up from the left, over the top, round to the right. */}
       <path d="M6 18A10 10 0 0 1 11.62 9.01" stroke="currentColor" strokeWidth={2} />

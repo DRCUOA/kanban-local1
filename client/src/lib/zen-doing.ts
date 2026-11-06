@@ -1,29 +1,14 @@
 import { format } from 'date-fns';
-import type { Project, Stage } from '@shared/schema';
+import type { Stage } from '@shared/schema';
 import { STAGE_KIND } from '@shared/constants';
 import { stagesOfKind } from '@shared/stage-state';
 import { toRichHtml } from '@/lib/rich-text';
 
 /**
  * Zen doing mode: a full-screen, read-only view of one task's description with
- * two quiet ways out, Mark done and Cancel doing. It is offered only on tasks
- * in a project that has a Zen icon, which for now is the one project named
- * "Everyday", the home of the routine chores.
+ * two quiet ways out, Mark done and Cancel doing. It is offered on every task,
+ * whatever its project. It started on the Everyday project alone.
  */
-
-/** Projects that open Zen doing mode, matched by name with case and spacing ignored. */
-const ZEN_PROJECT_NAMES = ['everyday'] as const;
-
-export type ZenProjectName = (typeof ZEN_PROJECT_NAMES)[number];
-
-/** Which Zen project this is, or null when the project does not offer Zen doing mode. */
-export function zenProjectName(
-  project: Pick<Project, 'name'> | null | undefined,
-): ZenProjectName | null {
-  if (!project) return null;
-  const name = project.name.trim().replace(/\s+/g, ' ').toLowerCase();
-  return ZEN_PROJECT_NAMES.find((n) => n === name) ?? null;
-}
 
 /** Where Mark done puts the task: the first Done column in board order, if the board has one. */
 export function zenDoneStage(stages: readonly Stage[]): Stage | null {
