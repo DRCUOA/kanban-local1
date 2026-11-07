@@ -190,3 +190,40 @@ Due dates are now built the way production stores them (`duePicked` — the pick
 ### Not covered
 
 `client/src/lib/task-email.ts` still formats a due date in the viewer's local zone for the "Share as email" text. Harmless from an NZ device and outside this change; worth folding into the same helper if the board ever gains non-NZ users.
+
+---
+
+## BUG-005: a failed AI request showed "body stream already read"
+
+**Date:** 2026-11-07
+**Severity:** Medium (Polish unusable in production, error message meaningless)
+**Error (in the Polish popover):**
+```
+Failed to execute 'text' on 'Response': body stream already read
+```
+
+### What happens
+
+Pressing Go in Polish on production showed the line above instead of a suggestion or a reason.
+
+### Root cause
+
+Three things lined up.
+
+- **The trigger:** OpenAI rejected the key saved on the Admin page (`401 Incorrect API key provided`).
+- **The 502:** the Polish route answered that failure with 502, as the goal planner's route and the Admin key check also did. Cloudflare, in front of production, replaces an origin's 502 with its own HTML page.
+- **The client bug:** `apiRequest` (`client/src/lib/api.ts`) called `res.json()` on that page, which failed and used up the body, and then called `res.text()`, which can never succeed after that. A body can be read once.
+
+The unit test hid the client bug: its fake `Response` let `text()` work after `json()` had failed.
+
+### Fix
+
+- **Client:** `readErrorBody` reads a failed response's body once and shows the JSON `error`, else the plain text, else "The server answered <status>". It never shows HTML.
+- **Server:** `server/ai-errors.ts` answers a key OpenAI turns down with 400 and a pointer to Admin → AI assistant, and any other AI failure with 503 and the provider's message. The Admin key check moves to 503 too. Nothing answers 502.
+- **Tests:** the failure tests now use real `Response` objects.
+
+### Not covered
+
+- Cloudflare's actual page was not captured from the browser. The diagnosis rests on Cloudflare's 502/504 documentation, on Railway's log showing the app sent a 320-byte JSON 502 (the exact size of that body), and on a local reproduction.
+- Whether Cloudflare passes an origin 503's body through is inferred from its docs. If it doesn't, the client now says "The server answered 503".
+- The rejected key still has to be replaced on the Admin page.

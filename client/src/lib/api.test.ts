@@ -109,25 +109,53 @@ describe('apiRequest', () => {
     }
   });
 
-  it('throws ApiError with text body when JSON parsing fails', async () => {
-    const res = {
-      ok: false,
-      status: 500,
-      statusText: 'Internal Server Error',
-      headers: new Headers(),
-      json: () => Promise.reject(new SyntaxError('bad json')),
-      text: () => Promise.resolve('plain error text'),
-    } as unknown as Response;
+  // Real Response objects from here on: a body can be read once, which a
+  // hand-made stand-in with separate json() and text() did not enforce, and
+  // that hid "body stream already read" in production (7 Nov 2026).
+  async function failure(res: Response): Promise<ApiError> {
     mockFetch.mockResolvedValueOnce(res);
+    const err: unknown = await apiRequest('/api/fail').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    return err as ApiError;
+  }
 
-    try {
-      await apiRequest('/api/fail');
-    } catch (err) {
-      expect(err).toBeInstanceOf(ApiError);
-      const apiErr = err as ApiError;
-      expect(apiErr.status).toBe(500);
-      expect(apiErr.body).toBe('plain error text');
-    }
+  it('throws ApiError with the text when a failed response is plain text', async () => {
+    const err = await failure(
+      new Response('plain error text', {
+        status: 500,
+        statusText: 'Internal Server Error',
+        headers: { 'content-type': 'text/plain' },
+      }),
+    );
+    expect(err.status).toBe(500);
+    expect(err.body).toBe('plain error text');
+  });
+
+  it('reads the JSON error from a real failed response', async () => {
+    const err = await failure(
+      new Response(JSON.stringify({ error: 'The AI request failed: quota', status: 503 }), {
+        status: 503,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    expect(err.body).toBe('The AI request failed: quota');
+  });
+
+  it("gives the status, not the markup, for a proxy's HTML error page", async () => {
+    // What Cloudflare sends in place of an origin 502; HTTP/2 has no status text.
+    const err = await failure(
+      new Response('<!DOCTYPE html><html><title>502 Bad gateway</title>cloudflare</html>', {
+        status: 502,
+        headers: { 'content-type': 'text/html; charset=UTF-8' },
+      }),
+    );
+    expect(err.status).toBe(502);
+    expect(err.body).toBe('The server answered 502');
+  });
+
+  it('falls back to the status text when a failed response has no body', async () => {
+    const err = await failure(new Response(null, { status: 500, statusText: 'Server Error' }));
+    expect(err.body).toBe('Server Error');
   });
 
   it('wraps network TypeError with a user-friendly message', async () => {

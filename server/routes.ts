@@ -45,6 +45,7 @@ import { TASK_TYPE } from '@shared/constants';
 import rateLimit from 'express-rate-limit';
 import { suggestGoalPlan, GoalPlanRequestError } from './goal-plan';
 import { polishDescription, PolishRequestError } from './description-polish';
+import { aiFailure } from './ai-errors';
 import { goalPlanOptionsSchema } from '@shared/goal-plan';
 import { getAiSettings, updateAiSettings, SettingsRequestError } from './settings';
 import { registerGmailPubSubWebhook, GMAIL_PUBSUB_WEBHOOK_PATH } from './webhooks/gmail-pubsub';
@@ -263,9 +264,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           return;
         }
         logger.error('AI settings update failed:', error);
-        res.status(502).json({
+        // 503, not 502: Cloudflare replaces an origin 502 with its own page.
+        res.status(503).json({
           error: 'Could not reach OpenAI to check the key. Nothing was saved; try again.',
-          status: 502,
+          status: 503,
         });
       }
     }),
@@ -284,11 +286,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           res.status(400).json({ error: error.message, status: 400 });
           return;
         }
-        // The provider's own message (bad key, unknown model, quota) is what
-        // the user needs to fix it; nothing secret is in it.
         logger.error('goal-plan suggestion failed:', error);
-        const message = error instanceof Error ? error.message : 'AI request failed';
-        res.status(502).json({ error: `The AI request failed: ${message}`, status: 502 });
+        const failure = aiFailure(error);
+        res.status(failure.status).json(failure.body);
       }
     }),
   );
@@ -315,8 +315,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           return;
         }
         logger.error('description polish failed:', error);
-        const message = error instanceof Error ? error.message : 'AI request failed';
-        res.status(502).json({ error: `The AI request failed: ${message}`, status: 502 });
+        const failure = aiFailure(error);
+        res.status(failure.status).json(failure.body);
       }
     }),
   );

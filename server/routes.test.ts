@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- test assertions access untyped JSON response bodies */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
+import { AuthenticationError } from 'openai';
 import type { Server } from 'node:http';
 import type { Task, Stage, SubStage, Project, Owner } from '@shared/schema';
 
@@ -613,11 +614,21 @@ describe('Task routes', () => {
       expect(res.body.error).toBe('No OpenAI API key is set.');
     });
 
-    it('answers 502 with the provider message when the AI call fails', async () => {
+    it('answers 503 with the provider message when the AI call fails', async () => {
+      // Not 502: Cloudflare in front of production swaps a 502 for its own page.
       mockPolish.polishDescription.mockRejectedValue(new Error('model not found'));
       const res = await request(app).post('/api/ai/polish').send(body);
-      expect(res.status).toBe(502);
+      expect(res.status).toBe(503);
       expect(res.body.error).toBe('The AI request failed: model not found');
+    });
+
+    it('answers 400 pointing to the Admin page when OpenAI turns down the key', async () => {
+      mockPolish.polishDescription.mockRejectedValue(
+        new AuthenticationError(401, { message: 'Incorrect API key' }, undefined, new Headers()),
+      );
+      const res = await request(app).post('/api/ai/polish').send(body);
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/OpenAI turned down the API key/);
     });
   });
 
