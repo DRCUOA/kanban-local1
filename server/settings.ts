@@ -8,10 +8,12 @@ import {
   type AiModelOption,
   type AiSettingsResponse,
 } from '@shared/goal-plan';
+import { DEFAULT_POLISH_MODEL } from '@shared/description-polish';
 import { logger } from '@shared/logger';
 import { db } from './db';
 
 const KEY_MODEL = 'ai.openai_model';
+const KEY_POLISH_MODEL = 'ai.openai_polish_model';
 const KEY_API_KEY = 'ai.openai_api_key';
 const OPENAI_MODELS_URL = 'https://api.openai.com/v1/models';
 
@@ -71,21 +73,26 @@ async function writeSetting(key: string, value: string | null): Promise<void> {
 
 export interface AiConfig {
   model: string;
+  polishModel: string;
   apiKey: string | null;
   keySource: AiSettingsResponse['keySource'];
 }
 
-/** The model and key the AI assistant uses: the Admin key first, then OPENAI_API_KEY. */
+/** The models and key the AI assistant uses: the Admin key first, then OPENAI_API_KEY. */
 export async function getAiConfig(): Promise<AiConfig> {
   const storedModel = await readSetting(KEY_MODEL);
   // A model saved before the GPT-5+ rule (or retired) falls back to the default.
   const model = storedModel && isPlanningModel(storedModel) ? storedModel : DEFAULT_GOAL_PLAN_MODEL;
+  const storedPolish = await readSetting(KEY_POLISH_MODEL);
+  const polishModel =
+    storedPolish && isPlanningModel(storedPolish) ? storedPolish : DEFAULT_POLISH_MODEL;
+  const models = { model, polishModel };
   const stored = await readSetting(KEY_API_KEY);
   const adminKey = stored ? decryptSecret(stored, encryptionKey().key) : null;
-  if (adminKey) return { model, apiKey: adminKey, keySource: 'admin' };
+  if (adminKey) return { ...models, apiKey: adminKey, keySource: 'admin' };
   const envKey = process.env.OPENAI_API_KEY?.trim();
-  if (envKey) return { model, apiKey: envKey, keySource: stored ? 'unreadable' : 'env' };
-  return { model, apiKey: null, keySource: stored ? 'unreadable' : 'none' };
+  if (envKey) return { ...models, apiKey: envKey, keySource: stored ? 'unreadable' : 'env' };
+  return { ...models, apiKey: null, keySource: stored ? 'unreadable' : 'none' };
 }
 
 /** A key or request the user can fix; the route answers 400 with the message. */
@@ -142,6 +149,7 @@ export async function getAiSettings(): Promise<AiSettingsResponse> {
   const { models, source } = await modelOptions(config.apiKey);
   return {
     model: config.model,
+    polishModel: config.polishModel,
     keySource: config.keySource,
     keyHint: config.apiKey ? `…${config.apiKey.slice(-4)}` : null,
     encryption: encryptionKey().source,
@@ -152,6 +160,7 @@ export async function getAiSettings(): Promise<AiSettingsResponse> {
 
 export async function updateAiSettings(update: {
   model?: string;
+  polishModel?: string;
   apiKey?: string | null;
 }): Promise<AiSettingsResponse> {
   if (update.apiKey === null) await writeSetting(KEY_API_KEY, null);
@@ -162,5 +171,6 @@ export async function updateAiSettings(update: {
     modelCache = null;
   }
   if (update.model !== undefined) await writeSetting(KEY_MODEL, update.model);
+  if (update.polishModel !== undefined) await writeSetting(KEY_POLISH_MODEL, update.polishModel);
   return getAiSettings();
 }

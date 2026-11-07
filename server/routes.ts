@@ -42,7 +42,9 @@ import { logger } from '@shared/logger';
 import { goalLinkError, normaliseGoalLink } from '@shared/task-goal';
 import { bulkChange } from '@shared/bulk-edit';
 import { TASK_TYPE } from '@shared/constants';
+import rateLimit from 'express-rate-limit';
 import { suggestGoalPlan, GoalPlanRequestError } from './goal-plan';
+import { polishDescription, PolishRequestError } from './description-polish';
 import { goalPlanOptionsSchema } from '@shared/goal-plan';
 import { getAiSettings, updateAiSettings, SettingsRequestError } from './settings';
 import { registerGmailPubSubWebhook, GMAIL_PUBSUB_WEBHOOK_PATH } from './webhooks/gmail-pubsub';
@@ -285,6 +287,34 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         // The provider's own message (bad key, unknown model, quota) is what
         // the user needs to fix it; nothing secret is in it.
         logger.error('goal-plan suggestion failed:', error);
+        const message = error instanceof Error ? error.message : 'AI request failed';
+        res.status(502).json({ error: `The AI request failed: ${message}`, status: 502 });
+      }
+    }),
+  );
+
+  // Each press is a paid call, so a stuck key or a loop cannot run up the bill.
+  const polishLimit = rateLimit({
+    windowMs: 60_000,
+    limit: 20,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { error: 'Too many polish requests. Wait a minute and try again.', status: 429 },
+  });
+
+  app.post(
+    api.descriptionPolish.run.path,
+    polishLimit,
+    asyncHandler(async (req: Request, res: Response) => {
+      const input = parseOrThrow(api.descriptionPolish.run.input, req.body);
+      try {
+        res.json(await polishDescription(input));
+      } catch (error) {
+        if (error instanceof PolishRequestError) {
+          res.status(400).json({ error: error.message, status: 400 });
+          return;
+        }
+        logger.error('description polish failed:', error);
         const message = error instanceof Error ? error.message : 'AI request failed';
         res.status(502).json({ error: `The AI request failed: ${message}`, status: 502 });
       }

@@ -348,6 +348,8 @@ export interface AiModelOption {
 /** Admin view of the AI settings. The key itself is never sent back. */
 export interface AiSettingsResponse {
   model: string;
+  /** Model for Polish on the description, chosen separately because a person waits on it. */
+  polishModel: string;
   /** Where the key in use comes from; 'unreadable' = a saved key that can no longer be decrypted. */
   keySource: 'admin' | 'env' | 'none' | 'unreadable';
   /** Last four characters of the key in use, for recognition. */
@@ -361,6 +363,13 @@ export interface AiSettingsResponse {
 
 export const updateAiSettingsSchema = z.object({
   model: z
+    .string()
+    .trim()
+    .min(1)
+    .max(100)
+    .refine(isPlanningModel, 'Choose a GPT-5 or later text model')
+    .optional(),
+  polishModel: z
     .string()
     .trim()
     .min(1)

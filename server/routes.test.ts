@@ -65,6 +65,13 @@ vi.mock('./storage', () => ({
   DependencyRuleError: class DependencyRuleError extends Error {},
 }));
 
+// The polish route's AI call, stubbed so no request leaves the test.
+const mockPolish = vi.hoisted(() => ({
+  polishDescription: vi.fn(),
+  PolishRequestError: class PolishRequestError extends Error {},
+}));
+vi.mock('./description-polish', () => mockPolish);
+
 import { createApp } from './app';
 import { serveOnLoopback, closeServer } from './test-support/loopback';
 import { api } from '@shared/routes';
@@ -565,6 +572,52 @@ describe('Task routes', () => {
       mockStorage.getTaskById.mockResolvedValue(undefined);
       const res = await request(app).post('/api/tasks/9/goal-plan');
       expect(res.status).toBe(400);
+    });
+  });
+
+  describe('POST /api/ai/polish', () => {
+    const body = { html: '<p>teh plan</p>', instruction: 'Fix spelling' };
+
+    it('returns the rewritten description', async () => {
+      mockPolish.polishDescription.mockResolvedValue({
+        html: '<p>The plan</p>',
+        filesMovedToEnd: 0,
+        model: 'gpt-6-luna',
+      });
+      const res = await request(app).post('/api/ai/polish').send(body);
+      expect(res.status).toBe(200);
+      expect(res.body.html).toBe('<p>The plan</p>');
+      expect(mockPolish.polishDescription).toHaveBeenCalledWith(body);
+    });
+
+    it('refuses an empty description or instruction before calling the AI', async () => {
+      mockPolish.polishDescription.mockClear();
+      const empty = await request(app)
+        .post('/api/ai/polish')
+        .send({ html: '<p></p>', instruction: 'Shorten' });
+      expect(empty.status).toBe(400);
+      expect(empty.body.error).toMatch(/Write something/);
+      const blank = await request(app)
+        .post('/api/ai/polish')
+        .send({ html: '<p>Hi</p>', instruction: ' ' });
+      expect(blank.status).toBe(400);
+      expect(mockPolish.polishDescription).not.toHaveBeenCalled();
+    });
+
+    it('answers 400 with the message for a request the user can fix', async () => {
+      mockPolish.polishDescription.mockRejectedValue(
+        new mockPolish.PolishRequestError('No OpenAI API key is set.'),
+      );
+      const res = await request(app).post('/api/ai/polish').send(body);
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('No OpenAI API key is set.');
+    });
+
+    it('answers 502 with the provider message when the AI call fails', async () => {
+      mockPolish.polishDescription.mockRejectedValue(new Error('model not found'));
+      const res = await request(app).post('/api/ai/polish').send(body);
+      expect(res.status).toBe(502);
+      expect(res.body.error).toBe('The AI request failed: model not found');
     });
   });
 
