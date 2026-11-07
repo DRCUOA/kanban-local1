@@ -61,13 +61,7 @@ export async function apiRequest<T = void>(
   }
 
   if (!res.ok) {
-    let errorBody: string;
-    try {
-      const json = (await res.json()) as ApiErrorResponse;
-      errorBody = json.error || JSON.stringify(json);
-    } catch {
-      errorBody = (await res.text()) || res.statusText;
-    }
+    const errorBody = await readErrorBody(res);
     // This browser is not (or no longer) admitted: the access gate in App
     // shows the access-code screen.
     if (res.status === 401 && errorBody === ACCESS_REQUIRED) {
@@ -81,6 +75,35 @@ export async function apiRequest<T = void>(
   }
 
   return (await res.json()) as T;
+}
+
+/**
+ * The message in a failed response, read once: the server's JSON `error`,
+ * else its plain text, else the status. A body can be read only once, so it
+ * is taken as text and parsed here; calling `json()` and then `text()` throws
+ * "body stream already read" whenever the body is not JSON. Cloudflare, in
+ * front of production, swaps an origin 502 or 504 for its own HTML page, and
+ * that markup is never shown as the message.
+ */
+async function readErrorBody(res: Response): Promise<string> {
+  const status = res.statusText ? `${res.status} ${res.statusText}` : String(res.status);
+  const fallback = `The server answered ${status}`;
+  let text: string;
+  try {
+    text = (await res.text()).trim();
+  } catch {
+    return fallback;
+  }
+  if (!text) return res.statusText || fallback;
+  try {
+    const json = JSON.parse(text) as Partial<ApiErrorResponse> | null;
+    if (json && typeof json.error === 'string' && json.error) return json.error;
+    return text;
+  } catch {
+    // Not JSON: plain text is the message, an HTML error page is not.
+  }
+  const isHtml = /html/i.test(res.headers.get('content-type') ?? '') || text.startsWith('<');
+  return isHtml ? fallback : text;
 }
 
 export function apiGet<T>(url: string): Promise<T> {
