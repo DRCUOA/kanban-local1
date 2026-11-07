@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DictationButton } from '@/components/DictationButton';
+import { DescriptionPolishButton } from '@/components/DescriptionPolishButton';
 import { useSpeechDictation } from '@/hooks/use-speech-dictation';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -40,6 +41,8 @@ interface RichTextEditorProps {
   onChange: (html: string) => void;
   placeholder?: string;
   className?: string;
+  /** Show the AI Polish button. Only the task form's Description turns it on. */
+  polish?: boolean;
   'data-testid'?: string;
 }
 
@@ -83,6 +86,7 @@ export function RichTextEditor({
   onChange,
   placeholder = 'Add details...',
   className,
+  polish = false,
   'data-testid': testId,
 }: RichTextEditorProps) {
   const { toast } = useToast();
@@ -177,6 +181,7 @@ export function RichTextEditor({
             link: e.isActive('link'),
             canUndo: e.can().undo(),
             canRedo: e.can().redo(),
+            empty: e.isEmpty,
           }
         : null,
   });
@@ -398,6 +403,7 @@ export function RichTextEditor({
           fieldLabel="description"
           data-testid="button-dictate-description"
         />
+        {polish && <DescriptionPolishButton editor={editor} empty={state?.empty ?? true} />}
         <div className="flex-1" />
         <ToolbarButton
           icon={Undo2}

@@ -245,6 +245,7 @@ export function EditTaskFormFields({ control, stages, taskId }: EditTaskFormFiel
                 <RichTextEditor
                   value={field.value || ''}
                   onChange={field.onChange}
+                  polish
                   data-testid="input-edit-description"
                 />
               ) : isRichTextEmpty(field.value) ? (

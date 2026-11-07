@@ -235,6 +235,7 @@ export function CreateTaskDialog({ iconOnly = false }: CreateTaskDialogProps) {
                       placeholder="Add details..."
                       value={field.value || ''}
                       onChange={field.onChange}
+                      polish
                       data-testid="input-task-description"
                     />
                   </FormControl>

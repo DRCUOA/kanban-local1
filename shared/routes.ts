@@ -27,6 +27,7 @@ import {
   type ApplyGoalPlanResult,
   type GoalPlanSuggestion,
 } from './goal-plan';
+import { polishRequestSchema, type PolishResponse } from './description-polish';
 
 export const api = {
   health: {
@@ -180,6 +181,18 @@ export const api = {
       input: applyGoalPlanSchema,
       responses: {
         201: z.custom<ApplyGoalPlanResult>(),
+        400: z.object({ error: z.string(), status: z.number() }),
+      },
+    },
+  },
+  descriptionPolish: {
+    /** Apply an instruction to a task description with the AI assistant. Nothing is saved. */
+    run: {
+      method: 'POST' as const,
+      path: '/api/ai/polish',
+      input: polishRequestSchema,
+      responses: {
+        200: z.custom<PolishResponse>(),
         400: z.object({ error: z.string(), status: z.number() }),
       },
     },
