@@ -13,8 +13,8 @@
     "check": "npm run lint && npm run typecheck && npm run format:check && npm run test",
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
-    "format": "prettier --write \"client/src/**/*.{ts,tsx}\" \"server/**/*.ts\" \"shared/**/*.ts\" \"*.{ts,js,json}\"",
-    "format:check": "prettier --check \"client/src/**/*.{ts,tsx}\" \"server/**/*.ts\" \"shared/**/*.ts\" \"*.{ts,js,json}\"",
+    "format": "prettier --write \"client/src/**/*.{ts,tsx}\" \"server/**/*.ts\" \"shared/**/*.ts\" \".railway/*.ts\" \"*.{ts,js,json}\"",
+    "format:check": "prettier --check \"client/src/**/*.{ts,tsx}\" \"server/**/*.ts\" \"shared/**/*.ts\" \".railway/*.ts\" \"*.{ts,js,json}\"",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -95,6 +95,7 @@
     "lint-staged": "^16.3.2",
     "postcss": "^8.4.47",
     "prettier": "^3.8.1",
+    "railway": "^3.16.0",
     "supertest": "^7.2.2",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.21.0",
